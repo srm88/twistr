@@ -36,6 +36,93 @@ const (
 )
 
 const (
+    Mexico CountryId = iota
+    Guatemala
+    ElSalvador
+    Honduras
+    CostaRica
+    Cuba
+    Nicaragua
+    Panama
+    Haiti
+    DominicanRep
+    Ecuador
+    Peru
+    Colombia
+    Chile
+    Venezuela
+    Argentina
+    Bolivia
+    Paraguay
+    Uruguay
+    Brazil
+    Canada
+    UK
+    SpainPortugal
+    France
+    Benelux
+    Norway
+    Denmark
+    WGermany
+    EGermany
+    Italy
+    Austria
+    Sweden
+    Czechoslovakia
+    Yugoslavia
+    Poland
+    Greece
+    Hungary
+    Finland
+    Romania
+    Bulgaria
+    Turkey
+    Morocco
+    WestAfricanStates
+    IvoryCoast
+    Algeria
+    SaharanStates
+    Nigeria
+    Tunisia
+    Cameroon
+    Angola
+    SouthAfrica
+    Zaire
+    Botswana
+    Zimbabwe
+    Sudan
+    Ethiopia
+    Kenya
+    SEAfricanStates
+    Somalia
+    Libya
+    Egypt
+    Israel
+    Lebanon
+    Jordan
+    Syria
+    Iraq
+    SaudiArabia
+    GulfStates
+    Iran
+    Afghanistan
+    Pakistan
+    India
+    Burma
+    Thailand
+    LaosCambodia
+    Vietnam
+    Malaysia
+    Indonesia
+    Australia
+    Taiwan
+    NKorea
+    SKorea
+    Philippines
+    Japan
+)
+
+const (
 	AsiaScoring CardId = iota
 	EuropeScoring
 	MiddleEastScoring
