@@ -15,7 +15,7 @@ event [event]
 
 ********
 
-olympics [participate [roll/roll]] | [op ...]
+olympics [participate [roll/roll]] | [boycott op ...]
 summit [roll/roll] [defcon change]
 how-i-learned-to-stop-worrying [defcon level]
 junta [country] [coup | realign]
