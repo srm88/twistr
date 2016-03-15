@@ -1,27 +1,27 @@
 package twistr
 
 type State struct {
-    VP int8
+	VP int
 
-    Defcon uint8
+	Defcon int
 
-    MilOps [2]uint8
+	MilOps [2]int
 
-    SpaceRace [2]uint8
+	SpaceRace [2]int
 
-    Turn uint8
-    AR uint8
+	Turn int
+	AR   int
 
-    Countries map[CountryId]*Country
+	Countries map[CountryId]*Country
 
-    Events map[CardId]*Card
+	Events map[CardId]*Card
 
-    Removed []*Card
+	Removed []*Card
 
-    Discard []*Card
+	Discard []*Card
 
-    Hands [2]map[CardId]*Card
+	Hands [2]map[CardId]*Card
 
-    ChinaCardPlayer Aff
-    ChinaCardFaceUp bool
+	ChinaCardPlayer Aff
+	ChinaCardFaceUp bool
 }
