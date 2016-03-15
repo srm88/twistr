@@ -6,19 +6,19 @@ package twistr
 func coup(s *State, player Aff, bonus, ops int, target CountryId) bool {
 	roll := Roll()
 	country := s.Countries[target]
-	delta := roll + bonus + ops - (country.Stab * 2)
+	delta := roll + bonus + ops - (country.Stability * 2)
 	if delta <= 0 {
 		return false
 	}
-	old := country.Inf[player]
-	removed := Min(old, delta)
+	oppCurInf := country.Inf[Opp(player)]
+	removed := Min(oppCurInf, delta)
 	gained := delta - removed
 	if country.Battleground {
 		s.Defcon -= 1
 	}
 	s.MilOps[player] += ops
 	country.Inf[player] += gained
-	country.Inf[Other(player)] -= removed
+	country.Inf[Opp(player)] -= removed
 	return true
 }
 

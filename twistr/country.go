@@ -8,7 +8,7 @@ type Country struct {
 	Id           CountryId
 	Name         string
 	Inf          Influence
-	Stab         int
+	Stability    int
 	Battleground bool
 	AdjSuper     Aff
 	AdjCountries []*Country
@@ -17,9 +17,9 @@ type Country struct {
 
 func (c Country) Controlled() Aff {
 	switch {
-	case (c.Inf[US] - c.Inf[Sov]) >= c.Stab:
+	case (c.Inf[US] - c.Inf[Sov]) >= c.Stability:
 		return US
-	case (c.Inf[Sov] - c.Inf[US]) >= c.Stab:
+	case (c.Inf[Sov] - c.Inf[US]) >= c.Stability:
 		return Sov
 	default:
 		return Neu
