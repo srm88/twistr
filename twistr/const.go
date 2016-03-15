@@ -3,6 +3,8 @@ package twistr
 // Affiliation
 type Aff int
 
+type Era int
+
 type RegionId int
 
 type CountryId int
@@ -15,6 +17,12 @@ const (
 	US  Aff = 0
 	Sov Aff = 1
 	Neu Aff = 2
+)
+
+const (
+    Early Era = iota
+    Mid
+    Late
 )
 
 const (

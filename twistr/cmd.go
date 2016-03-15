@@ -6,12 +6,14 @@ package twistr
 [phase] [card] [play]
 
 play:
-op [realign [country] roll/roll ...] [opponent event ...]
+op [realign [[country] roll/roll] ...] [opponent event ...]
 op [coup [country] roll]
 op [space roll]
 op [influence N [country] ...]
 event [event]
 *discard [card] [roll]
+
+********
 
 olympics [participate [roll/roll]] | [op ...]
 summit [roll/roll] [defcon change]
@@ -24,7 +26,7 @@ terrorism [card]x1 | 2
 missile-envy [event] | [op [card] ... ]
 grain-sales-to-soviets [card] [play ... ] | [return op ...]
 ask-not-what-your-country [discard replacement] ...
-star-wars [event]
+star-wars [card]
 latin-american-debt-crisis [card] | [country]x2
 blockade [card] | -3US WGermany
 aldrich-ames-remix [card]
