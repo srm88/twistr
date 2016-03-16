@@ -3,6 +3,22 @@ package twistr
 // Affiliation
 type Aff int
 
+func (a Aff) Opp() Aff {
+	// Relies on neutral being last in the const, i.e. US and Sov are 0 and 1.
+	return a ^ 1
+}
+
+func (a Aff) Name() string {
+    switch a {
+    case US:
+        return "US"
+    case Sov:
+        return "USSR"
+    default:
+        return "Neutral"
+    }
+}
+
 type Era int
 
 type CountryId int

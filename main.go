@@ -9,11 +9,11 @@ import (
 func main() {
 	ui := twistr.MakeTerminalUI()
 	for {
-		switch ui.Solicit(">", []string{"card", "country", "quit"}) {
+		switch ui.Solicit(twistr.US, ">", []string{"card", "country", "quit"}) {
 		case "card":
-			fmt.Println(twistr.LookupCard(ui.Solicit("Which?", []string{"wargames", "socialistgovernments", "etc"})))
+			fmt.Println(twistr.LookupCard(ui.Solicit(twistr.US, "Which?", []string{"wargames", "socialistgovernments", "etc"})))
 		case "country":
-			fmt.Println(twistr.SelectCountry(ui, "skorea", "uk", "etc"))
+			fmt.Println(twistr.SelectCountry(twistr.US, ui, "skorea", "uk", "etc"))
 		case "quit":
 			return
 		default:

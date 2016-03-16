@@ -21,8 +21,3 @@ func Min(a, b int) int {
 func Roll() int {
 	return rand.Intn(6) + 1
 }
-
-func Opp(player Aff) Aff {
-	// Relies on neutral being last in the const, i.e. US and Sov are 0 and 1.
-	return player ^ 1
-}

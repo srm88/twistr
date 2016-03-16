@@ -70,7 +70,7 @@ func (s *State) DrawHand(player Aff, n int) {
 
 func (s *State) CardPlayed(player Aff, which CardId, star bool) {
 	if which == TheChinaCard {
-		s.ChinaCardPlayer = Opp(player)
+		s.ChinaCardPlayer = player.Opp()
 		s.ChinaCardFaceUp = false
 		return
 	}
