@@ -38,7 +38,7 @@ func coupBonus(s *State, phasing, player Aff, target *Country) (bonus int) {
 	if s.Effect(LatinAmericanDeathSquads, player) {
 		bonus += 1
 	}
-	if s.Effect(LatinAmericanDeathSquads, Opp(player)) {
+	if s.Effect(LatinAmericanDeathSquads, player.Opp()) {
 		bonus -= 1
 	}
 	return
@@ -59,7 +59,7 @@ func coup(s *State, phasing, player Aff, card Card, roll int, target *Country) b
 	if delta <= 0 {
 		return false
 	}
-	oppCurInf := target.Inf[Opp(player)]
+	oppCurInf := target.Inf[player.Opp()]
 	removed := Min(oppCurInf, delta)
 	gained := delta - removed
 	if target.Battleground {
@@ -68,7 +68,7 @@ func coup(s *State, phasing, player Aff, card Card, roll int, target *Country) b
 	}
 	s.MilOps[player] += ops
 	target.Inf[player] += gained
-	target.Inf[Opp(player)] -= removed
+	target.Inf[player.Opp()] -= removed
 	return true
 }
 

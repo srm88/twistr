@@ -1,11 +1,11 @@
 package twistr
 
 type UI interface {
-	Solicit(message string, choices []string) (reply string)
+	Solicit(player Aff, message string, choices []string) (reply string)
 }
 
-func SelectCountry(ui UI, choices ...string) Country {
-	name := ui.Solicit("Which country?", choices)
+func SelectCountry(player Aff, ui UI, choices ...string) Country {
+	name := ui.Solicit(player, "Which country?", choices)
 	c := LookupCountry(name)
 	return c
 }
