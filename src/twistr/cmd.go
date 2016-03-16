@@ -17,55 +17,61 @@ event [event]
 
 olympics [participate [roll/roll]] | [boycott op ...]
 summit [roll/roll] [defcon change]
-how-i-learned-to-stop-worrying [defcon level]
+howilearnedtostopworrying [defcon level]
 junta [country] [coup | realign]
 
-salt-negotiations [card]
-five-year-plan [card]
+saltnegotiations [card]
+fiveyearplan [card]
 terrorism [card]x1 | 2
-missile-envy [event] | [op [card] ... ]
-grain-sales-to-soviets [card] [play ... ] | [return op ...]
-ask-not-what-your-country [discard replacement] ...
-star-wars [card]
-latin-american-debt-crisis [card] | [country]x2
-blockade [card] | -3US WGermany
-aldrich-ames-remix [card]
-our-man-in-tehran [card]x<5
+missileenvy [event] | [op [card] ... ]
+grainsalestosoviets [card] [play ... ] | [return op ...]
+asknotwhatyourcountry [discard replacement] ...
+starwars [card]
+latinamericandebtcrisis [card] | [country]x2
+blockade [card] | 3US WGermany
+aldrichamesremix [card]
+ourmanintehran [card]x<5
 
-warsaw-pact-formed [remove [country]x4] | [add [country]x5]
-socialist-governments [country]x3
+warsawpactformed [remove [country]x4] | [add [country]x5]
+socialistgovernments [country]x3
 comecon [country]x4
-truman-doctrine [country]
-independent-reds [country]
-marshall-plan [country]x7
-suez-crisis [country]x4
-east-european-unrest [country]x3
+trumandoctrine [country]
+independentreds [country]
+marshallplan [country]x7
+suezcrisis [country]x4
+easteuropeanunrest [country]x3
 decolonization [country]x4
-de-stalinization [country]x4 [country]x4
-colonial-rear-guards [country]x4
-puppet-governments [country]x3
-oas-founded [country]x2
-the-voice-of-america [country]x4
-the-reformer [country]x4 | 6
-marine-barracks-bombing [country]x2
-pershing-ii-deployed [country]x3
-the-cambridge-five [revealed scoring card]... [country]
-special-relationship [country]
+destalinization [country]x4 [country]x4
+colonialrearguards [country]x4
+puppetgovernments [country]x3
+oasfounded [country]x2
+thevoiceofamerica [country]x4
+thereformer [country]x4 | 6
+marinebarracksbombing [country]x2
+pershingiideployed [country]x3
+thecambridgefive [revealed scoring card]... [country]
+specialrelationship [country]
+southafricanunrest [south africa]x2 | [south africa] [adj to south africa]x2
+muslimrevolution [country]x2
+liberationtheology [country]x3
+ussuririverskirmish nil | [country]x4
 
-korean-war [roll]
-arab-israeli-war [roll]
-indo-pakistani-war [country] [roll]
-brush-war [country] [roll]
-iran-iraq-war [country] [roll]
+koreanwar [roll]
+arabisraeliwar [roll]
+indopakistaniwar [country] [roll]
+brushwar [country] [roll]
+iraniraqwar [country] [roll]
 
-cia-created [op ...]
-un-intervention [card] [op ...]
-abm-treaty [op ... ]
+ciacreated [op ...]
+unintervention [card] [op ...]
+abmtreaty [op ... ]
+lonegunman [op ... ]
 
-soviets-shoot-down-kal-007 [influence | realign]
+sovietsshootdownkal007 [influence | realign]
 glasnost [influence | realign]
-tear-down-this-wall [coup | realign]
+teardownthiswall [coup | realign]
 che [coup ...] && [coup ...]
+ortegaelectedinnicaragua [coup ...]
 
 chernobyl [region]
 

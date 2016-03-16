@@ -12,7 +12,6 @@ type Country struct {
 	Battleground bool
 	AdjSuper     Aff
 	AdjCountries []*Country
-	Region       *Region
 }
 
 func (c Country) Controlled() Aff {
@@ -26,9 +25,16 @@ func (c Country) Controlled() Aff {
 	}
 }
 
+func (c Country) In(r Region) bool {
+	for _, cid := range r.Countries {
+		if cid == c.Id {
+			return true
+		}
+	}
+	return false
+}
+
 type Region struct {
-	Id         RegionId
-	Name       string
-	Countries  []*Country
+	Countries  []CountryId
 	Volatility int
 }
