@@ -12,7 +12,7 @@ func (a Aff) Opp() Aff {
 	return a ^ 1
 }
 
-func (a Aff) Name() string {
+func (a Aff) String() string {
 	switch a {
 	case US:
 		return "US"
@@ -25,11 +25,11 @@ func (a Aff) Name() string {
 
 func lookupAff(player string) (Aff, error) {
 	switch player {
-	case "US":
+	case "us":
 		return US, nil
-	case "USSR":
+	case "ussr":
 		return Sov, nil
-	case "Neutral":
+	case "neutral":
 		return Neu, nil
 	default:
 		return -1, errors.New("Bad affiliation '" + player + "'")
@@ -467,14 +467,17 @@ type ActionKind int8
 const (
 	OPS ActionKind = iota
 	EVENT
+	SPACE
 )
 
-func (a ActionKind) Name() string {
+func (a ActionKind) String() string {
 	switch a {
 	case OPS:
 		return "ops"
 	case EVENT:
 		return "event"
+	case SPACE:
+		return "space"
 	default:
 		return "?"
 	}
@@ -486,6 +489,8 @@ func lookupActionKind(name string) (ActionKind, error) {
 		return OPS, nil
 	case "event":
 		return EVENT, nil
+	case "space":
+		return SPACE, nil
 	default:
 		return -1, errors.New("Bad action '" + name + "'")
 	}
@@ -497,10 +502,9 @@ const (
 	COUP OpsKind = iota
 	REALIGN
 	INFLUENCE
-	SPACE
 )
 
-func (o OpsKind) Name() string {
+func (o OpsKind) String() string {
 	switch o {
 	case COUP:
 		return "coup"
@@ -508,8 +512,6 @@ func (o OpsKind) Name() string {
 		return "realign"
 	case INFLUENCE:
 		return "influence"
-	case SPACE:
-		return "space"
 	default:
 		return "?"
 	}
@@ -523,8 +525,6 @@ func lookupOpsKind(name string) (OpsKind, error) {
 		return REALIGN, nil
 	case "influence":
 		return INFLUENCE, nil
-	case "space":
-		return SPACE, nil
 	default:
 		return -1, errors.New("Bad operation '" + name + "'")
 	}

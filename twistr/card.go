@@ -1,7 +1,7 @@
 package twistr
 
 import (
-    "math/rand"
+	"math/rand"
 )
 
 type Card struct {
@@ -13,8 +13,12 @@ type Card struct {
 	Star bool
 }
 
+func (c Card) String() string {
+	return c.Name
+}
+
 type Deck struct {
-    cards []*Card
+	cards []*Card
 }
 
 func (d *Deck) Shuffle() {
@@ -31,7 +35,7 @@ func (d *Deck) ShuffleIn(cards []*Card) {
 }
 
 func (d *Deck) Push(card *Card) {
-    d.cards = append(d.cards, card)
+	d.cards = append(d.cards, card)
 }
 
 func (d *Deck) Draw(n int) (draws []*Card) {

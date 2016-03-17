@@ -1,26 +1,34 @@
 package twistr
 
-type CoupCommand struct {
+type CoupInput struct {
 	Country *Country
 	Roll    int
 }
 
-type RealignCommand struct {
+type RealignInput struct {
 	Country *Country
 	RollUS  int
 	RollSov int
 }
 
-type InfluenceCommand struct {
+type InfluenceInput struct {
 	Countries []*Country
 }
 
-type SpaceCommand struct {
+type CardPlayInput struct {
+	Player Aff
+	Card   Card
+	Kind   ActionKind
+}
+
+type SpaceInput struct {
 	Roll int
 }
 
-type EventCommand struct {
-	Player Aff
-	Card   Card
-	// XXX
+type OpsInput struct {
+	Kind OpsKind
+}
+
+type OpponentOpsInput struct {
+	First Aff
 }

@@ -76,6 +76,10 @@ func marshalValue(field reflect.Value, buf *bytes.Buffer) error {
 		buf.WriteString(marshalCard(field))
 	case "aff":
 		buf.WriteString(strconv.Itoa(int(field.Int())))
+	case "actionkind":
+		buf.WriteString(strconv.Itoa(int(field.Int())))
+	case "opskind":
+		buf.WriteString(strconv.Itoa(int(field.Int())))
 	default:
 		return errors.New("Unknown field '" + field.Type().Name() + "'")
 	}
@@ -172,6 +176,18 @@ func unmarshalValue(word string, field reflect.Value) (err error) {
 			return err
 		}
 		field.SetInt(int64(aff))
+	case "actionkind":
+		var ak ActionKind
+		if ak, err = lookupActionKind(word); err != nil {
+			return err
+		}
+		field.SetInt(int64(ak))
+	case "opskind":
+		var ok OpsKind
+		if ok, err = lookupOpsKind(word); err != nil {
+			return err
+		}
+		field.SetInt(int64(ok))
 	}
 	return
 }
@@ -188,6 +204,10 @@ func fieldKind(ftype reflect.Type) string {
 		return "card"
 	case name == "Aff":
 		return "aff"
+	case name == "ActionKind":
+		return "actionkind"
+	case name == "OpsKind":
+		return "opskind"
 	default:
 		return "?"
 	}

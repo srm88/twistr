@@ -1,6 +1,8 @@
 package twistr
 
 type State struct {
+	Input Input
+
 	VP int
 
 	Defcon int
@@ -26,6 +28,19 @@ type State struct {
 
 	ChinaCardPlayer Aff
 	ChinaCardFaceUp bool
+}
+
+func NewState(input Input) *State {
+	return &State{
+		Input:           input,
+		Countries:       countries,
+		VP:              0,
+		Defcon:          5,
+		Turn:            1,
+		AR:              1,
+		ChinaCardPlayer: Sov,
+		ChinaCardFaceUp: true,
+	}
 }
 
 func (s *State) Effect(which CardId, player ...Aff) bool {

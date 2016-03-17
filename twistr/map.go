@@ -14,6 +14,10 @@ type Country struct {
 	AdjCountries []*Country
 }
 
+func (c Country) String() string {
+	return c.Name
+}
+
 func (c Country) Controlled() Aff {
 	switch {
 	case (c.Inf[US] - c.Inf[Sov]) >= c.Stability:

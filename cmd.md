@@ -1,7 +1,28 @@
+USSR turn.
+Plays 'StarWars' for ops
 
-USSR (card StarWars USSR
-            (USSR StarWars coup nigeria 4)
-            (US StarWars (US UNIntervention (US SocialistGovernments coup nigeria 4))))
+Chooses to have the US event happen last
+------
+
+USSR uses 'StarWars' for ops, coups nigeria, rolls 4
+
+US plays 'StarWars' as an event
+US draws 'UNIntervention' from the discard pile
+US plays 'UNIntervention' as an event
+US uses 'SocialistGovernments' for ops, coups nigeria, rolls 3
+
+USSR turn
+    USSR ops StarWars USSR
+    USSR StarWars coup nigeria 4
+    US event StarWars
+        US event UNIntervention
+            US ops SocialistGovernments
+            US SocialistGovernments coup nigeria 3
+
+US turn
+card StarWars ops
+US StarWars coup zaire 2
+
 
 > card
 > ops / event
