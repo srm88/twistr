@@ -47,7 +47,7 @@ func marshalSlice(field reflect.Value, buf *bytes.Buffer) error {
 	}
 	buf.WriteString("[ ")
 	n := field.Len()
-	for i := 0; i <= n; i++ {
+	for i := 0; i < n; i++ {
 		val := field.Index(i)
 		buf.WriteString(marshalFn(val))
 		buf.WriteString(" ")
@@ -58,16 +58,18 @@ func marshalSlice(field reflect.Value, buf *bytes.Buffer) error {
 
 func marshalCountryPtr(field reflect.Value) string {
 	country := reflect.Indirect(field)
-	return country.FieldByName("Name").String()
+	return strings.ToLower(country.FieldByName("Name").String())
 }
 
 func marshalCard(field reflect.Value) string {
 	card := reflect.Indirect(field)
-	return card.FieldByName("Name").String()
+	return strings.ToLower(card.FieldByName("Name").String())
 }
 
 func marshalValue(field reflect.Value, buf *bytes.Buffer) error {
 	switch fieldKind(field.Type()) {
+	case "string":
+		buf.WriteString(field.String())
 	case "int":
 		buf.WriteString(strconv.Itoa(int(field.Int())))
 	case "country":
@@ -75,7 +77,7 @@ func marshalValue(field reflect.Value, buf *bytes.Buffer) error {
 	case "card":
 		buf.WriteString(marshalCard(field))
 	case "aff":
-		buf.WriteString(strconv.Itoa(int(field.Int())))
+		buf.WriteString(strings.ToLower(Aff(field.Int()).String()))
 	case "playkind":
 		buf.WriteString(strconv.Itoa(int(field.Int())))
 	case "opskind":
@@ -152,6 +154,8 @@ func readSlice(scanner *bufio.Scanner) ([]string, error) {
 
 func unmarshalValue(word string, field reflect.Value) (err error) {
 	switch fieldKind(field.Type()) {
+	case "string":
+		field.SetString(word)
 	case "int":
 		var num int
 		if num, err = strconv.Atoi(word); err != nil {
@@ -196,6 +200,8 @@ func fieldKind(ftype reflect.Type) string {
 	kind := ftype.Kind()
 	name := ftype.Name()
 	switch {
+	case name == "string":
+		return "string"
 	case name == "int":
 		return "int"
 	case kind == reflect.Ptr && ftype.Elem().Name() == "Country":
