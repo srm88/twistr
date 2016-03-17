@@ -1,9 +1,5 @@
 package twistr
 
-import (
-	"math/rand"
-)
-
 type State struct {
 	VP int
 
@@ -20,11 +16,11 @@ type State struct {
 
 	Events map[CardId]Aff
 
-	Removed []*Card
+	Removed *Deck
 
-	Discard []*Card
+	Discard *Deck
 
-	Deck []*Card
+	Deck *Deck
 
 	Hands [2]map[CardId]*Card
 
@@ -38,32 +34,10 @@ func (s *State) Effect(which CardId, player ...Aff) bool {
 }
 
 // Card management
-func (s *State) Shuffle() {
-	deckLen := len(s.Deck)
-	for i := 0; i < 2*deckLen; i++ {
-		x := rand.Intn(deckLen)
-		s.Deck[i], s.Deck[x] = s.Deck[x], s.Deck[i]
-	}
-}
-
-func (s *State) ShuffleIn(cards []*Card) {
-	s.Deck = append(s.Deck, cards...)
-	s.Shuffle()
-}
-
-func (s *State) Draw(n int) (draws []*Card) {
-	draws, s.Deck = s.Deck[:n], s.Deck[n:]
-	return
-}
-
-func (s *State) DrawDiscards(n int) (draws []*Card) {
-	draws, s.Discard = s.Discard[:n], s.Discard[n:]
-	return
-}
 
 func (s *State) DrawHand(player Aff, n int) {
 	need := n - len(s.Hands[player])
-	for _, card := range s.Draw(need) {
+	for _, card := range s.Deck.Draw(need) {
 		s.Hands[player][card.Id] = card
 	}
 }
@@ -77,8 +51,8 @@ func (s *State) CardPlayed(player Aff, which CardId, star bool) {
 	card := s.Hands[player][which]
 	delete(s.Hands[player], which)
 	if star {
-		s.Removed = append(s.Removed, card)
+		s.Removed.Push(card)
 	} else {
-		s.Discard = append(s.Discard, card)
+		s.Discard.Push(card)
 	}
 }
