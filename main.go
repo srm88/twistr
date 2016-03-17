@@ -10,7 +10,7 @@ func main() {
 	ui := twistr.MakeTerminalUI()
 	input := twistr.HackInput{Ui: ui}
 	//state := twistr.NewState(input)
-	cpi := &twistr.CardPlayInput{}
-	input.GetInput(twistr.US, "player card ops|event", cpi)
-	fmt.Println(cpi)
+	cpl := &twistr.CardPlayLog{}
+	input.GetInput(twistr.US, "player card ops|event", cpl)
+	fmt.Println(cpl)
 }

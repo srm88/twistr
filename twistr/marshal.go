@@ -76,7 +76,7 @@ func marshalValue(field reflect.Value, buf *bytes.Buffer) error {
 		buf.WriteString(marshalCard(field))
 	case "aff":
 		buf.WriteString(strconv.Itoa(int(field.Int())))
-	case "actionkind":
+	case "playkind":
 		buf.WriteString(strconv.Itoa(int(field.Int())))
 	case "opskind":
 		buf.WriteString(strconv.Itoa(int(field.Int())))
@@ -176,7 +176,7 @@ func unmarshalValue(word string, field reflect.Value) (err error) {
 			return err
 		}
 		field.SetInt(int64(aff))
-	case "actionkind":
+	case "playkind":
 		var pk PlayKind
 		if pk, err = lookupPlayKind(word); err != nil {
 			return err
