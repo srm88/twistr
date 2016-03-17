@@ -18,9 +18,9 @@ func MakeTerminalUI() *TerminalUI {
 }
 
 func (t *TerminalUI) Solicit(player Aff, message string, choices []string) string {
-    t.buf.WriteString("(")
-    t.buf.WriteString(player.Name())
-    t.buf.WriteString(")")
+	t.buf.WriteString("(")
+	t.buf.WriteString(player.Name())
+	t.buf.WriteString(")")
 	t.buf.WriteString(message)
 	if len(choices) > 0 {
 		t.buf.WriteString(" [ ")

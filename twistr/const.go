@@ -1,5 +1,9 @@
 package twistr
 
+import (
+	"errors"
+)
+
 // Affiliation
 type Aff int
 
@@ -9,14 +13,27 @@ func (a Aff) Opp() Aff {
 }
 
 func (a Aff) Name() string {
-    switch a {
-    case US:
-        return "US"
-    case Sov:
-        return "USSR"
-    default:
-        return "Neutral"
-    }
+	switch a {
+	case US:
+		return "US"
+	case Sov:
+		return "USSR"
+	default:
+		return "Neutral"
+	}
+}
+
+func lookupAff(player string) (Aff, error) {
+	switch player {
+	case "US":
+		return US, nil
+	case "USSR":
+		return Sov, nil
+	case "Neutral":
+		return Neu, nil
+	default:
+		return -1, errors.New("Bad affiliation '" + player + "'")
+	}
 }
 
 type Era int
@@ -443,4 +460,121 @@ var cardIdLookup = []struct {
 	{"ourmanintehran", OurManInTehran},
 	{"yuriandsamantha", YuriAndSamantha},
 	{"awacssaletosaudis", AWACSSaleToSaudis},
+}
+
+type ActionKind int8
+
+const (
+	OPS ActionKind = iota
+	EVENT
+)
+
+func (a ActionKind) Name() string {
+	switch a {
+	case OPS:
+		return "ops"
+	case EVENT:
+		return "event"
+	default:
+		return "?"
+	}
+}
+
+func lookupActionKind(name string) (ActionKind, error) {
+	switch name {
+	case "ops":
+		return OPS, nil
+	case "event":
+		return EVENT, nil
+	default:
+		return -1, errors.New("Bad action '" + name + "'")
+	}
+}
+
+type OpsKind int8
+
+const (
+	COUP OpsKind = iota
+	REALIGN
+	INFLUENCE
+	SPACE
+)
+
+func (o OpsKind) Name() string {
+	switch o {
+	case COUP:
+		return "coup"
+	case REALIGN:
+		return "realign"
+	case INFLUENCE:
+		return "influence"
+	case SPACE:
+		return "space"
+	default:
+		return "?"
+	}
+}
+
+func lookupOpsKind(name string) (OpsKind, error) {
+	switch name {
+	case "coup":
+		return COUP, nil
+	case "realign":
+		return REALIGN, nil
+	case "influence":
+		return INFLUENCE, nil
+	case "space":
+		return SPACE, nil
+	default:
+		return -1, errors.New("Bad operation '" + name + "'")
+	}
+}
+
+func lookupCountry(name string) (*Country, error) {
+	cid, err := lookupCountryId(name)
+	if err != nil {
+		return nil, err
+	}
+	return countries[cid], nil
+}
+
+func lookupCountryId(name string) (CountryId, error) {
+	for _, mapping := range countryIdLookup {
+		if mapping.Name == name {
+			return mapping.Id, nil
+		}
+	}
+	return -1, errors.New("Bad country '" + name + "'")
+}
+
+func lookupCard(name string) (Card, error) {
+	cid, err := lookupCardId(name)
+	if err != nil {
+		return Card{}, err
+	}
+	for _, c := range EarlyWar {
+		if c.Id == cid {
+			return c, nil
+		}
+	}
+	for _, c := range MidWar {
+		if c.Id == cid {
+			return c, nil
+		}
+	}
+	for _, c := range LateWar {
+		if c.Id == cid {
+			return c, nil
+		}
+	}
+	panic("Oh god")
+}
+
+func lookupCardId(name string) (CardId, error) {
+	for _, mapping := range cardIdLookup {
+		if mapping.Name == name {
+			return mapping.Id, nil
+		}
+	}
+	return -1, errors.New("Bad card '" + name + "'")
 }

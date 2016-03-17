@@ -1,6 +1,59 @@
-package twistr
 
-/*
+USSR (card StarWars USSR
+            (USSR StarWars coup nigeria 4)
+            (US StarWars (US UNIntervention (US SocialistGovernments coup nigeria 4))))
+
+> card
+> ops / event
+> ops
+> first: you / opponent
+> you: coup / ...
+> opponent: event
+
+(player card ops)
+(player card ops opp)
+(player card ops me)
+(player card event)
+
+> ops:
+(coup player card region roll) / ...
+
+> event:
+(event player card)
+(grainsalestosoviets socialistgovernments)
+(return socialistgovernments)
+(coup player grainsalestosoviets region roll)
+
+(event US grainsalestosoviets)
+(draw socialistgovernments)
+(play US socialistgovernments ops me)
+(coup US socialistgovernments algeria 1)
+(event USSR socialistgovernments)
+(socialistgovernments france france italy)
+
+---
+
+ussr performs coup
+degrades defcon
++milops
+US performs coup
+degrades defcon
++milops
+socgov discard
+un intervention discard
+starwars removed
+
+USSR card (ops USSR GrainSalesToSoviets USSR
+            (coup nigeria 4)
+            (US GrainSalesToSoviets
+              (play SocialistGovernments ops
+                (US SocialistGovernments US
+                  (coup nigeria 3)
+                  (SocialistGovernments (USSR france france italy))))))
+
+(turn phasing X)
+  (player card X)
+    (ops
 [player] [verb] ...
 
 [phase] [card] [play]
@@ -76,4 +129,3 @@ ortegaelectedinnicaragua [coup ...]
 chernobyl [region]
 
 NORAD SPECIAL, EVERY ACTION ROUND [country]
-*/
