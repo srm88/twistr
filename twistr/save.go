@@ -177,11 +177,11 @@ func unmarshalValue(word string, field reflect.Value) (err error) {
 		}
 		field.SetInt(int64(aff))
 	case "actionkind":
-		var ak ActionKind
-		if ak, err = lookupActionKind(word); err != nil {
+		var pk PlayKind
+		if pk, err = lookupPlayKind(word); err != nil {
 			return err
 		}
-		field.SetInt(int64(ak))
+		field.SetInt(int64(pk))
 	case "opskind":
 		var ok OpsKind
 		if ok, err = lookupOpsKind(word); err != nil {
@@ -204,8 +204,8 @@ func fieldKind(ftype reflect.Type) string {
 		return "card"
 	case name == "Aff":
 		return "aff"
-	case name == "ActionKind":
-		return "actionkind"
+	case name == "PlayKind":
+		return "playkind"
 	case name == "OpsKind":
 		return "opskind"
 	default:

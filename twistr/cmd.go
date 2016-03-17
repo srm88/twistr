@@ -18,7 +18,7 @@ type InfluenceInput struct {
 type CardPlayInput struct {
 	Player Aff
 	Card   Card
-	Kind   ActionKind
+	Kind   PlayKind
 }
 
 type SpaceInput struct {

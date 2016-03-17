@@ -23,6 +23,7 @@ func (a Aff) String() string {
 	}
 }
 
+// lookupAff expects the incoming string to be lowercase.
 func lookupAff(player string) (Aff, error) {
 	switch player {
 	case "us":
@@ -462,15 +463,15 @@ var cardIdLookup = []struct {
 	{"awacssaletosaudis", AWACSSaleToSaudis},
 }
 
-type ActionKind int8
+type PlayKind int8
 
 const (
-	OPS ActionKind = iota
+	OPS PlayKind = iota
 	EVENT
 	SPACE
 )
 
-func (a ActionKind) String() string {
+func (a PlayKind) String() string {
 	switch a {
 	case OPS:
 		return "ops"
@@ -483,7 +484,8 @@ func (a ActionKind) String() string {
 	}
 }
 
-func lookupActionKind(name string) (ActionKind, error) {
+// lookupPlayKind expects the incoming string to be lowercase.
+func lookupPlayKind(name string) (PlayKind, error) {
 	switch name {
 	case "ops":
 		return OPS, nil
@@ -492,7 +494,7 @@ func lookupActionKind(name string) (ActionKind, error) {
 	case "space":
 		return SPACE, nil
 	default:
-		return -1, errors.New("Bad action '" + name + "'")
+		return -1, errors.New("Bad play '" + name + "'")
 	}
 }
 
@@ -517,6 +519,7 @@ func (o OpsKind) String() string {
 	}
 }
 
+// lookupOpsKind expects the incoming string to be lowercase.
 func lookupOpsKind(name string) (OpsKind, error) {
 	switch name {
 	case "coup":
@@ -530,6 +533,7 @@ func lookupOpsKind(name string) (OpsKind, error) {
 	}
 }
 
+// lookupCountry expects the incoming string to be lowercase.
 func lookupCountry(name string) (*Country, error) {
 	cid, err := lookupCountryId(name)
 	if err != nil {
@@ -547,6 +551,7 @@ func lookupCountryId(name string) (CountryId, error) {
 	return -1, errors.New("Bad country '" + name + "'")
 }
 
+// lookupCard expects the incoming string to be lowercase.
 func lookupCard(name string) (Card, error) {
 	cid, err := lookupCardId(name)
 	if err != nil {
