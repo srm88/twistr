@@ -68,8 +68,6 @@ func marshalCard(field reflect.Value) string {
 
 func marshalValue(field reflect.Value, buf *bytes.Buffer) error {
 	switch fieldKind(field.Type()) {
-	case "string":
-		buf.WriteString(field.String())
 	case "int":
 		buf.WriteString(strconv.Itoa(int(field.Int())))
 	case "country":
@@ -154,8 +152,6 @@ func readSlice(scanner *bufio.Scanner) ([]string, error) {
 
 func unmarshalValue(word string, field reflect.Value) (err error) {
 	switch fieldKind(field.Type()) {
-	case "string":
-		field.SetString(word)
 	case "int":
 		var num int
 		if num, err = strconv.Atoi(word); err != nil {
