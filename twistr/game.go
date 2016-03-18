@@ -3,6 +3,13 @@ package twistr
 // Game-running functions.
 // Each function should represent a state in the game.
 
+// Deck / Hand states.
+// Special cards:
+// StarWars: search discard
+// SALTNegotiations: search discard
+// AskNotWhatYourCountry: discard up to hand, draw replacements
+// OurManInTehran: draw top 5, return or discard, reshuffle
+
 // WIP
 func PlayCard(s *State, c *CardPlayLog) {
 	switch {
