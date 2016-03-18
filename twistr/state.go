@@ -33,7 +33,7 @@ type State struct {
 func NewState(input Input) *State {
 	return &State{
 		Input:           input,
-		Countries:       countries,
+		Countries:       Countries,
 		VP:              0,
 		Defcon:          5,
 		Turn:            1,

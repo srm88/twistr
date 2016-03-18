@@ -12,6 +12,7 @@ type Country struct {
 	Battleground bool
 	AdjSuper     Aff
 	AdjCountries []*Country
+	Region       Region
 }
 
 func (c Country) String() string {
@@ -39,6 +40,11 @@ func (c Country) In(r Region) bool {
 }
 
 type Region struct {
+	Name       string
 	Countries  []CountryId
 	Volatility int
+}
+
+func (r Region) String() string {
+	return r.Name
 }

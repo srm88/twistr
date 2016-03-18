@@ -1,53 +1,91 @@
 package twistr
 
-import (
-	"bytes"
-)
-
 var (
-	countries map[CountryId]*Country
-	SEAsia    Region = Region{
+	Countries      map[CountryId]*Country
+	CentralAmerica Region = Region{
+		Name: "CentralAmerica",
 		Countries: []CountryId{
-			Burma, LaosCambodia, Vietnam, Thailand, Malaysia, Indonesia, Philippines,
+			Mexico, Guatemala, ElSalvador, Honduras, CostaRica, Cuba, Nicaragua, Panama, Haiti, DominicanRep,
+		},
+	}
+	SouthAmerica Region = Region{
+		Name: "SouthAmerica",
+		Countries: []CountryId{
+			Ecuador, Peru, Colombia, Chile, Venezuela, Argentina, Bolivia, Paraguay, Uruguay, Brazil,
+		},
+	}
+	Europe Region = Region{
+		Name: "Europe",
+		Countries: []CountryId{
+			Canada, UK, SpainPortugal, France, Benelux, Norway, Denmark, WGermany, EGermany, Italy, Austria, Sweden, Czechoslovakia, Yugoslavia, Poland, Greece, Hungary, Finland, Romania, Bulgaria, Turkey,
+		},
+		Volatility: 4,
+	}
+	MiddleEast Region = Region{
+		Name: "MiddleEast",
+		Countries: []CountryId{
+			Libya, Egypt, Israel, Lebanon, Jordan, Syria, Iraq, SaudiArabia, GulfStates, Iran,
 		},
 		Volatility: 2,
 	}
+	Africa Region = Region{
+		Name: "Africa",
+		Countries: []CountryId{
+			Morocco, WestAfricanStates, IvoryCoast, Algeria, SaharanStates, Nigeria, Tunisia, Cameroon, Angola, SouthAfrica, Zaire, Botswana, Zimbabwe, Sudan, Ethiopia, Kenya, SEAfricanStates, Somalia,
+		},
+	}
+	Asia Region = Region{
+		Name: "Asia",
+		Countries: []CountryId{
+			Afghanistan, Pakistan, India, Burma, Thailand, LaosCambodia, Vietnam, Malaysia, Indonesia, Australia, Taiwan, NKorea, SKorea, Philippines, Japan,
+		},
+		Volatility: 3,
+	}
+	// Sub regions
+	WestEurope Region = Region{
+		Name: "WestEurope",
+		Countries: []CountryId{
+			Canada, UK, SpainPortugal, France, Benelux, Norway, Denmark, WGermany, Italy, Greece, Austria, Sweden, Finland, Turkey,
+		},
+	}
+	EastEurope Region = Region{
+		Name: "EastEurope",
+		Countries: []CountryId{
+			EGermany, Austria, Yugoslavia, Czechoslovakia, Poland, Hungary, Finland, Bulgaria, Romania,
+		},
+	}
+	SouthEastAsia Region = Region{
+		Name: "SouthEastAsia",
+		Countries: []CountryId{
+			Burma, LaosCambodia, Vietnam, Thailand, Malaysia, Indonesia, Philippines,
+		},
+	}
+	Regions map[RegionId]Region = map[RegionId]Region{
+		CAM: CentralAmerica,
+		SAM: SouthAmerica,
+		EUR: Europe,
+		MDE: MiddleEast,
+		AFR: Africa,
+		ASI: Asia,
+	}
 )
 
-// Temp:
-func ByName(name string) *Country {
-	for _, c := range countries {
-		if c.Name == name {
-			return c
-		}
-	}
-	return nil
-}
-
-func CountryNames(cs []*Country) string {
-	var b bytes.Buffer
-	for _, c := range cs {
-		b.WriteString(c.Name)
-		b.WriteString(" ")
-	}
-	return b.String()
-}
-
 func init() {
-	countries = make(map[CountryId]*Country)
+	Countries = make(map[CountryId]*Country)
 	for _, c := range countryTable {
-		countries[c.Id] = &Country{
+		Countries[c.Id] = &Country{
 			Id:           c.Id,
 			Name:         c.Name,
 			Inf:          Influence{c.USInf, c.SovInf},
 			Stability:    c.Stability,
 			Battleground: c.Battleground,
 			AdjSuper:     c.AdjSuper,
+			Region:       Regions[c.RegionId],
 		}
 	}
 	for _, link := range countryLinks {
-		foo := countries[link[0]]
-		bar := countries[link[1]]
+		foo := Countries[link[0]]
+		bar := Countries[link[1]]
 		foo.AdjCountries = append(foo.AdjCountries, bar)
 		bar.AdjCountries = append(bar.AdjCountries, foo)
 	}
@@ -61,91 +99,92 @@ var countryTable = []struct {
 	Stability    int
 	Battleground bool
 	AdjSuper     Aff
+	RegionId     RegionId
 }{
-	{Mexico, "Mexico", 0, 0, 2, true, US},
-	{Guatemala, "Guatemala", 0, 0, 1, false, Neu},
-	{ElSalvador, "ElSalvador", 0, 0, 1, false, Neu},
-	{Honduras, "Honduras", 0, 0, 2, false, Neu},
-	{CostaRica, "CostaRica", 0, 0, 3, false, Neu},
-	{Cuba, "Cuba", 0, 0, 3, true, US},
-	{Nicaragua, "Nicaragua", 0, 0, 1, false, Neu},
-	{Panama, "Panama", 1, 0, 2, true, Neu},
-	{Haiti, "Haiti", 0, 0, 1, false, Neu},
-	{DominicanRep, "DominicanRep", 0, 0, 1, false, Neu},
-	{Ecuador, "Ecuador", 0, 0, 2, false, Neu},
-	{Peru, "Peru", 0, 0, 2, false, Neu},
-	{Colombia, "Colombia", 0, 0, 1, false, Neu},
-	{Chile, "Chile", 0, 0, 3, true, Neu},
-	{Venezuela, "Venezuela", 0, 0, 2, true, Neu},
-	{Argentina, "Argentina", 0, 0, 2, true, Neu},
-	{Bolivia, "Bolivia", 0, 0, 2, false, Neu},
-	{Paraguay, "Paraguay", 0, 0, 2, false, Neu},
-	{Uruguay, "Uruguay", 0, 0, 2, false, Neu},
-	{Brazil, "Brazil", 0, 0, 2, true, Neu},
-	{Canada, "Canada", 0, 0, 4, false, US},
-	{UK, "UK", 5, 0, 5, false, Neu},
-	{SpainPortugal, "SpainPortugal", 0, 0, 2, false, Neu},
-	{France, "France", 0, 0, 3, true, Neu},
-	{Benelux, "Benelux", 0, 0, 3, false, Neu},
-	{Norway, "Norway", 0, 0, 4, false, Neu},
-	{Denmark, "Denmark", 0, 0, 3, false, Neu},
-	{WGermany, "WGermany", 0, 0, 4, true, Neu},
-	{EGermany, "EGermany", 3, 0, 3, true, Neu},
-	{Italy, "Italy", 0, 0, 2, true, Neu},
-	{Austria, "Austria", 0, 0, 4, false, Neu},
-	{Sweden, "Sweden", 0, 0, 4, false, Neu},
-	{Czechoslovakia, "Czechoslovakia", 0, 0, 3, false, Neu},
-	{Yugoslavia, "Yugoslavia", 0, 0, 3, false, Neu},
-	{Poland, "Poland", 0, 0, 3, true, Sov},
-	{Greece, "Greece", 0, 0, 2, false, Neu},
-	{Hungary, "Hungary", 0, 0, 3, false, Neu},
-	{Finland, "Finland", 1, 0, 4, false, Sov},
-	{Romania, "Romania", 0, 0, 3, false, Sov},
-	{Bulgaria, "Bulgaria", 0, 0, 3, false, Neu},
-	{Turkey, "Turkey", 0, 0, 2, false, Neu},
-	{Morocco, "Morocco", 0, 0, 3, false, Neu},
-	{WestAfricanStates, "WestAfricanStates", 0, 0, 2, false, Neu},
-	{IvoryCoast, "IvoryCoast", 0, 0, 2, false, Neu},
-	{Algeria, "Algeria", 0, 0, 2, true, Neu},
-	{SaharanStates, "SaharanStates", 0, 0, 1, false, Neu},
-	{Nigeria, "Nigeria", 0, 0, 1, true, Neu},
-	{Tunisia, "Tunisia", 0, 0, 2, false, Neu},
-	{Cameroon, "Cameroon", 0, 0, 1, false, Neu},
-	{Angola, "Angola", 0, 0, 1, true, Neu},
-	{SouthAfrica, "SouthAfrica", 1, 0, 3, true, Neu},
-	{Zaire, "Zaire", 0, 0, 1, true, Neu},
-	{Botswana, "Botswana", 0, 0, 2, false, Neu},
-	{Zimbabwe, "Zimbabwe", 0, 0, 1, false, Neu},
-	{Sudan, "Sudan", 0, 0, 1, false, Neu},
-	{Ethiopia, "Ethiopia", 0, 0, 1, false, Neu},
-	{Kenya, "Kenya", 0, 0, 2, false, Neu},
-	{SEAfricanStates, "SEAfricanStates", 0, 0, 1, false, Neu},
-	{Somalia, "Somalia", 0, 0, 2, false, Neu},
-	{Libya, "Libya", 0, 0, 2, true, Neu},
-	{Egypt, "Egypt", 0, 0, 2, true, Neu},
-	{Israel, "Israel", 1, 0, 4, true, Neu},
-	{Lebanon, "Lebanon", 0, 0, 1, false, Neu},
-	{Jordan, "Jordan", 0, 0, 2, false, Neu},
-	{Syria, "Syria", 1, 0, 2, false, Neu},
-	{Iraq, "Iraq", 1, 0, 3, true, Neu},
-	{SaudiArabia, "SaudiArabia", 0, 0, 3, true, Neu},
-	{GulfStates, "GulfStates", 0, 0, 3, false, Neu},
-	{Iran, "Iran", 1, 0, 2, true, Neu},
-	{Afghanistan, "Afghanistan", 0, 0, 2, false, Sov},
-	{Pakistan, "Pakistan", 0, 0, 2, true, Neu},
-	{India, "India", 0, 0, 3, true, Neu},
-	{Burma, "Burma", 0, 0, 2, false, Neu},
-	{Thailand, "Thailand", 0, 0, 2, true, Neu},
-	{LaosCambodia, "LaosCambodia", 0, 0, 1, false, Neu},
-	{Vietnam, "Vietnam", 0, 0, 1, false, Neu},
-	{Malaysia, "Malaysia", 0, 0, 2, false, Neu},
-	{Indonesia, "Indonesia", 0, 0, 1, false, Neu},
-	{Australia, "Australia", 4, 0, 4, false, Neu},
-	{Taiwan, "Taiwan", 0, 0, 3, false, Neu},
-	{NKorea, "NKorea", 3, 0, 3, true, Sov},
-	{SKorea, "SKorea", 1, 0, 3, true, Neu},
-	{Philippines, "Philippines", 1, 0, 2, false, Neu},
-	{Japan, "Japan", 1, 0, 4, true, US},
+	{Mexico, "Mexico", 0, 0, 2, true, US, CAM},
+	{Guatemala, "Guatemala", 0, 0, 1, false, Neu, CAM},
+	{ElSalvador, "ElSalvador", 0, 0, 1, false, Neu, CAM},
+	{Honduras, "Honduras", 0, 0, 2, false, Neu, CAM},
+	{CostaRica, "CostaRica", 0, 0, 3, false, Neu, CAM},
+	{Cuba, "Cuba", 0, 0, 3, true, US, CAM},
+	{Nicaragua, "Nicaragua", 0, 0, 1, false, Neu, CAM},
+	{Panama, "Panama", 1, 0, 2, true, Neu, CAM},
+	{Haiti, "Haiti", 0, 0, 1, false, Neu, CAM},
+	{DominicanRep, "DominicanRep", 0, 0, 1, false, Neu, CAM},
+	{Ecuador, "Ecuador", 0, 0, 2, false, Neu, SAM},
+	{Peru, "Peru", 0, 0, 2, false, Neu, SAM},
+	{Colombia, "Colombia", 0, 0, 1, false, Neu, SAM},
+	{Chile, "Chile", 0, 0, 3, true, Neu, SAM},
+	{Venezuela, "Venezuela", 0, 0, 2, true, Neu, SAM},
+	{Argentina, "Argentina", 0, 0, 2, true, Neu, SAM},
+	{Bolivia, "Bolivia", 0, 0, 2, false, Neu, SAM},
+	{Paraguay, "Paraguay", 0, 0, 2, false, Neu, SAM},
+	{Uruguay, "Uruguay", 0, 0, 2, false, Neu, SAM},
+	{Brazil, "Brazil", 0, 0, 2, true, Neu, SAM},
+	{Canada, "Canada", 0, 0, 4, false, US, EUR},
+	{UK, "UK", 5, 0, 5, false, Neu, EUR},
+	{SpainPortugal, "SpainPortugal", 0, 0, 2, false, Neu, EUR},
+	{France, "France", 0, 0, 3, true, Neu, EUR},
+	{Benelux, "Benelux", 0, 0, 3, false, Neu, EUR},
+	{Norway, "Norway", 0, 0, 4, false, Neu, EUR},
+	{Denmark, "Denmark", 0, 0, 3, false, Neu, EUR},
+	{WGermany, "WGermany", 0, 0, 4, true, Neu, EUR},
+	{EGermany, "EGermany", 3, 0, 3, true, Neu, EUR},
+	{Italy, "Italy", 0, 0, 2, true, Neu, EUR},
+	{Austria, "Austria", 0, 0, 4, false, Neu, EUR},
+	{Sweden, "Sweden", 0, 0, 4, false, Neu, EUR},
+	{Czechoslovakia, "Czechoslovakia", 0, 0, 3, false, Neu, EUR},
+	{Yugoslavia, "Yugoslavia", 0, 0, 3, false, Neu, EUR},
+	{Poland, "Poland", 0, 0, 3, true, Sov, EUR},
+	{Greece, "Greece", 0, 0, 2, false, Neu, EUR},
+	{Hungary, "Hungary", 0, 0, 3, false, Neu, EUR},
+	{Finland, "Finland", 1, 0, 4, false, Sov, EUR},
+	{Romania, "Romania", 0, 0, 3, false, Sov, EUR},
+	{Bulgaria, "Bulgaria", 0, 0, 3, false, Neu, EUR},
+	{Turkey, "Turkey", 0, 0, 2, false, Neu, EUR},
+	{Morocco, "Morocco", 0, 0, 3, false, Neu, AFR},
+	{WestAfricanStates, "WestAfricanStates", 0, 0, 2, false, Neu, AFR},
+	{IvoryCoast, "IvoryCoast", 0, 0, 2, false, Neu, AFR},
+	{Algeria, "Algeria", 0, 0, 2, true, Neu, AFR},
+	{SaharanStates, "SaharanStates", 0, 0, 1, false, Neu, AFR},
+	{Nigeria, "Nigeria", 0, 0, 1, true, Neu, AFR},
+	{Tunisia, "Tunisia", 0, 0, 2, false, Neu, AFR},
+	{Cameroon, "Cameroon", 0, 0, 1, false, Neu, AFR},
+	{Angola, "Angola", 0, 0, 1, true, Neu, AFR},
+	{SouthAfrica, "SouthAfrica", 1, 0, 3, true, Neu, AFR},
+	{Zaire, "Zaire", 0, 0, 1, true, Neu, AFR},
+	{Botswana, "Botswana", 0, 0, 2, false, Neu, AFR},
+	{Zimbabwe, "Zimbabwe", 0, 0, 1, false, Neu, AFR},
+	{Sudan, "Sudan", 0, 0, 1, false, Neu, AFR},
+	{Ethiopia, "Ethiopia", 0, 0, 1, false, Neu, AFR},
+	{Kenya, "Kenya", 0, 0, 2, false, Neu, AFR},
+	{SEAfricanStates, "SEAfricanStates", 0, 0, 1, false, Neu, AFR},
+	{Somalia, "Somalia", 0, 0, 2, false, Neu, AFR},
+	{Libya, "Libya", 0, 0, 2, true, Neu, MDE},
+	{Egypt, "Egypt", 0, 0, 2, true, Neu, MDE},
+	{Israel, "Israel", 1, 0, 4, true, Neu, MDE},
+	{Lebanon, "Lebanon", 0, 0, 1, false, Neu, MDE},
+	{Jordan, "Jordan", 0, 0, 2, false, Neu, MDE},
+	{Syria, "Syria", 1, 0, 2, false, Neu, MDE},
+	{Iraq, "Iraq", 1, 0, 3, true, Neu, MDE},
+	{SaudiArabia, "SaudiArabia", 0, 0, 3, true, Neu, MDE},
+	{GulfStates, "GulfStates", 0, 0, 3, false, Neu, MDE},
+	{Iran, "Iran", 1, 0, 2, true, Neu, MDE},
+	{Afghanistan, "Afghanistan", 0, 0, 2, false, Sov, ASI},
+	{Pakistan, "Pakistan", 0, 0, 2, true, Neu, ASI},
+	{India, "India", 0, 0, 3, true, Neu, ASI},
+	{Burma, "Burma", 0, 0, 2, false, Neu, ASI},
+	{Thailand, "Thailand", 0, 0, 2, true, Neu, ASI},
+	{LaosCambodia, "LaosCambodia", 0, 0, 1, false, Neu, ASI},
+	{Vietnam, "Vietnam", 0, 0, 1, false, Neu, ASI},
+	{Malaysia, "Malaysia", 0, 0, 2, false, Neu, ASI},
+	{Indonesia, "Indonesia", 0, 0, 1, false, Neu, ASI},
+	{Australia, "Australia", 4, 0, 4, false, Neu, ASI},
+	{Taiwan, "Taiwan", 0, 0, 3, false, Neu, ASI},
+	{NKorea, "NKorea", 3, 0, 3, true, Sov, ASI},
+	{SKorea, "SKorea", 1, 0, 3, true, Neu, ASI},
+	{Philippines, "Philippines", 1, 0, 2, false, Neu, ASI},
+	{Japan, "Japan", 1, 0, 4, true, US, ASI},
 }
 
 var countryLinks = [][2]CountryId{

@@ -45,7 +45,7 @@ func coupBonus(s *State, phasing, player Aff, target *Country) (bonus int) {
 }
 
 func opsMod(s *State, phasing, player Aff, card Card, target *Country) (mod int) {
-	if player == Sov && target.In(SEAsia) && s.Effect(VietnamRevolts) {
+	if player == Sov && target.In(SouthEastAsia) && s.Effect(VietnamRevolts) {
 		mod += 1
 	}
 	return

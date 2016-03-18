@@ -1,15 +1,17 @@
 package twistr
 
 var (
-	EarlyWar []Card
-	MidWar   []Card
-	LateWar  []Card
+	Cards    map[CardId]*Card
+	EarlyWar []CardId
+	MidWar   []CardId
+	LateWar  []CardId
 )
 
 func init() {
+	Cards = make(map[CardId]*Card)
 	// XXX: always includes optional cards atm
 	for _, c := range cardTable {
-		card := Card{
+		card := &Card{
 			Id:   c.Id,
 			Aff:  c.Aff,
 			Ops:  c.Ops,
@@ -19,12 +21,13 @@ func init() {
 		}
 		switch c.Era {
 		case Early:
-			EarlyWar = append(EarlyWar, card)
+			EarlyWar = append(EarlyWar, c.Id)
 		case Mid:
-			MidWar = append(MidWar, card)
+			MidWar = append(MidWar, c.Id)
 		case Late:
-			LateWar = append(LateWar, card)
+			LateWar = append(LateWar, c.Id)
 		}
+		Cards[c.Id] = card
 	}
 }
 
