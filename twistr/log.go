@@ -1,5 +1,10 @@
 package twistr
 
+// Complete ordering of draw deck (shuffling)
+type DeckShuffleLog struct {
+	Cards []Card
+}
+
 type CoupLog struct {
 	Country *Country
 	Roll    int
