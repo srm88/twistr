@@ -18,6 +18,8 @@ type State struct {
 
 	Events map[CardId]Aff
 
+	SREvents map[SpaceId]Aff
+
 	Removed *Deck
 
 	Discard *Deck
@@ -40,6 +42,7 @@ func NewState(ui UI) *State {
 		AR:              1,
 		ChinaCardPlayer: SOV,
 		ChinaCardFaceUp: true,
+		SREvents:        make(map[SpaceId]Aff),
 	}
 }
 
