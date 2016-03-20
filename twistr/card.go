@@ -40,12 +40,12 @@ func (d *Deck) Reorder(ordering []Card) {
 	}
 	// If the ordering introduced more cards, push them on the end
 	if i < len(ordering) {
-		d.cards = append(d.cards, ordering[i:])
+		d.cards = append(d.cards, ordering[i:]...)
 	}
 }
 
 func (d *Deck) Push(cards ...Card) {
-	d.cards = append(d.cards, card...)
+	d.cards = append(d.cards, cards...)
 }
 
 func (d *Deck) Draw(n int) (draws []Card) {
