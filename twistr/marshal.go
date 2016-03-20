@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"errors"
+	"fmt"
 	"reflect"
 	"strconv"
 	"strings"
@@ -43,7 +44,7 @@ func marshalSlice(field reflect.Value, buf *bytes.Buffer) error {
 	case "card":
 		marshalFn = marshalCard
 	default:
-		return errors.New("Unsupported field '" + field.Type().Elem().Name() + "'")
+		return fmt.Errorf("Unsupported field '%s'", field.Type().Elem().Name())
 	}
 	buf.WriteString("[ ")
 	n := field.Len()
@@ -81,7 +82,7 @@ func marshalValue(field reflect.Value, buf *bytes.Buffer) error {
 	case "opskind":
 		buf.WriteString(strconv.Itoa(int(field.Int())))
 	default:
-		return errors.New("Unknown field '" + field.Type().Name() + "'")
+		return fmt.Errorf("Unknown field '%s'", field.Type().Name())
 	}
 	return nil
 }
@@ -93,12 +94,16 @@ func Unmarshal(line string, c interface{}) (err error) {
 	cv := reflect.Indirect(reflect.ValueOf(c))
 	var field reflect.Value
 	var word string
-	for i := 0; scanner.Scan(); i++ {
+	for i := 0; i < cv.NumField(); i++ {
+		if !scanner.Scan() {
+			return fmt.Errorf("Not enough tokens for %s", cv.Type().Name())
+		}
 		word = scanner.Text()
 		field = cv.Field(i)
-		// Check field to see if we're looking for a slice vs value instead of
-		// assuming the input is right
-		if word == "[" {
+		if field.Type().Kind() == reflect.Slice {
+			if word != "[" {
+				return errors.New("Malformed list input. Expected '['")
+			}
 			if err = unmarshalSlice(scanner, field); err != nil {
 				return
 			}
