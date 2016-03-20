@@ -39,6 +39,15 @@ func (c Country) In(r Region) bool {
 	return false
 }
 
+func AllIn(cs []*Country, r Region) bool {
+	for _, c := range cs {
+		if !c.In(r) {
+			return false
+		}
+	}
+	return true
+}
+
 type Region struct {
 	Name       string
 	Countries  []CountryId
