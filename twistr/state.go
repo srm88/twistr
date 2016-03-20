@@ -24,7 +24,7 @@ type State struct {
 
 	Deck *Deck
 
-	Hands [2]map[CardId]*Card
+	Hands [2]map[CardId]Card
 
 	ChinaCardPlayer Aff
 	ChinaCardFaceUp bool
@@ -40,6 +40,17 @@ func NewState(input Input) *State {
 		AR:              1,
 		ChinaCardPlayer: Sov,
 		ChinaCardFaceUp: true,
+	}
+}
+
+func (s *State) Era() Era {
+	switch {
+	case s.Turn < 4:
+		return Early
+	case s.Turn < 8:
+		return Mid
+	default:
+		return Late
 	}
 }
 
