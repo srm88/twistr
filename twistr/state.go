@@ -75,17 +75,6 @@ func (s *State) HandSize() int {
 	return 9
 }
 
-func (s *State) Era() Era {
-	switch {
-	case s.Turn < 4:
-		return Early
-	case s.Turn < 8:
-		return Mid
-	default:
-		return Late
-	}
-}
-
 func (s *State) Effect(which CardId, player ...Aff) bool {
 	aff, ok := s.Events[which]
 	return ok && (len(player) == 0 || player[0] == aff)
