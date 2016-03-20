@@ -1,9 +1,5 @@
 package twistr
 
-import (
-	"math/rand"
-)
-
 type Card struct {
 	Id   CardId
 	Aff  Aff
@@ -24,7 +20,7 @@ type Deck struct {
 func (d *Deck) Shuffle() {
 	deckLen := len(d.cards)
 	for i := 0; i < 2*deckLen; i++ {
-		x := rand.Intn(deckLen)
+		x := rng.Intn(deckLen)
 		d.cards[i], d.cards[x] = d.cards[x], d.cards[i]
 	}
 }

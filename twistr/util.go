@@ -2,6 +2,11 @@ package twistr
 
 import (
 	"math/rand"
+	"time"
+)
+
+var (
+	rng *rand.Rand = rand.New(rand.NewSource(time.Now().UnixNano()))
 )
 
 func Max(a, b int) int {
@@ -19,5 +24,5 @@ func Min(a, b int) int {
 }
 
 func Roll() int {
-	return rand.Intn(6) + 1
+	return rng.Intn(6) + 1
 }
