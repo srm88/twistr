@@ -1,6 +1,6 @@
 package twistr
 
-// Shortcut. US = 0 and Sov = 1, so we can index into any [2] array with a
+// Shortcut. USA = 0 and SOV = 1, so we can index into any [2] array with a
 // player constant.
 type Influence [2]int
 
@@ -21,12 +21,12 @@ func (c Country) String() string {
 
 func (c Country) Controlled() Aff {
 	switch {
-	case (c.Inf[US] - c.Inf[Sov]) >= c.Stability:
-		return US
-	case (c.Inf[Sov] - c.Inf[US]) >= c.Stability:
-		return Sov
+	case (c.Inf[USA] - c.Inf[SOV]) >= c.Stability:
+		return USA
+	case (c.Inf[SOV] - c.Inf[USA]) >= c.Stability:
+		return SOV
 	default:
-		return Neu
+		return NEU
 	}
 }
 

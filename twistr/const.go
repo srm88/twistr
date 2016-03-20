@@ -8,15 +8,15 @@ import (
 type Aff int
 
 func (a Aff) Opp() Aff {
-	// Relies on neutral being last in the const, i.e. US and Sov are 0 and 1.
+	// Relies on neutral being last in the const, i.e. USA and SOV are 0 and 1.
 	return a ^ 1
 }
 
 func (a Aff) String() string {
 	switch a {
-	case US:
+	case USA:
 		return "US"
-	case Sov:
+	case SOV:
 		return "USSR"
 	default:
 		return "Neutral"
@@ -27,11 +27,11 @@ func (a Aff) String() string {
 func lookupAff(player string) (Aff, error) {
 	switch player {
 	case "us":
-		return US, nil
+		return USA, nil
 	case "ussr":
-		return Sov, nil
+		return SOV, nil
 	case "neutral":
-		return Neu, nil
+		return NEU, nil
 	default:
 		return -1, errors.New("Bad affiliation '" + player + "'")
 	}
@@ -48,9 +48,9 @@ type RegionId int
 const (
 	// Hardcoded instead of iota. We use these as indices into arrays, so the
 	// constants' values are no longer arbitrary.
-	US  Aff = 0
-	Sov Aff = 1
-	Neu Aff = 2
+	USA Aff = 0
+	SOV Aff = 1
+	NEU Aff = 2
 )
 
 const (

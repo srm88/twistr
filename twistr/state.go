@@ -38,7 +38,7 @@ func NewState(input Input) *State {
 		Defcon:          5,
 		Turn:            1,
 		AR:              1,
-		ChinaCardPlayer: Sov,
+		ChinaCardPlayer: SOV,
 		ChinaCardFaceUp: true,
 	}
 }

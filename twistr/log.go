@@ -12,8 +12,8 @@ type CoupLog struct {
 
 type RealignLog struct {
 	Country *Country
-	RollUS  int
-	RollSov int
+	RollUSA int
+	RollSOV int
 }
 
 type InfluenceLog struct {

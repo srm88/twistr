@@ -10,6 +10,6 @@ func main() {
 	input := twistr.HackInput{Ui: ui}
 	state := twistr.NewState(input)
 	cpl := &twistr.CardPlayLog{}
-	input.GetInput(twistr.US, "player card ops|event", cpl)
+	input.GetInput(twistr.USA, "player card ops|event", cpl)
 	twistr.PlayCard(state, cpl)
 }
