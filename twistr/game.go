@@ -9,6 +9,13 @@ package twistr
 // SALTNegotiations: search discard
 // AskNotWhatYourCountry: discard up to hand, draw replacements
 // OurManInTehran: draw top 5, return or discard, reshuffle
+func Deal(s *State) {
+	hs := s.HandSize()
+	usDraw := s.Deck.Draw(hs - len(s.Hands[USA].Cards))
+	s.Hands[USA].Push(usDraw...)
+	sovDraw := s.Deck.Draw(hs - len(s.Hands[SOV].Cards))
+	s.Hands[SOV].Push(sovDraw...)
+}
 
 // WIP
 func PlayCard(s *State, c *CardPlayLog) {
