@@ -1,5 +1,9 @@
 package twistr
 
+import (
+	"fmt"
+)
+
 // Game-running functions.
 // Each function should represent a state in the game.
 
@@ -20,14 +24,15 @@ func Deal(s *State) {
 func Action(s *State) {
 	p := s.Phasing
 	card := SelectCard(s, p).Card
-	s.Hands[player].Remove(card)
+	// Safe to remove a card that isn't actually in the hand
+	s.Hands[p].Remove(card)
 	switch SelectPlay(s, p, card).Kind {
 	case SPACE:
 		PlaySpace(s, p, card)
 	case OPS:
 		PlayOps(s, p, card)
 	case EVENT:
-		PlayEvent(s, player, card)
+		PlayEvent(s, p, card)
 	}
 }
 
@@ -94,7 +99,7 @@ func SelectCard(s *State, player Aff) *CardLog {
 		choices = append(choices, Cards[TheChinaCard].Name)
 	}
 	cl := &CardLog{}
-	GetInput(s, player, "Choose a card", cl, choices...)
+	GetInput(s, player, cl, "Choose a card", choices...)
 	return cl
 }
 
@@ -103,20 +108,20 @@ func SelectPlay(s *State, player Aff, card Card) *PlayLog {
 	pl := &PlayLog{}
 	// XXX: calculate ops at this point, SPACE should or should not be a choice
 	// SPACE should also be omitted if the player is at the end of the track.
-	GetInput(s, player, fmt.Sprintf("Playing %s", card.Name),
+	GetInput(s, player, pl, fmt.Sprintf("Playing %s", card.Name),
 		SPACE.String(), OPS.String(), EVENT.String())
 	return pl
 }
 
 func SelectOps(s *State, player Aff, card Card) *OpsLog {
 	ol := &OpsLog{}
-	GetInput(s, player, fmt.Sprintf("Playing %s for ops", card.Name),
+	GetInput(s, player, ol, fmt.Sprintf("Playing %s for ops", card.Name),
 		COUP.String(), REALIGN.String(), INFLUENCE.String())
 	return ol
 }
 
 func SelectFirst(s *State, player Aff) *FirstLog {
 	fl := &FirstLog{}
-	GetInput(s, player, "Who goes first", USA.String(), SOV.String())
+	GetInput(s, player, fl, "Who goes first", USA.String(), SOV.String())
 	return fl
 }

@@ -40,6 +40,7 @@ func NewState(ui UI) *State {
 		Defcon:          5,
 		Turn:            1,
 		AR:              1,
+		Phasing:         SOV,
 		Countries:       Countries,
 		Events:          make(map[CardId]Aff),
 		Removed:         NewDeck(),

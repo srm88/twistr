@@ -8,7 +8,9 @@ import (
 func main() {
 	ui := twistr.MakeTerminalUI()
 	state := twistr.NewState(ui)
-	cpl := &twistr.CardPlayLog{}
-	twistr.GetInput(ui, twistr.USA, cpl, "player card ops|event")
-	twistr.PlayCard(state, cpl)
+	// Hacky
+	state.Deck.Push(twistr.EarlyWar...)
+	state.Deck.Reorder(state.Deck.Shuffle())
+	twistr.Deal(state)
+	twistr.Action(state)
 }
