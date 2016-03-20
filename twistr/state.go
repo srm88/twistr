@@ -11,8 +11,9 @@ type State struct {
 
 	SpaceRace [2]int
 
-	Turn int
-	AR   int
+	Turn    int
+	AR      int
+	Phasing Aff
 
 	Countries map[CountryId]*Country
 
