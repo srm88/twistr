@@ -75,18 +75,9 @@ func (s *State) Effect(which CardId, player ...Aff) bool {
 	return ok && (len(player) == 0 || player[0] == aff)
 }
 
-func (s *State) CardPlayed(player Aff, card Card) {
-	if card.Id == TheChinaCard {
-		s.ChinaCardPlayer = player.Opp()
-		s.ChinaCardFaceUp = false
-		return
-	}
-	s.Hands[player].Remove(card)
-	if card.Star {
-		s.Removed.Push(card)
-	} else {
-		s.Discard.Push(card)
-	}
+func (s *State) ChinaCardPlayed() {
+	s.ChinaCardPlayer = s.ChinaCardPlayer.Opp()
+	s.ChinaCardFaceUp = false
 }
 
 func (s *State) GainVP(player Aff, n int) {

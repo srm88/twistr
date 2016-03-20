@@ -20,10 +20,12 @@ type InfluenceLog struct {
 	Countries []*Country
 }
 
-type CardPlayLog struct {
-	Player Aff
-	Card   Card
-	Kind   PlayKind
+type CardLog struct {
+	Card Card
+}
+
+type PlayLog struct {
+	Kind PlayKind
 }
 
 type SpaceLog struct {
@@ -34,6 +36,6 @@ type OpsLog struct {
 	Kind OpsKind
 }
 
-type OpponentOpsLog struct {
+type FirstLog struct {
 	First Aff
 }

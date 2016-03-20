@@ -17,23 +17,106 @@ func Deal(s *State) {
 	s.Hands[SOV].Push(sovDraw...)
 }
 
-// WIP
-func PlayCard(s *State, c *CardPlayLog) {
-	switch {
-	case c.Kind == SPACE:
-		next := &SpaceLog{}
-		GetInput(s, c.Player, next, "Space roll")
-	case c.Kind == OPS && c.Card.Aff == c.Player.Opp():
-		// Solicit who goes first
-		next := &OpponentOpsLog{}
-		GetInput(s, c.Player, next, "Who's next")
-	case c.Kind == OPS:
-		// Solicit coup/influence/realign/space
-		next := &OpsLog{}
-		GetInput(s, c.Player, next, "What kinda ops")
-	case c.Kind == EVENT:
-		panic("Not ready!")
-	default:
-		panic("WUT R U DOIN")
+func Action(s *State) {
+	p := s.Phasing
+	card := SelectCard(s, p).Card
+	s.Hands[player].Remove(card)
+	switch SelectPlay(s, p, card).Kind {
+	case SPACE:
+		PlaySpace(s, p, card)
+	case OPS:
+		PlayOps(s, p, card)
+	case EVENT:
+		PlayEvent(s, player, card)
 	}
+}
+
+func PlaySpace(s *State, player Aff, card Card) {
+	box, _ := nextSRBox(s, player)
+	roll := SelectSpaceRoll(s).Roll
+	if roll <= box.MaxRoll {
+		box.Enter(s, player)
+		s.Message(player, "Space race attempt succeeded.")
+	} else {
+		s.Message(player, "Space race attempt failed.")
+	}
+	s.Discard.Push(card)
+}
+
+func SelectSpaceRoll(s *State) *SpaceLog {
+	// XXX: replay-log
+	return &SpaceLog{Roll: Roll()}
+}
+
+func PlayOps(s *State, player Aff, card Card) {
+	if card.Aff == player.Opp() {
+		if player == SelectFirst(s, player).First {
+			ConductOps(s, player, card)
+			PlayEvent(s, player.Opp(), card)
+		} else {
+			PlayEvent(s, player.Opp(), card)
+			ConductOps(s, player, card)
+		}
+	} else {
+		ConductOps(s, player, card)
+		s.Discard.Push(card)
+	}
+}
+
+func ConductOps(s *State, player Aff, card Card) {
+	switch SelectOps(s, player, card).Kind {
+	case COUP:
+		panic("Not implemented")
+	case REALIGN:
+		panic("Not implemented")
+	case INFLUENCE:
+		panic("Not implemented")
+	}
+}
+
+func PlayEvent(s *State, player Aff, card Card) {
+	// XXX: not positive this belongs here
+	if card.Star {
+		s.Removed.Push(card)
+	} else {
+		s.Discard.Push(card)
+	}
+	panic("Not implemented")
+}
+
+func SelectCard(s *State, player Aff) *CardLog {
+	canPlayChina := s.ChinaCardPlayer == player && s.ChinaCardFaceUp
+	choices := make([]string, len(s.Hands[player].Cards))
+	for i, c := range s.Hands[player].Cards {
+		choices[i] = c.Name
+	}
+	if canPlayChina {
+		choices = append(choices, Cards[TheChinaCard].Name)
+	}
+	cl := &CardLog{}
+	GetInput(s, player, "Choose a card", cl, choices...)
+	return cl
+}
+
+func SelectPlay(s *State, player Aff, card Card) *PlayLog {
+	// XXX: not all cards can be played as either ops or event, e.g. china card
+	pl := &PlayLog{}
+	// XXX: calculate ops at this point, SPACE should or should not be a choice
+	// SPACE should also be omitted if the player is at the end of the track.
+	GetInput(s, player, fmt.Sprintf("Playing %s", card.Name),
+		SPACE.String(), OPS.String(), EVENT.String())
+	return pl
+}
+
+func SelectOps(s *State, player Aff, card Card) *OpsLog {
+	ol := &OpsLog{}
+	GetInput(s, player, fmt.Sprintf("Playing %s for ops", card.Name),
+		COUP.String(), REALIGN.String(), INFLUENCE.String())
+	return ol
+}
+
+func SelectFirst(s *State, player Aff) *FirstLog {
+	fl := &FirstLog{}
+	GetInput(s, player, "Who goes first", USA.String(), SOV.String())
+	return fl
 }
