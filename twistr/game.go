@@ -24,7 +24,7 @@ func Start(s *State) {
 	Deal(s)
 	// China card handled in NewState
 	// SOV chooses 6 influence in E europe
-	ShowHand(s, SOV)
+	ShowHand(s, SOV, SOV)
 	il, err := SelectNInfluenceCheck(s, SOV, "6 influence in East Europe", 6,
 		InRegion(EastEurope))
 	for err != nil {
@@ -32,7 +32,7 @@ func Start(s *State) {
 			InRegion(EastEurope))
 	}
 	PlaceInfluence(s, SOV, il)
-	ShowHand(s, USA)
+	ShowHand(s, USA, USA)
 	// US chooses 7 influence in W europe
 	ilUSA, err := SelectNInfluenceCheck(s, USA, "7 influence in West Europe", 7,
 		InRegion(WestEurope))
@@ -43,24 +43,22 @@ func Start(s *State) {
 	PlaceInfluence(s, USA, ilUSA)
 }
 
-func ShowHand(s *State, to Aff) {
-	// XXX: hand has no ordering right now. That's janky. Maybe a hand should
-	// be a slice instead of a map?
-	cardNames := make([]string, len(s.Hands[to]))
+func ShowHand(s *State, whose, to Aff) {
+	cardNames := make([]string, len(s.Hands[whose].Cards))
 	i := 0
-	for _, card := range s.Hands[to] {
+	for _, card := range s.Hands[whose].Cards {
 		cardNames[i] = card.Name
 		i++
 	}
-	fmt.Printf("%s hand: %s\n", to, strings.Join(cardNames, ", "))
+	s.Message(to, fmt.Sprintf("%s hand: %s\n", whose, strings.Join(cardNames, ", ")))
 }
 
 func Deal(s *State) {
 	hs := s.HandSize()
-	usDraw := s.Deck.Draw(hs - len(s.Hands[USA]))
-	s.IntoHand(USA, usDraw...)
-	sovDraw := s.Deck.Draw(hs - len(s.Hands[SOV]))
-	s.IntoHand(SOV, sovDraw...)
+	usDraw := s.Deck.Draw(hs - len(s.Hands[USA].Cards))
+	s.Hands[USA].Push(usDraw...)
+	sovDraw := s.Deck.Draw(hs - len(s.Hands[SOV].Cards))
+	s.Hands[SOV].Push(sovDraw...)
 }
 
 func GetShuffle(d *Deck) *DeckShuffleLog {
