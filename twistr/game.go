@@ -78,15 +78,15 @@ func PlayCard(s *State, c *CardPlayLog) {
 	switch {
 	case c.Kind == SPACE:
 		next := &SpaceLog{}
-		GetInput(s, c.Player, "Space roll", next)
+		GetInput(s, c.Player, next, "Space roll")
 	case c.Kind == OPS && c.Card.Aff == c.Player.Opp():
 		// Solicit who goes first
 		next := &OpponentOpsLog{}
-		GetInput(s, c.Player, "Who's next", next)
+		GetInput(s, c.Player, next, "Who's next")
 	case c.Kind == OPS:
 		// Solicit coup/influence/realign/space
 		next := &OpsLog{}
-		GetInput(s, c.Player, "What kinda ops", next)
+		GetInput(s, c.Player, next, "What kinda ops")
 	case c.Kind == EVENT:
 		panic("Not ready!")
 	default:
@@ -161,7 +161,7 @@ func SelectInfluenceOps(s *State, player Aff, card Card) (il *InfluenceLog, err 
 
 func SelectInfluence(s *State, player Aff, message string) *InfluenceLog {
 	il := &InfluenceLog{}
-	GetInput(s, player, message, il)
+	GetInput(s, player, il, message)
 	return il
 }
 
