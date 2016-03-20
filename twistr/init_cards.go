@@ -1,17 +1,17 @@
 package twistr
 
 var (
-	Cards    map[CardId]*Card
+	Cards    map[CardId]Card
 	EarlyWar []CardId
 	MidWar   []CardId
 	LateWar  []CardId
 )
 
 func init() {
-	Cards = make(map[CardId]*Card)
+	Cards = make(map[CardId]Card)
 	// XXX: always includes optional cards atm
 	for _, c := range cardTable {
-		card := &Card{
+		card := Card{
 			Id:   c.Id,
 			Aff:  c.Aff,
 			Ops:  c.Ops,
