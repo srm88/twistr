@@ -3,14 +3,15 @@ package twistr
 import (
 	"bufio"
 	"bytes"
+	"fmt"
 	"io"
 	"os"
 	"strings"
 )
 
 type TerminalUI struct {
-	in  *bufio.Reader
-	buf bytes.Buffer
+	in *bufio.Reader
+	bytes.Buffer
 }
 
 func MakeTerminalUI() *TerminalUI {
@@ -18,21 +19,21 @@ func MakeTerminalUI() *TerminalUI {
 }
 
 func (t *TerminalUI) Solicit(player Aff, message string, choices []string) string {
-	t.buf.WriteString("(")
-	t.buf.WriteString(player.String())
-	t.buf.WriteString(")")
-	t.buf.WriteString(message)
+	fmt.Fprintf(t, "[%s] %s", player, strings.TrimRight(message, "\n"))
 	if len(choices) > 0 {
-		t.buf.WriteString(" [ ")
-		t.buf.WriteString(strings.Join(choices, " "))
-		t.buf.WriteString(" ]")
+		fmt.Fprintf(t, " [ %s ]", strings.Join(choices, " "))
 	}
-	t.buf.WriteString("\n")
-	io.Copy(os.Stdout, &t.buf)
-	t.buf.Reset()
+	t.WriteString("\n")
+	io.Copy(os.Stdout, t)
+	t.Reset()
 	text, err := t.in.ReadString('\n')
 	if err != nil {
 		panic(err.Error())
 	}
 	return strings.ToLower(strings.TrimSpace(text))
+}
+
+func (t *TerminalUI) Message(player Aff, message string) {
+	fmt.Fprintf(t, "[%s] %s\n", player, strings.TrimRight(message, "\n"))
+	io.Copy(os.Stdout, t)
 }
