@@ -26,7 +26,7 @@ type State struct {
 
 	Deck *Deck
 
-	Hands [2]map[CardId]Card
+	Hands [2]*Deck
 
 	ChinaCardPlayer Aff
 	ChinaCardFaceUp bool
@@ -35,11 +35,16 @@ type State struct {
 func NewState(ui UI) *State {
 	return &State{
 		UI:              ui,
-		Countries:       Countries,
 		VP:              0,
 		Defcon:          5,
 		Turn:            1,
 		AR:              1,
+		Countries:       Countries,
+		Events:          make(map[CardId]Aff),
+		Removed:         NewDeck(),
+		Discard:         NewDeck(),
+		Deck:            NewDeck(),
+		Hands:           [2]*Deck{NewDeck(), NewDeck()},
 		ChinaCardPlayer: SOV,
 		ChinaCardFaceUp: true,
 		SREvents:        make(map[SpaceId]Aff),
@@ -57,29 +62,26 @@ func (s *State) Era() Era {
 	}
 }
 
+func (s *State) HandSize() int {
+	if s.Era() == Early {
+		return 8
+	}
+	return 9
+}
+
 func (s *State) Effect(which CardId, player ...Aff) bool {
 	aff, ok := s.Events[which]
 	return ok && (len(player) == 0 || player[0] == aff)
 }
 
-// Card management
-
-func (s *State) DrawHand(player Aff, n int) {
-	need := n - len(s.Hands[player])
-	for _, card := range s.Deck.Draw(need) {
-		s.Hands[player][card.Id] = card
-	}
-}
-
-func (s *State) CardPlayed(player Aff, which CardId, star bool) {
-	if which == TheChinaCard {
+func (s *State) CardPlayed(player Aff, card Card) {
+	if card.Id == TheChinaCard {
 		s.ChinaCardPlayer = player.Opp()
 		s.ChinaCardFaceUp = false
 		return
 	}
-	card := s.Hands[player][which]
-	delete(s.Hands[player], which)
-	if star {
+	s.Hands[player].Remove(card)
+	if card.Star {
 		s.Removed.Push(card)
 	} else {
 		s.Discard.Push(card)

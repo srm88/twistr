@@ -2,9 +2,9 @@ package twistr
 
 var (
 	Cards    map[CardId]Card
-	EarlyWar []CardId
-	MidWar   []CardId
-	LateWar  []CardId
+	EarlyWar []Card
+	MidWar   []Card
+	LateWar  []Card
 )
 
 func init() {
@@ -21,11 +21,11 @@ func init() {
 		}
 		switch c.Era {
 		case Early:
-			EarlyWar = append(EarlyWar, c.Id)
+			EarlyWar = append(EarlyWar, card)
 		case Mid:
-			MidWar = append(MidWar, c.Id)
+			MidWar = append(MidWar, card)
 		case Late:
-			LateWar = append(LateWar, c.Id)
+			LateWar = append(LateWar, card)
 		}
 		Cards[c.Id] = card
 	}
