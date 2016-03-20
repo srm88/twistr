@@ -8,8 +8,7 @@ import (
 // Temp:
 func main() {
 	ui := twistr.MakeTerminalUI()
-	input := twistr.HackInput{Ui: ui}
-	state := twistr.NewState(input)
+	state := twistr.NewState(ui)
 	twistr.Start(state)
 	fmt.Println("Nice.")
 }

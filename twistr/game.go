@@ -23,28 +23,27 @@ func Start(s *State) {
 	// Deal out players' hands
 	Deal(s)
 	// China card handled in NewState
-	// Sov chooses 6 influence in E europe
-	ShowHand(s, Sov)
-	il, err := SelectNInfluenceCheck(s, Sov, "6 influence in East Europe", 6,
+	// SOV chooses 6 influence in E europe
+	ShowHand(s, SOV)
+	il, err := SelectNInfluenceCheck(s, SOV, "6 influence in East Europe", 6,
 		InRegion(EastEurope))
 	for err != nil {
-		il, err = SelectNInfluenceCheck(s, Sov, err.Error(), 6,
+		il, err = SelectNInfluenceCheck(s, SOV, err.Error(), 6,
 			InRegion(EastEurope))
 	}
-	PlaceInfluence(s, Sov, il)
-	ShowHand(s, US)
+	PlaceInfluence(s, SOV, il)
+	ShowHand(s, USA)
 	// US chooses 7 influence in W europe
-	ilUS, err := SelectNInfluenceCheck(s, US, "7 influence in West Europe", 7,
+	ilUSA, err := SelectNInfluenceCheck(s, USA, "7 influence in West Europe", 7,
 		InRegion(WestEurope))
 	for err != nil {
-		ilUS, err = SelectNInfluenceCheck(s, US, err.Error(), 7,
+		ilUSA, err = SelectNInfluenceCheck(s, USA, err.Error(), 7,
 			InRegion(WestEurope))
 	}
-	PlaceInfluence(s, US, ilUS)
+	PlaceInfluence(s, USA, ilUSA)
 }
 
 func ShowHand(s *State, to Aff) {
-	// XXX: super temporary, blocked on #20 Output
 	// XXX: hand has no ordering right now. That's janky. Maybe a hand should
 	// be a slice instead of a map?
 	cardNames := make([]string, len(s.Hands[to]))
@@ -58,10 +57,10 @@ func ShowHand(s *State, to Aff) {
 
 func Deal(s *State) {
 	hs := s.HandSize()
-	usDraw := s.Deck.Draw(hs - len(s.Hands[US]))
-	s.IntoHand(US, usDraw...)
-	sovDraw := s.Deck.Draw(hs - len(s.Hands[Sov]))
-	s.IntoHand(Sov, sovDraw...)
+	usDraw := s.Deck.Draw(hs - len(s.Hands[USA]))
+	s.IntoHand(USA, usDraw...)
+	sovDraw := s.Deck.Draw(hs - len(s.Hands[SOV]))
+	s.IntoHand(SOV, sovDraw...)
 }
 
 func GetShuffle(d *Deck) *DeckShuffleLog {
@@ -74,15 +73,15 @@ func PlayCard(s *State, c *CardPlayLog) {
 	switch {
 	case c.Kind == SPACE:
 		next := &SpaceLog{}
-		s.Input.GetInput(c.Player, "Space roll", next)
+		GetInput(s, c.Player, "Space roll", next)
 	case c.Kind == OPS && c.Card.Aff == c.Player.Opp():
 		// Solicit who goes first
 		next := &OpponentOpsLog{}
-		s.Input.GetInput(c.Player, "Who's next", next)
+		GetInput(s, c.Player, "Who's next", next)
 	case c.Kind == OPS:
 		// Solicit coup/influence/realign/space
 		next := &OpsLog{}
-		s.Input.GetInput(c.Player, "What kinda ops", next)
+		GetInput(s, c.Player, "What kinda ops", next)
 	case c.Kind == EVENT:
 		panic("Not ready!")
 	default:
@@ -157,7 +156,7 @@ func SelectInfluenceOps(s *State, player Aff, card Card) (il *InfluenceLog, err 
 
 func SelectInfluence(s *State, player Aff, message string) *InfluenceLog {
 	il := &InfluenceLog{}
-	s.Input.GetInput(player, message, il)
+	GetInput(s, player, message, il)
 	return il
 }
 

@@ -1,7 +1,7 @@
 package twistr
 
 type State struct {
-	Input Input
+	UI
 
 	VP int
 
@@ -18,6 +18,8 @@ type State struct {
 
 	Events map[CardId]Aff
 
+	SREvents map[SpaceId]Aff
+
 	Removed *Deck
 
 	Discard *Deck
@@ -30,9 +32,9 @@ type State struct {
 	ChinaCardFaceUp bool
 }
 
-func NewState(input Input) *State {
+func NewState(ui UI) *State {
 	return &State{
-		Input:           input,
+		UI:              ui,
 		VP:              0,
 		Defcon:          5,
 		Turn:            1,
@@ -43,8 +45,20 @@ func NewState(input Input) *State {
 		Discard:         NewDeck(),
 		Deck:            NewDeck(),
 		Hands:           [2]map[CardId]Card{make(map[CardId]Card), make(map[CardId]Card)},
-		ChinaCardPlayer: Sov,
+		ChinaCardPlayer: SOV,
 		ChinaCardFaceUp: true,
+		SREvents:        make(map[SpaceId]Aff),
+	}
+}
+
+func (s *State) Era() Era {
+	switch {
+	case s.Turn < 4:
+		return Early
+	case s.Turn < 8:
+		return Mid
+	default:
+		return Late
 	}
 }
 
@@ -98,5 +112,14 @@ func (s *State) CardPlayed(player Aff, which CardId, star bool) {
 		s.Removed.Push(card)
 	} else {
 		s.Discard.Push(card)
+	}
+}
+
+func (s *State) GainVP(player Aff, n int) {
+	switch player {
+	case USA:
+		s.VP += n
+	case SOV:
+		s.VP -= n
 	}
 }

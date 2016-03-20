@@ -5,29 +5,29 @@ package twistr
 // Realignment
 func realignMods(target Country) (mods Influence) {
 	switch {
-	case target.Inf[US] > target.Inf[Sov]:
-		mods[US] += 1
-	case target.Inf[Sov] > target.Inf[US]:
-		mods[Sov] += 1
+	case target.Inf[USA] > target.Inf[SOV]:
+		mods[USA] += 1
+	case target.Inf[SOV] > target.Inf[USA]:
+		mods[SOV] += 1
 	}
 	for _, neighbor := range target.AdjCountries {
 		control := neighbor.Controlled()
-		if control != Neu {
+		if control != NEU {
 			mods[control] += 1
 		}
 	}
 	return
 }
 
-func realign(s *State, target *Country, rollUS, rollSov int) {
+func realign(s *State, target *Country, rollUSA, rollSOV int) {
 	mods := realignMods(*target)
-	rollUS += mods[US]
-	rollSov += mods[Sov]
+	rollUSA += mods[USA]
+	rollSOV += mods[SOV]
 	switch {
-	case rollUS > rollSov:
-		target.Inf[Sov] -= Min((rollUS - rollSov), target.Inf[Sov])
-	case rollSov > rollUS:
-		target.Inf[US] -= Min((rollSov - rollUS), target.Inf[US])
+	case rollUSA > rollSOV:
+		target.Inf[SOV] -= Min((rollUSA - rollSOV), target.Inf[SOV])
+	case rollSOV > rollUSA:
+		target.Inf[USA] -= Min((rollSOV - rollUSA), target.Inf[USA])
 	}
 }
 
@@ -45,7 +45,7 @@ func coupBonus(s *State, player Aff, target *Country) (bonus int) {
 }
 
 func opsMod(s *State, player Aff, card Card, countries []*Country) (mod int) {
-	if player == Sov && s.Effect(VietnamRevolts) {
+	if player == SOV && s.Effect(VietnamRevolts) {
 		if AllIn(countries, SouthEastAsia) {
 			mod += 1
 		}
