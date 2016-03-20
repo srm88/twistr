@@ -103,7 +103,7 @@ func SelectInfluenceOps(s *State, player Aff, card Card) (il *InfluenceLog, err 
 
 func SelectInfluence(s *State, player Aff, message string) *InfluenceLog {
 	il := &InfluenceLog{}
-	s.Input.GetInput(player, message, il)
+	GetInput(s, player, message, il)
 	return il
 }
 
