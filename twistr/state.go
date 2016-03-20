@@ -71,3 +71,12 @@ func (s *State) CardPlayed(player Aff, which CardId, star bool) {
 		s.Discard.Push(card)
 	}
 }
+
+func (s *State) GainVP(player Aff, n int) {
+	switch player {
+	case USA:
+		s.VP += n
+	case SOV:
+		s.VP -= n
+	}
+}
