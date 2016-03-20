@@ -565,7 +565,7 @@ func lookupCard(name string) (Card, error) {
 	if !ok {
 		return Card{}, errors.New("Unknown card '" + name + "'")
 	}
-	return *Cards[cid], nil
+	return Cards[cid], nil
 }
 
 func lookupRegion(name string) (Region, error) {
