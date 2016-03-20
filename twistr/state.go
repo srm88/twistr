@@ -33,14 +33,32 @@ type State struct {
 func NewState(input Input) *State {
 	return &State{
 		Input:           input,
-		Countries:       Countries,
 		VP:              0,
 		Defcon:          5,
 		Turn:            1,
 		AR:              1,
+		Countries:       Countries,
+		Events:          make(map[CardId]Aff),
+		Removed:         NewDeck(),
+		Discard:         NewDeck(),
+		Deck:            NewDeck(),
+		Hands:           [2]map[CardId]Card{make(map[CardId]Card), make(map[CardId]Card)},
 		ChinaCardPlayer: Sov,
 		ChinaCardFaceUp: true,
 	}
+}
+
+func (s *State) IntoHand(player Aff, cards ...Card) {
+	for _, card := range cards {
+		s.Hands[player][card.Id] = card
+	}
+}
+
+func (s *State) HandSize() int {
+	if s.Era() == Early {
+		return 8
+	}
+	return 9
 }
 
 func (s *State) Era() Era {

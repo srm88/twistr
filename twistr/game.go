@@ -15,6 +15,60 @@ import (
 // AskNotWhatYourCountry: discard up to hand, draw replacements
 // OurManInTehran: draw top 5, return or discard, reshuffle
 
+func Start(s *State) {
+	// Early war cards into the draw deck
+	s.Deck.Push(EarlyWar...)
+	dsl := GetShuffle(s.Deck)
+	s.Deck.Reorder(dsl.Cards)
+	// Deal out players' hands
+	Deal(s)
+	// China card handled in NewState
+	// Sov chooses 6 influence in E europe
+	ShowHand(s, Sov)
+	il, err := SelectNInfluenceCheck(s, Sov, "6 influence in East Europe", 6,
+		InRegion(EastEurope))
+	for err != nil {
+		il, err = SelectNInfluenceCheck(s, Sov, err.Error(), 6,
+			InRegion(EastEurope))
+	}
+	PlaceInfluence(s, Sov, il)
+	ShowHand(s, US)
+	// US chooses 7 influence in W europe
+	ilUS, err := SelectNInfluenceCheck(s, US, "7 influence in West Europe", 7,
+		InRegion(WestEurope))
+	for err != nil {
+		ilUS, err = SelectNInfluenceCheck(s, US, err.Error(), 7,
+			InRegion(WestEurope))
+	}
+	PlaceInfluence(s, US, ilUS)
+}
+
+func ShowHand(s *State, to Aff) {
+	// XXX: super temporary, blocked on #20 Output
+	// XXX: hand has no ordering right now. That's janky. Maybe a hand should
+	// be a slice instead of a map?
+	cardNames := make([]string, len(s.Hands[to]))
+	i := 0
+	for _, card := range s.Hands[to] {
+		cardNames[i] = card.Name
+		i++
+	}
+	fmt.Printf("%s hand: %s\n", to, strings.Join(cardNames, ", "))
+}
+
+func Deal(s *State) {
+	hs := s.HandSize()
+	usDraw := s.Deck.Draw(hs - len(s.Hands[US]))
+	s.IntoHand(US, usDraw...)
+	sovDraw := s.Deck.Draw(hs - len(s.Hands[Sov]))
+	s.IntoHand(Sov, sovDraw...)
+}
+
+func GetShuffle(d *Deck) *DeckShuffleLog {
+	// XXX: replay-log
+	return &DeckShuffleLog{d.Shuffle()}
+}
+
 // WIP
 func PlayCard(s *State, c *CardPlayLog) {
 	switch {
