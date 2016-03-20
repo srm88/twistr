@@ -7,9 +7,8 @@ import (
 // Temp:
 func main() {
 	ui := twistr.MakeTerminalUI()
-	input := twistr.HackInput{Ui: ui}
-	state := twistr.NewState(input)
+	state := twistr.NewState(ui)
 	cpl := &twistr.CardPlayLog{}
-	input.GetInput(twistr.USA, "player card ops|event", cpl)
+	twistr.GetInput(ui, twistr.USA, "player card ops|event", cpl)
 	twistr.PlayCard(state, cpl)
 }

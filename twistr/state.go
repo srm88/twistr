@@ -1,7 +1,7 @@
 package twistr
 
 type State struct {
-	Input Input
+	UI
 
 	VP int
 
@@ -30,9 +30,9 @@ type State struct {
 	ChinaCardFaceUp bool
 }
 
-func NewState(input Input) *State {
+func NewState(ui UI) *State {
 	return &State{
-		Input:           input,
+		UI:              ui,
 		Countries:       Countries,
 		VP:              0,
 		Defcon:          5,
