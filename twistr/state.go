@@ -38,17 +38,20 @@ func NewState(ui UI) *State {
 		UI:              ui,
 		VP:              0,
 		Defcon:          5,
+		MilOps:          [2]int{0, 0},
+		SpaceRace:       [2]int{0, 0},
 		Turn:            1,
 		AR:              1,
+		Phasing:         SOV,
 		Countries:       Countries,
 		Events:          make(map[CardId]Aff),
+		SREvents:        make(map[SpaceId]Aff),
 		Removed:         NewDeck(),
 		Discard:         NewDeck(),
 		Deck:            NewDeck(),
 		Hands:           [2]*Deck{NewDeck(), NewDeck()},
 		ChinaCardPlayer: SOV,
 		ChinaCardFaceUp: true,
-		SREvents:        make(map[SpaceId]Aff),
 	}
 }
 
