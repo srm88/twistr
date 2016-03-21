@@ -25,8 +25,8 @@ func Deal(s *State) {
 func Start(s *State) {
 	// Early war cards into the draw deck
 	s.Deck.Push(EarlyWar...)
-	dsl := SelectShuffle(s.Deck)
-	s.Deck.Reorder(dsl.Cards)
+	cards := SelectShuffle(s.Deck)
+	s.Deck.Reorder(cards)
 	// Deal out players' hands
 	Deal(s)
 	// SOV chooses 6 influence in E europe
@@ -55,12 +55,12 @@ func ShowHand(s *State, whose, to Aff) {
 	s.Message(to, fmt.Sprintf("%s hand: %s\n", whose, strings.Join(s.Hands[whose].Names(), ", ")))
 }
 
-func SelectShuffle(d *Deck) *DeckShuffleLog {
+func SelectShuffle(d *Deck) []Card {
 	// XXX: replay-log
-	return &DeckShuffleLog{d.Shuffle()}
+	return d.Shuffle()
 }
 
-func SelectCard(s *State, player Aff) *CardLog {
+func SelectCard(s *State, player Aff) (c Card) {
 	canPlayChina := s.ChinaCardPlayer == player && s.ChinaCardFaceUp
 	choices := make([]string, len(s.Hands[player].Cards))
 	for i, c := range s.Hands[player].Cards {
@@ -69,9 +69,8 @@ func SelectCard(s *State, player Aff) *CardLog {
 	if canPlayChina {
 		choices = append(choices, Cards[TheChinaCard].Name)
 	}
-	cl := &CardLog{}
-	GetInput(s, player, cl, "Choose a card", choices...)
-	return cl
+	GetInput(s, player, &c, "Choose a card", choices...)
+	return
 }
 
 func Turn(s *State) {
@@ -86,10 +85,10 @@ func Turn(s *State) {
 
 func Action(s *State) {
 	p := s.Phasing
-	card := SelectCard(s, p).Card
+	card := SelectCard(s, p)
 	// Safe to remove a card that isn't actually in the hand
 	s.Hands[p].Remove(card)
-	switch SelectPlay(s, p, card).Kind {
+	switch SelectPlay(s, p, card) {
 	case SPACE:
 		PlaySpace(s, p, card)
 	case OPS:
@@ -104,7 +103,7 @@ func Action(s *State) {
 
 func PlaySpace(s *State, player Aff, card Card) {
 	box, _ := nextSRBox(s, player)
-	roll := SelectSpaceRoll(s).Roll
+	roll := SelectSpaceRoll(s)
 	MessageBoth(s, fmt.Sprintf("%s plays %s for the space race.", player, card))
 	if roll <= box.MaxRoll {
 		box.Enter(s, player)
@@ -115,16 +114,16 @@ func PlaySpace(s *State, player Aff, card Card) {
 	s.Discard.Push(card)
 }
 
-func SelectSpaceRoll(s *State) *SpaceLog {
+func SelectSpaceRoll(s *State) int {
 	// XXX: replay-log
-	return &SpaceLog{Roll: Roll()}
+	return Roll()
 }
 
 func PlayOps(s *State, player Aff, card Card) {
 	MessageBoth(s, fmt.Sprintf("%s plays %s for operations", player, card))
 	opp := player.Opp()
 	if card.Aff == opp {
-		if player == SelectFirst(s, player).First {
+		if player == SelectFirst(s, player) {
 			MessageBoth(s, fmt.Sprintf("%s will conduct operations first", player))
 			ConductOps(s, player, card)
 			PlayEvent(s, opp, card)
@@ -142,7 +141,7 @@ func PlayOps(s *State, player Aff, card Card) {
 }
 
 func ConductOps(s *State, player Aff, card Card) {
-	switch SelectOps(s, player, card).Kind {
+	switch SelectOps(s, player, card) {
 	case COUP:
 		panic("Not implemented")
 	case REALIGN:
@@ -163,8 +162,7 @@ func PlayEvent(s *State, player Aff, card Card) {
 	panic("Not implemented")
 }
 
-func SelectPlay(s *State, player Aff, card Card) *PlayLog {
-	pl := &PlayLog{}
+func SelectPlay(s *State, player Aff, card Card) (pk PlayKind) {
 	canEvent, canSpace := true, true
 	// Scoring cards cannot be played for ops
 	canOps := card.Ops > 0
@@ -194,22 +192,20 @@ func SelectPlay(s *State, player Aff, card Card) *PlayLog {
 	if canSpace {
 		choices = append(choices, SPACE.String())
 	}
-	GetInput(s, player, pl, fmt.Sprintf("Playing %s", card.Name), choices...)
-	return pl
+	GetInput(s, player, &pk, fmt.Sprintf("Playing %s", card.Name), choices...)
+	return
 }
 
-func SelectOps(s *State, player Aff, card Card) *OpsLog {
-	ol := &OpsLog{}
-	GetInput(s, player, ol, fmt.Sprintf("Playing %s for ops", card.Name),
+func SelectOps(s *State, player Aff, card Card) (o OpsKind) {
+	GetInput(s, player, &o, fmt.Sprintf("Playing %s for ops", card.Name),
 		COUP.String(), REALIGN.String(), INFLUENCE.String())
-	return ol
+	return
 }
 
-func SelectFirst(s *State, player Aff) *FirstLog {
-	fl := &FirstLog{}
-	GetInput(s, player, fl, "Who will play first",
+func SelectFirst(s *State, player Aff) (first Aff) {
+	GetInput(s, player, &first, "Who will play first",
 		USA.String(), SOV.String())
-	return fl
+	return
 }
 
 type countryCheck func(*Country) error
@@ -233,13 +229,13 @@ func InRegion(regions ...Region) countryCheck {
 
 // SelectNInfluenceCheck asks the player to choose a number of countries to
 // receive influence, and optional checks to perform on the chosen countries.
-func SelectNInfluenceCheck(s *State, player Aff, message string, n int, checks ...countryCheck) (il *InfluenceLog, err error) {
+func SelectNInfluenceCheck(s *State, player Aff, message string, n int, checks ...countryCheck) (il []*Country, err error) {
 	il = SelectInfluence(s, player, message)
-	if len(il.Countries) != n {
+	if len(il) != n {
 		err = fmt.Errorf("Select %d influence", n)
 		return
 	}
-	for _, placement := range il.Countries {
+	for _, placement := range il {
 		for _, check := range checks {
 			if err = check(placement); err != nil {
 				return
@@ -249,20 +245,20 @@ func SelectNInfluenceCheck(s *State, player Aff, message string, n int, checks .
 	return
 }
 
-func SelectInfluenceOps(s *State, player Aff, card Card) (il *InfluenceLog, err error) {
+func SelectInfluenceOps(s *State, player Aff, card Card) (il []*Country, err error) {
 	message := "Place influence"
 	il = SelectInfluence(s, player, message)
 	// Compute ops
-	ops := card.Ops + opsMod(s, player, card, il.Countries)
+	ops := card.Ops + opsMod(s, player, card, il)
 	// Compute cost. Copy each country so that we can update its influence
 	// as we go. E.g. two ops are spent breaking control, then the next
 	// influence place costs one op.
 	cost := 0
 	workingCountries := make(map[CountryId]Country)
-	for _, c := range il.Countries {
+	for _, c := range il {
 		workingCountries[c.Id] = *c
 	}
-	for _, c := range il.Countries {
+	for _, c := range il {
 		cost += influenceCost(player, workingCountries[c.Id])
 		tmp := workingCountries[c.Id]
 		tmp.Inf[player] += 1
@@ -277,14 +273,13 @@ func SelectInfluenceOps(s *State, player Aff, card Card) (il *InfluenceLog, err 
 	return
 }
 
-func SelectInfluence(s *State, player Aff, message string) *InfluenceLog {
-	il := &InfluenceLog{}
-	GetInput(s, player, il, message)
-	return il
+func SelectInfluence(s *State, player Aff, message string) (il []*Country) {
+	GetInput(s, player, &il, message)
+	return
 }
 
-func PlaceInfluence(s *State, player Aff, il *InfluenceLog) {
-	for _, c := range il.Countries {
+func PlaceInfluence(s *State, player Aff, il []*Country) {
+	for _, c := range il {
 		c.Inf[player] += 1
 	}
 }

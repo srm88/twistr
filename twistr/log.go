@@ -1,8 +1,9 @@
 package twistr
 
-// Complete ordering of draw deck (shuffling)
-type DeckShuffleLog struct {
-	Cards []Card
+// Logs must be referenced in this set, or we will not marshal them correctly.
+var logTypes map[string]bool = map[string]bool{
+	"CoupLog":    true,
+	"RealignLog": true,
 }
 
 type CoupLog struct {
@@ -14,28 +15,4 @@ type RealignLog struct {
 	Country *Country
 	RollUSA int
 	RollSOV int
-}
-
-type InfluenceLog struct {
-	Countries []*Country
-}
-
-type CardLog struct {
-	Card Card
-}
-
-type PlayLog struct {
-	Kind PlayKind
-}
-
-type SpaceLog struct {
-	Roll int
-}
-
-type OpsLog struct {
-	Kind OpsKind
-}
-
-type FirstLog struct {
-	First Aff
 }
