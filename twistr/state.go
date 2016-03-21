@@ -2,33 +2,20 @@ package twistr
 
 type State struct {
 	UI
-
-	VP int
-
-	Defcon int
-
-	MilOps [2]int
-
-	SpaceRace [2]int
-
-	Turn    int
-	AR      int
-	Phasing Aff
-
-	Countries map[CountryId]*Country
-
-	Events map[CardId]Aff
-
-	SREvents map[SpaceId]Aff
-
-	Removed *Deck
-
-	Discard *Deck
-
-	Deck *Deck
-
-	Hands [2]*Deck
-
+	VP              int
+	Defcon          int
+	MilOps          [2]int
+	SpaceRace       [2]int
+	Turn            int
+	AR              int
+	Phasing         Aff
+	Countries       map[CountryId]*Country
+	Events          map[CardId]Aff
+	SREvents        map[SpaceId]Aff
+	Removed         *Deck
+	Discard         *Deck
+	Deck            *Deck
+	Hands           [2]*Deck
 	ChinaCardPlayer Aff
 	ChinaCardFaceUp bool
 }
@@ -38,17 +25,20 @@ func NewState(ui UI) *State {
 		UI:              ui,
 		VP:              0,
 		Defcon:          5,
+		MilOps:          [2]int{0, 0},
+		SpaceRace:       [2]int{0, 0},
 		Turn:            1,
 		AR:              1,
+		Phasing:         SOV,
 		Countries:       Countries,
 		Events:          make(map[CardId]Aff),
+		SREvents:        make(map[SpaceId]Aff),
 		Removed:         NewDeck(),
 		Discard:         NewDeck(),
 		Deck:            NewDeck(),
 		Hands:           [2]*Deck{NewDeck(), NewDeck()},
 		ChinaCardPlayer: SOV,
 		ChinaCardFaceUp: true,
-		SREvents:        make(map[SpaceId]Aff),
 	}
 }
 
