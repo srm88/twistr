@@ -59,7 +59,22 @@ func SelectShuffle(d *Deck) *DeckShuffleLog {
 	return &DeckShuffleLog{d.Shuffle()}
 }
 
+func SelectCard(s *State, player Aff) *CardLog {
+	canPlayChina := s.ChinaCardPlayer == player && s.ChinaCardFaceUp
+	choices := make([]string, len(s.Hands[player].Cards))
+	for i, c := range s.Hands[player].Cards {
+		choices[i] = c.Name
+	}
+	if canPlayChina {
+		choices = append(choices, Cards[TheChinaCard].Name)
+	}
+	cl := &CardLog{}
+	GetInput(s, player, cl, "Choose a card", choices...)
+	return cl
+}
+
 func Turn(s *State) {
+	// Stub: awaiting implementation in issue#13
 	MessageBoth(s, fmt.Sprintf("TURN %d", s.Turn))
 	s.Phasing = SOV
 	Action()
