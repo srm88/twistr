@@ -118,7 +118,7 @@ func InRegion(regions ...Region) countryCheck {
 func SelectNInfluenceCheck(s *State, player Aff, message string, n int, checks ...countryCheck) (il *InfluenceLog, err error) {
 	il = SelectInfluence(s, player, message)
 	if len(il.Countries) != n {
-		err = fmt.Errorf("Place %d influence", n)
+		err = fmt.Errorf("Select %d influence", n)
 		return
 	}
 	for _, placement := range il.Countries {
