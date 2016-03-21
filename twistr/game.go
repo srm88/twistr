@@ -22,6 +22,15 @@ func Deal(s *State) {
 	s.Hands[SOV].Push(sovDraw...)
 }
 
+func Turn(s *State) {
+	MessageBoth(s, fmt.Sprintf("TURN %d", s.Turn))
+	s.Phasing = SOV
+	Action()
+	s.Phasing = US
+	Action()
+	s.Turn++
+}
+
 func Action(s *State) {
 	p := s.Phasing
 	card := SelectCard(s, p).Card
@@ -40,11 +49,12 @@ func Action(s *State) {
 func PlaySpace(s *State, player Aff, card Card) {
 	box, _ := nextSRBox(s, player)
 	roll := SelectSpaceRoll(s).Roll
+	MessageBoth(s, fmt.Sprintf("%s plays %s for the space race.", player, card))
 	if roll <= box.MaxRoll {
 		box.Enter(s, player)
-		s.Message(player, "Space race attempt succeeded.")
+		MessageBoth(s, fmt.Sprintf("%s rolls %d. Space race attempt success!", player, roll))
 	} else {
-		s.Message(player, "Space race attempt failed.")
+		MessageBoth(s, fmt.Sprintf("%s rolls %d. Space race attempt fails!", player, roll))
 	}
 	s.Discard.Push(card)
 }
@@ -55,12 +65,16 @@ func SelectSpaceRoll(s *State) *SpaceLog {
 }
 
 func PlayOps(s *State, player Aff, card Card) {
-	if card.Aff == player.Opp() {
+	MessageBoth(s, fmt.Sprintf("%s plays %s for operations", player, card))
+	opp := player.Opp()
+	if card.Aff == opp {
 		if player == SelectFirst(s, player).First {
+			MessageBoth(s, fmt.Sprintf("%s will conduct operations first", player))
 			ConductOps(s, player, card)
-			PlayEvent(s, player.Opp(), card)
+			PlayEvent(s, opp, card)
 		} else {
-			PlayEvent(s, player.Opp(), card)
+			MessageBoth(s, fmt.Sprintf("%s will implement the event first", opp))
+			PlayEvent(s, opp, card)
 			ConductOps(s, player, card)
 		}
 	} else {
@@ -81,7 +95,7 @@ func ConductOps(s *State, player Aff, card Card) {
 }
 
 func PlayEvent(s *State, player Aff, card Card) {
-	// XXX: not positive this belongs here
+	MessageBoth(s, fmt.Sprintf("%s implements %s", player, card))
 	if card.Star {
 		s.Removed.Push(card)
 	} else {
@@ -123,7 +137,8 @@ func SelectOps(s *State, player Aff, card Card) *OpsLog {
 
 func SelectFirst(s *State, player Aff) *FirstLog {
 	fl := &FirstLog{}
-	GetInput(s, player, fl, "Who goes first", USA.String(), SOV.String())
+	GetInput(s, player, fl, "Who will play first",
+		USA.String(), SOV.String())
 	return fl
 }
 

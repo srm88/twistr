@@ -26,3 +26,8 @@ func Min(a, b int) int {
 func Roll() int {
 	return rng.Intn(6) + 1
 }
+
+func MessageBoth(ui UI, message string) {
+	ui.Message(USA, message)
+	ui.Message(SOV, message)
+}
