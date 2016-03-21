@@ -14,31 +14,44 @@ func Marshal(c interface{}) ([]byte, error) {
 	// Indirect can always be used; if the value is not a pointer, it just
 	// returns the value.
 	cv := reflect.Indirect(reflect.ValueOf(c))
-	var field reflect.Value
 	buf := new(bytes.Buffer)
-	n := cv.NumField()
+	if isStruct(cv.Type()) {
+		if err := marshalStruct(cv, buf); err != nil {
+			return nil, err
+		}
+	} else {
+		if err := marshalValue(cv, buf); err != nil {
+			return nil, err
+		}
+	}
+	return buf.Bytes(), nil
+}
+
+func marshalStruct(v reflect.Value, buf *bytes.Buffer) error {
+	var field reflect.Value
+	n := v.NumField()
 	for i := 0; i < n; i++ {
-		field = cv.Field(i)
+		field = v.Field(i)
 		if field.Type().Kind() == reflect.Slice {
 			if err := marshalSlice(field, buf); err != nil {
-				return []byte{}, err
+				return err
 			}
 		} else {
 			if err := marshalValue(field, buf); err != nil {
-				return []byte{}, err
+				return err
 			}
 		}
 		if i < (n - 1) {
 			buf.WriteString(" ")
 		}
 	}
-	return buf.Bytes(), nil
+	return nil
 }
 
 func marshalSlice(field reflect.Value, buf *bytes.Buffer) error {
 	// Writes "[ el1 el2 el3 ]". No leading or trailing spaces.
 	var marshalFn func(field reflect.Value) string
-	switch fieldKind(field.Type().Elem()) {
+	switch valueKind(field.Type().Elem()) {
 	case "country":
 		marshalFn = marshalCountryPtr
 	case "card":
@@ -68,7 +81,7 @@ func marshalCard(field reflect.Value) string {
 }
 
 func marshalValue(field reflect.Value, buf *bytes.Buffer) error {
-	switch fieldKind(field.Type()) {
+	switch valueKind(field.Type()) {
 	case "int":
 		buf.WriteString(strconv.Itoa(int(field.Int())))
 	case "country":
@@ -90,27 +103,20 @@ func marshalValue(field reflect.Value, buf *bytes.Buffer) error {
 func Unmarshal(line string, c interface{}) (err error) {
 	scanner := bufio.NewScanner(strings.NewReader(line))
 	scanner.Split(bufio.ScanWords)
-	// Value of the struct that c points to
+	// Value of c, dereferencing one pointer if necessary
 	cv := reflect.Indirect(reflect.ValueOf(c))
-	var field reflect.Value
-	var word string
+	if isStruct(cv.Type()) {
+		err = unmarshalStruct(scanner, cv)
+	} else {
+		err = unmarshalValue(scanner, cv)
+	}
+	return
+}
+
+func unmarshalStruct(scanner *bufio.Scanner, cv reflect.Value) (err error) {
 	for i := 0; i < cv.NumField(); i++ {
-		if !scanner.Scan() {
-			return fmt.Errorf("Not enough tokens for %s", cv.Type().Name())
-		}
-		word = scanner.Text()
-		field = cv.Field(i)
-		if field.Type().Kind() == reflect.Slice {
-			if word != "[" {
-				return errors.New("Malformed list input. Expected '['")
-			}
-			if err = unmarshalSlice(scanner, field); err != nil {
-				return
-			}
-		} else {
-			if err = unmarshalValue(word, field); err != nil {
-				return
-			}
+		if err = unmarshalValue(scanner, cv.Field(i)); err != nil {
+			return
 		}
 	}
 	return
@@ -121,7 +127,7 @@ func unmarshalSlice(scanner *bufio.Scanner, field reflect.Value) (err error) {
 	if words, err = readSlice(scanner); err != nil {
 		return err
 	}
-	switch fieldKind(field.Type().Elem()) {
+	switch valueKind(field.Type().Elem()) {
 	case "country":
 		val := make([]*Country, len(words))
 		for i, word := range words {
@@ -155,65 +161,95 @@ func readSlice(scanner *bufio.Scanner) ([]string, error) {
 	return s, errors.New("Did not encounter ending ']' of list")
 }
 
-func unmarshalValue(word string, field reflect.Value) (err error) {
-	switch fieldKind(field.Type()) {
+func unmarshalValue(scanner *bufio.Scanner, v reflect.Value) (err error) {
+	if !scanner.Scan() {
+		return fmt.Errorf("Not enough tokens for %s", v.Type().Name())
+	}
+	word := scanner.Text()
+	if v.Type().Kind() == reflect.Slice {
+		if word != "[" {
+			return errors.New("Malformed list input. Expected '['")
+		}
+		if err = unmarshalSlice(scanner, v); err != nil {
+			return
+		}
+	} else {
+		if err = unmarshalWord(word, v); err != nil {
+			return
+		}
+	}
+	return
+
+}
+
+func unmarshalWord(word string, v reflect.Value) (err error) {
+	switch valueKind(v.Type()) {
 	case "int":
 		var num int
 		if num, err = strconv.Atoi(word); err != nil {
 			return err
 		}
-		field.SetInt(int64(num))
+		v.SetInt(int64(num))
 	case "country":
 		var country *Country
 		if country, err = lookupCountry(word); err != nil {
 			return err
 		}
-		field.Set(reflect.ValueOf(country))
+		v.Set(reflect.ValueOf(country))
 	case "card":
 		var card Card
 		if card, err = lookupCard(word); err != nil {
 			return err
 		}
-		field.Set(reflect.ValueOf(card))
+		v.Set(reflect.ValueOf(card))
 	case "aff":
 		var aff Aff
 		if aff, err = lookupAff(word); err != nil {
 			return err
 		}
-		field.SetInt(int64(aff))
+		v.SetInt(int64(aff))
 	case "playkind":
 		var pk PlayKind
 		if pk, err = lookupPlayKind(word); err != nil {
 			return err
 		}
-		field.SetInt(int64(pk))
+		v.SetInt(int64(pk))
 	case "opskind":
 		var ok OpsKind
 		if ok, err = lookupOpsKind(word); err != nil {
 			return err
 		}
-		field.SetInt(int64(ok))
+		v.SetInt(int64(ok))
 	}
 	return
 }
 
-func fieldKind(ftype reflect.Type) string {
-	kind := ftype.Kind()
-	name := ftype.Name()
-	switch {
-	case name == "string":
+func isStruct(t reflect.Type) bool {
+	kind := t.Kind()
+	if kind == reflect.Ptr {
+		return isStruct(t.Elem())
+	}
+	return kind == reflect.Struct
+}
+
+func valueKind(vtype reflect.Type) string {
+	if vtype.Kind() == reflect.Ptr {
+		return valueKind(vtype.Elem())
+	}
+	switch vtype.Name() {
+	case "string":
 		return "string"
-	case name == "int":
+	case "int":
 		return "int"
-	case kind == reflect.Ptr && ftype.Elem().Name() == "Country":
+	case "Country":
 		return "country"
-	case name == "Card":
+	case "Card":
 		return "card"
-	case name == "Aff":
+	case "Aff":
 		return "aff"
-	case name == "PlayKind":
+	case "PlayKind":
 		return "playkind"
-	case name == "OpsKind":
+	case "OpsKind":
 		return "opskind"
 	default:
 		return "?"
