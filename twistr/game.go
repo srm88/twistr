@@ -25,7 +25,7 @@ func Deal(s *State) {
 func Start(s *State) {
 	// Early war cards into the draw deck
 	s.Deck.Push(EarlyWar...)
-	dsl := GetShuffle(s.Deck)
+	dsl := SelectShuffle(s.Deck)
 	s.Deck.Reorder(dsl.Cards)
 	// Deal out players' hands
 	Deal(s)
@@ -51,24 +51,10 @@ func Start(s *State) {
 }
 
 func ShowHand(s *State, whose, to Aff) {
-	cardNames := make([]string, len(s.Hands[whose].Cards))
-	i := 0
-	for _, card := range s.Hands[whose].Cards {
-		cardNames[i] = card.Name
-		i++
-	}
-	s.Message(to, fmt.Sprintf("%s hand: %s\n", whose, strings.Join(cardNames, ", ")))
+	s.Message(to, fmt.Sprintf("%s hand: %s\n", whose, strings.Join(s.Hands[whose].Names(), ", ")))
 }
 
-func Deal(s *State) {
-	hs := s.HandSize()
-	usDraw := s.Deck.Draw(hs - len(s.Hands[USA].Cards))
-	s.Hands[USA].Push(usDraw...)
-	sovDraw := s.Deck.Draw(hs - len(s.Hands[SOV].Cards))
-	s.Hands[SOV].Push(sovDraw...)
-}
-
-func GetShuffle(d *Deck) *DeckShuffleLog {
+func SelectShuffle(d *Deck) *DeckShuffleLog {
 	// XXX: replay-log
 	return &DeckShuffleLog{d.Shuffle()}
 }
