@@ -64,3 +64,11 @@ func (d *Deck) Draw(n int) (draws []Card) {
 	draws, d.Cards = d.Cards[:n], d.Cards[n:]
 	return
 }
+
+func (d *Deck) Names() []string {
+	names := make([]string, len(d.Cards))
+	for i, card := range d.Cards {
+		names[i] = card.Name
+	}
+	return names
+}

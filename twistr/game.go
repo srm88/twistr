@@ -22,6 +22,43 @@ func Deal(s *State) {
 	s.Hands[SOV].Push(sovDraw...)
 }
 
+func Start(s *State) {
+	// Early war cards into the draw deck
+	s.Deck.Push(EarlyWar...)
+	dsl := SelectShuffle(s.Deck)
+	s.Deck.Reorder(dsl.Cards)
+	// Deal out players' hands
+	Deal(s)
+	// China card handled in NewState
+	// SOV chooses 6 influence in E europe
+	ShowHand(s, SOV, SOV)
+	il, err := SelectNInfluenceCheck(s, SOV, "6 influence in East Europe", 6,
+		InRegion(EastEurope))
+	for err != nil {
+		il, err = SelectNInfluenceCheck(s, SOV, err.Error(), 6,
+			InRegion(EastEurope))
+	}
+	PlaceInfluence(s, SOV, il)
+	ShowHand(s, USA, USA)
+	// US chooses 7 influence in W europe
+	ilUSA, err := SelectNInfluenceCheck(s, USA, "7 influence in West Europe", 7,
+		InRegion(WestEurope))
+	for err != nil {
+		ilUSA, err = SelectNInfluenceCheck(s, USA, err.Error(), 7,
+			InRegion(WestEurope))
+	}
+	PlaceInfluence(s, USA, ilUSA)
+}
+
+func ShowHand(s *State, whose, to Aff) {
+	s.Message(to, fmt.Sprintf("%s hand: %s\n", whose, strings.Join(s.Hands[whose].Names(), ", ")))
+}
+
+func SelectShuffle(d *Deck) *DeckShuffleLog {
+	// XXX: replay-log
+	return &DeckShuffleLog{d.Shuffle()}
+}
+
 func Turn(s *State) {
 	MessageBoth(s, fmt.Sprintf("TURN %d", s.Turn))
 	s.Phasing = SOV
