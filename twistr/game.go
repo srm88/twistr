@@ -29,7 +29,6 @@ func Start(s *State) {
 	s.Deck.Reorder(dsl.Cards)
 	// Deal out players' hands
 	Deal(s)
-	// China card handled in NewState
 	// SOV chooses 6 influence in E europe
 	ShowHand(s, SOV, SOV)
 	il, err := SelectNInfluenceCheck(s, SOV, "6 influence in East Europe", 6,
@@ -154,20 +153,6 @@ func PlayEvent(s *State, player Aff, card Card) {
 		s.Discard.Push(card)
 	}
 	panic("Not implemented")
-}
-
-func SelectCard(s *State, player Aff) *CardLog {
-	canPlayChina := s.ChinaCardPlayer == player && s.ChinaCardFaceUp
-	choices := make([]string, len(s.Hands[player].Cards))
-	for i, c := range s.Hands[player].Cards {
-		choices[i] = c.Name
-	}
-	if canPlayChina {
-		choices = append(choices, Cards[TheChinaCard].Name)
-	}
-	cl := &CardLog{}
-	GetInput(s, player, cl, "Choose a card", choices...)
-	return cl
 }
 
 func SelectPlay(s *State, player Aff, card Card) *PlayLog {
