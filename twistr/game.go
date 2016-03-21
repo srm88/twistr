@@ -59,25 +59,18 @@ func SelectShuffle(d *Deck) *DeckShuffleLog {
 	return &DeckShuffleLog{d.Shuffle()}
 }
 
-// WIP
-func PlayCard(s *State, c *CardPlayLog) {
-	switch {
-	case c.Kind == SPACE:
-		next := &SpaceLog{}
-		GetInput(s, c.Player, next, "Space roll")
-	case c.Kind == OPS && c.Card.Aff == c.Player.Opp():
-		// Solicit who goes first
-		next := &OpponentOpsLog{}
-		GetInput(s, c.Player, next, "Who's next")
-	case c.Kind == OPS:
-		// Solicit coup/influence/realign/space
-		next := &OpsLog{}
-		GetInput(s, c.Player, next, "What kinda ops")
-	case c.Kind == EVENT:
-		panic("Not ready!")
-	default:
-		panic("WUT R U DOIN")
+func SelectCard(s *State, player Aff) *CardLog {
+	canPlayChina := s.ChinaCardPlayer == player && s.ChinaCardFaceUp
+	choices := make([]string, len(s.Hands[player].Cards))
+	for i, c := range s.Hands[player].Cards {
+		choices[i] = c.Name
 	}
+	if canPlayChina {
+		choices = append(choices, Cards[TheChinaCard].Name)
+	}
+	cl := &CardLog{}
+	GetInput(s, player, cl, "Choose a card", choices...)
+	return cl
 }
 
 type countryCheck func(*Country) error
