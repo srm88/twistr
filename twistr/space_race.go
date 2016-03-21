@@ -32,6 +32,18 @@ var SRTrack []SRBox = []SRBox{
 	SRBox{2, 4, 2, 0, ExtraAR},
 }
 
+func CanAdvance(s *State, player Aff, ops int) bool {
+	pos := s.SpaceRace[player]
+	switch {
+	case pos >= len(SRTrack)-1:
+		return false
+	case SRTrack[pos+1].OpsNeeded > ops:
+		return false
+	default:
+		return true
+	}
+}
+
 func nextSRBox(s *State, player Aff) (srb SRBox, err error) {
 	pos := s.SpaceRace[player]
 
