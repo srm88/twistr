@@ -47,6 +47,8 @@ func Start(s *State) {
 			InRegion(WestEurope))
 	}
 	PlaceInfluence(s, USA, ilUSA)
+	// Temporary
+	Turn(s)
 }
 
 func ShowHand(s *State, whose, to Aff) {
@@ -76,9 +78,9 @@ func Turn(s *State) {
 	// Stub: awaiting implementation in issue#13
 	MessageBoth(s, fmt.Sprintf("TURN %d", s.Turn))
 	s.Phasing = SOV
-	Action()
-	s.Phasing = US
-	Action()
+	Action(s)
+	s.Phasing = USA
+	Action(s)
 	s.Turn++
 }
 
@@ -147,21 +149,47 @@ func ConductOps(s *State, player Aff, card Card) {
 
 func PlayEvent(s *State, player Aff, card Card) {
 	MessageBoth(s, fmt.Sprintf("%s implements %s", player, card))
-	if card.Star {
+	switch {
+	case !card.Prevented(s) && card.Star:
 		s.Removed.Push(card)
-	} else {
+	default:
 		s.Discard.Push(card)
 	}
 	panic("Not implemented")
 }
 
 func SelectPlay(s *State, player Aff, card Card) *PlayLog {
-	// XXX: not all cards can be played as either ops or event, e.g. china card
 	pl := &PlayLog{}
-	// XXX: calculate ops at this point, SPACE should or should not be a choice
-	// SPACE should also be omitted if the player is at the end of the track.
-	GetInput(s, player, pl, fmt.Sprintf("Playing %s", card.Name),
-		SPACE.String(), OPS.String(), EVENT.String())
+	canEvent, canSpace := true, true
+	// Scoring cards cannot be played for ops
+	canOps := card.Ops > 0
+	switch {
+	case card.Id == TheChinaCard:
+		canEvent = false
+	case card.Aff != player:
+		// It isn't clear from the rules that playing your opponent's card as
+		// an event is forbidden, but it is always a strictly worse move than
+		// playing it for ops, and the rules don't prevent you from flipping
+		// the table either ...
+		canEvent = false
+	case card.Prevented(s):
+		canEvent = false
+	}
+	ops := card.Ops + opsMod(s, player, card, nil)
+	if !CanAdvance(s, player, ops) {
+		canSpace = false
+	}
+	choices := []string{}
+	if canOps {
+		choices = append(choices, OPS.String())
+	}
+	if canEvent {
+		choices = append(choices, EVENT.String())
+	}
+	if canSpace {
+		choices = append(choices, SPACE.String())
+	}
+	GetInput(s, player, pl, fmt.Sprintf("Playing %s", card.Name), choices...)
 	return pl
 }
 
