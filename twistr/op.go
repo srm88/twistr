@@ -31,7 +31,7 @@ func realign(s *State, target *Country, rollUSA, rollSOV int) {
 	}
 }
 
-func coupBonus(s *State, phasing, player Aff, target *Country) (bonus int) {
+func coupBonus(s *State, player Aff, target *Country) (bonus int) {
 	if s.Effect(SALTNegotiations) {
 		bonus -= 1
 	}
@@ -44,17 +44,19 @@ func coupBonus(s *State, phasing, player Aff, target *Country) (bonus int) {
 	return
 }
 
-func opsMod(s *State, phasing, player Aff, card Card, target *Country) (mod int) {
-	if player == SOV && target.In(SouthEastAsia) && s.Effect(VietnamRevolts) {
-		mod += 1
+func opsMod(s *State, player Aff, card Card, countries []*Country) (mod int) {
+	if player == SOV && s.Effect(VietnamRevolts) {
+		if AllIn(countries, SouthEastAsia) {
+			mod += 1
+		}
 	}
 	return
 }
 
 // Coup
-func coup(s *State, phasing, player Aff, card Card, roll int, target *Country) bool {
-	bonus := coupBonus(s, phasing, player, target)
-	ops := card.Ops + opsMod(s, phasing, player, card, target)
+func coup(s *State, player Aff, card Card, roll int, target *Country) bool {
+	bonus := coupBonus(s, player, target)
+	ops := card.Ops + opsMod(s, player, card, []*Country{target})
 	delta := roll + bonus + ops - (target.Stability * 2)
 	if delta <= 0 {
 		return false
