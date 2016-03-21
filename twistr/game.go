@@ -97,6 +97,9 @@ func Action(s *State) {
 	case EVENT:
 		PlayEvent(s, p, card)
 	}
+	if card.Id == TheChinaCard {
+		s.ChinaCardPlayed()
+	}
 }
 
 func PlaySpace(s *State, player Aff, card Card) {
@@ -132,7 +135,9 @@ func PlayOps(s *State, player Aff, card Card) {
 		}
 	} else {
 		ConductOps(s, player, card)
-		s.Discard.Push(card)
+		if card.Id != TheChinaCard {
+			s.Discard.Push(card)
+		}
 	}
 }
 
