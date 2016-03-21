@@ -169,7 +169,7 @@ func SelectPlay(s *State, player Aff, card Card) (pk PlayKind) {
 	switch {
 	case card.Id == TheChinaCard:
 		canEvent = false
-	case card.Aff != player:
+	case card.Aff == player.Opp():
 		// It isn't clear from the rules that playing your opponent's card as
 		// an event is forbidden, but it is always a strictly worse move than
 		// playing it for ops, and the rules don't prevent you from flipping
