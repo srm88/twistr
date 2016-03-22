@@ -7,6 +7,11 @@ type Card struct {
 	Name string
 	Text string
 	Star bool
+	Impl func(*State, Aff)
+}
+
+func (c Card) Equal(other Card) bool {
+	return c.Id == other.Id
 }
 
 func (c Card) String() string {
@@ -77,7 +82,7 @@ func (d *Deck) Reorder(ordering []Card) {
 
 func (d *Deck) Remove(card Card) {
 	for i, c := range d.Cards {
-		if c == card {
+		if c.Equal(card) {
 			d.Cards = append(d.Cards[:i], d.Cards[i+1:]...)
 		}
 	}
