@@ -73,6 +73,11 @@ func SelectCard(s *State, player Aff) (c Card) {
 	return
 }
 
+func SelectRandomCard(s *State, player Aff) Card {
+	n := rng.Intn(len(s.Hands[player].Cards))
+	return s.Hands[player].Cards[n]
+}
+
 func Turn(s *State) {
 	// Stub: awaiting implementation in issue#13
 	MessageBoth(s, fmt.Sprintf("TURN %d", s.Turn))
@@ -103,7 +108,7 @@ func Action(s *State) {
 
 func PlaySpace(s *State, player Aff, card Card) {
 	box, _ := nextSRBox(s, player)
-	roll := SelectSpaceRoll(s)
+	roll := SelectRoll(s)
 	MessageBoth(s, fmt.Sprintf("%s plays %s for the space race.", player, card))
 	if roll <= box.MaxRoll {
 		box.Enter(s, player)
@@ -112,9 +117,10 @@ func PlaySpace(s *State, player Aff, card Card) {
 		MessageBoth(s, fmt.Sprintf("%s rolls %d. Space race attempt fails!", player, roll))
 	}
 	s.Discard.Push(card)
+	MessageBoth(s, fmt.Sprintf("%s to discard", card))
 }
 
-func SelectSpaceRoll(s *State) int {
+func SelectRoll(s *State) int {
 	// XXX: replay-log
 	return Roll()
 }
@@ -136,6 +142,7 @@ func PlayOps(s *State, player Aff, card Card) {
 		ConductOps(s, player, card)
 		if card.Id != TheChinaCard {
 			s.Discard.Push(card)
+			MessageBoth(s, fmt.Sprintf("%s to discard", card))
 		}
 	}
 }
@@ -143,23 +150,28 @@ func PlayOps(s *State, player Aff, card Card) {
 func ConductOps(s *State, player Aff, card Card) {
 	switch SelectOps(s, player, card) {
 	case COUP:
-		panic("Not implemented")
+		MessageBoth(s, "coup not implemented")
 	case REALIGN:
-		panic("Not implemented")
+		MessageBoth(s, "realign not implemented")
 	case INFLUENCE:
-		panic("Not implemented")
+		MessageBoth(s, "influence not implemented")
 	}
 }
 
 func PlayEvent(s *State, player Aff, card Card) {
 	MessageBoth(s, fmt.Sprintf("%s implements %s", player, card))
+	prevented := card.Prevented(s)
+	if !prevented {
+		card.Impl(s, player)
+	}
 	switch {
-	case !card.Prevented(s) && card.Star:
+	case !prevented && card.Star:
 		s.Removed.Push(card)
+		MessageBoth(s, fmt.Sprintf("%s removed", card))
 	default:
 		s.Discard.Push(card)
+		MessageBoth(s, fmt.Sprintf("%s to discard", card))
 	}
-	panic("Not implemented")
 }
 
 func SelectPlay(s *State, player Aff, card Card) (pk PlayKind) {
@@ -197,7 +209,13 @@ func SelectPlay(s *State, player Aff, card Card) (pk PlayKind) {
 }
 
 func SelectOps(s *State, player Aff, card Card) (o OpsKind) {
-	GetInput(s, player, &o, fmt.Sprintf("Playing %s for ops", card.Name),
+	var message string
+	if card.Id == FreeOps {
+		message = fmt.Sprintf("Playing a %d ops card", card.Ops)
+	} else {
+		message = fmt.Sprintf("Playing %s for ops", card.Name)
+	}
+	GetInput(s, player, &o, message,
 		COUP.String(), REALIGN.String(), INFLUENCE.String())
 	return
 }
@@ -224,6 +242,35 @@ func InRegion(regions ...Region) countryCheck {
 			rNames[i] = r.Name
 		}
 		return fmt.Errorf("%s not in %s", c.Name, strings.Join(rNames, " or "))
+	}
+}
+
+func ControlledBy(aff Aff) countryCheck {
+	return func(c *Country) error {
+		if c.Controlled() != aff {
+			return fmt.Errorf("%s is not %s-controlled", c, aff)
+		}
+		return nil
+	}
+}
+
+func NotControlledBy(aff Aff) countryCheck {
+	return func(c *Country) error {
+		if c.Controlled() == aff {
+			return fmt.Errorf("%s is %s-controlled", c, aff)
+		}
+		return nil
+	}
+}
+
+func MaxPerCountry(n int) countryCheck {
+	counts := make(map[CountryId]int)
+	return func(c *Country) error {
+		counts[c.Id] += 1
+		if counts[c.Id] > n {
+			return fmt.Errorf("Too much in %s", n, c.Name)
+		}
+		return nil
 	}
 }
 
@@ -273,6 +320,18 @@ func SelectInfluenceOps(s *State, player Aff, card Card) (il []*Country, err err
 	return
 }
 
+// Repeat selectFn until successful.
+func SelectInfluenceForce(s *State, player Aff, selectFn func() ([]*Country, error)) []*Country {
+	var cs []*Country
+	var err error
+	cs, err = selectFn()
+	for err != nil {
+		s.Message(player, err.Error())
+		cs, err = selectFn()
+	}
+	return cs
+}
+
 func SelectInfluence(s *State, player Aff, message string) (il []*Country) {
 	GetInput(s, player, &il, message)
 	return
@@ -282,4 +341,23 @@ func PlaceInfluence(s *State, player Aff, il []*Country) {
 	for _, c := range il {
 		c.Inf[player] += 1
 	}
+}
+
+func RemoveInfluence(s *State, player Aff, il []*Country) {
+	for _, c := range il {
+		c.Inf[player] -= 1
+	}
+}
+
+func PseudoCard(ops int) Card {
+	return Card{
+		Id:   FreeOps,
+		Name: "-",
+		Aff:  NEU,
+		Ops:  ops,
+	}
+}
+
+func score(s *State, player Aff, region Region) {
+	// XXX writeme
 }
