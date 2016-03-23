@@ -11,6 +11,7 @@ type State struct {
 	Phasing         Aff
 	Countries       map[CountryId]*Country
 	Events          map[CardId]Aff
+	TurnEvents      map[CardId]Aff
 	SREvents        map[SpaceId]Aff
 	Removed         *Deck
 	Discard         *Deck
@@ -32,6 +33,7 @@ func NewState(ui UI) *State {
 		Phasing:         SOV,
 		Countries:       Countries,
 		Events:          make(map[CardId]Aff),
+		TurnEvents:      make(map[CardId]Aff),
 		SREvents:        make(map[SpaceId]Aff),
 		Removed:         NewDeck(),
 		Discard:         NewDeck(),
@@ -62,7 +64,22 @@ func (s *State) HandSize() int {
 
 func (s *State) Effect(which CardId, player ...Aff) bool {
 	aff, ok := s.Events[which]
+	if ok && (len(player) == 0 || player[0] == aff) {
+		return true
+	}
+	aff, ok = s.TurnEvents[which]
 	return ok && (len(player) == 0 || player[0] == aff)
+}
+
+// Cancel ends an event.
+func (s *State) Cancel(event CardId) {
+	delete(s.Events, event)
+	delete(s.TurnEvents, event)
+}
+
+// CancelTurnEvents cancels all turn-based events currently in effect.
+func (s *State) CancelTurnEvents() {
+	s.TurnEvents = make(map[CardId]Aff)
 }
 
 func (s *State) ChinaCardPlayed() {
