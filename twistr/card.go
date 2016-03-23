@@ -18,6 +18,31 @@ func (c Card) String() string {
 	return c.Name
 }
 
+func (c Card) Scoring() bool {
+	return c.Ops == 0
+}
+
+func (c Card) ScoringRegion() Region {
+	switch c.Id {
+	case AsiaScoring:
+		return Asia
+	case EuropeScoring:
+		return Europe
+	case MiddleEastScoring:
+		return MiddleEast
+	case CentralAmericaScoring:
+		return CentralAmerica
+	case SouthAmericaScoring:
+		return SouthAmerica
+	case SoutheastAsiaScoring:
+		return SoutheastAsia
+	case AfricaScoring:
+		return Africa
+	default:
+		return Region{}
+	}
+}
+
 // Prevented returns whether the card's event is prevented from play. E.g.
 // "Tear Down this Wall" prevents play of Willy Brandt as an event.
 func (c Card) Prevented(s *State) bool {

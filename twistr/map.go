@@ -30,6 +30,16 @@ func (c Country) Controlled() Aff {
 	}
 }
 
+func (c Country) NumControlledNeighbors(aff Aff) int {
+	n := 0
+	for _, c := range c.AdjCountries {
+		if c.Controlled() == aff {
+			n += 1
+		}
+	}
+	return n
+}
+
 func (c Country) In(r Region) bool {
 	for _, cid := range r.Countries {
 		if cid == c.Id {
