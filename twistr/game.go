@@ -360,5 +360,5 @@ func PseudoCard(ops int) Card {
 }
 
 func score(s *State, player Aff, region Region) {
-	// XXX writeme
+	// XXX writeme (#17)
 }
