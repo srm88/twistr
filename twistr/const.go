@@ -19,7 +19,7 @@ func (a Aff) String() string {
 	case SOV:
 		return "USSR"
 	default:
-		return "Neutral"
+		return "neutral"
 	}
 }
 
@@ -159,6 +159,7 @@ const (
 )
 
 const (
+	FreeOps     CardId = -1
 	AsiaScoring CardId = iota
 	EuropeScoring
 	MiddleEastScoring
