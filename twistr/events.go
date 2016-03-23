@@ -1,5 +1,11 @@
 package twistr
 
+import (
+	"errors"
+	"fmt"
+	"strings"
+)
+
 /*
  * Early War
  * ---------
@@ -9,22 +15,27 @@ func PlayAsiaScoring(s *State, player Aff) {
 	/* Presence: 3; Domination: 7; Control: 9; +1 VP per controlled Battleground
 	country in Region; +1 VP per country controlled that is adjacent to enemy
 	superpower; MAY NOT BE HELD!  */
+	score(s, player, Asia)
 }
 
 func PlayEuropeScoring(s *State, player Aff) {
 	/* Presence: 3; Domination: 7; Control: Automatic Victory; +1 VP per
 	controlled Battleground country in Region; +1 VP per country controlled that
 	is adjacent to enemy superpower; MAY NOT BE HELD!  */
+	score(s, player, Europe)
 }
 
 func PlayMiddleEastScoring(s *State, player Aff) {
 	/* Presence: 3; Domination: 5; Control: 7; +1 VP per controlled Battleground
 	country in Region; MAY NOT BE HELD!  */
+	score(s, player, MiddleEast)
 }
 
 func PlayDuckAndCover(s *State, player Aff) {
 	/* Degrade the DEFCON level by 1. The US receives VP equal to 5 minus the
 	   current DEFCON level.  */
+	s.DegradeDefcon(1)
+	s.GainVP(USA, 5-s.Defcon)
 }
 
 func PlayFiveYearPlan(s *State, player Aff) {
@@ -32,35 +43,56 @@ func PlayFiveYearPlan(s *State, player Aff) {
 	   Event, the Event occurs immediately. If the card has a USSR associated Event
 	   or an Event applicable to both players, then the card must be discarded
 	   without triggering the Event.  */
-}
-
-func PlayTheChinaCard(s *State, player Aff) {
-	/* This card begins the game with the USSR. When played, the player receives
-	   +1 Operations to the Operations value of this card if it uses all its
-	   Operations in Asia. It is passed to the opponent once played. A player
-	   receives 1 VP for holding this card at the end of Turn 10.  */
+	card := SelectRandomCard(s, SOV)
+	s.Hands[SOV].Remove(card)
+	if card.Aff == USA {
+		PlayEvent(s, USA, card)
+	} else {
+		s.Discard.Push(card)
+	}
 }
 
 func PlaySocialistGovernments(s *State, player Aff) {
 	/* Remove a total of 3 US Influence from any countries in Western Europe
 	   (removing no more than 2 Influence per country). This Event cannot be used
 	   after the “#83 – The Iron Lady” Event has been played.  */
+	// XXX: doesn't check that the user isn't removing more influence than
+	// a country has
+	cs := SelectInfluenceForce(s, player, func() ([]*Country, error) {
+		return SelectNInfluenceCheck(s, player,
+			"Remove 3 US influence (no more than 2 per country)", 3,
+			MaxPerCountry(2), InRegion(WestEurope))
+	})
+	RemoveInfluence(s, USA, cs)
 }
 
 func PlayFidel(s *State, player Aff) {
 	/* Remove all US Influence from Cuba. USSR adds sufficient Influence in Cuba
 	   for Control.  */
+	cuba := s.Countries[Cuba]
+	cuba.Inf[USA] = 0
+	cuba.Inf[SOV] = cuba.Stability
 }
 
 func PlayVietnamRevolts(s *State, player Aff) {
 	/* Add 2 USSR Influence to Vietnam. For the remainder of the turn, the USSR
 	   receives +1 Operations to the Operations value of a card that uses all its
 	   Operations in Southeast Asia.  */
+	s.Events[VietnamRevolts] = player
+	s.Countries[Vietnam].Inf[SOV] += 2
 }
 
 func PlayBlockade(s *State, player Aff) {
 	/* Unless the US immediately discards a card with an Operations value of 3 or
 	   more, remove all US Influence from West Germany.  */
+	choice := s.Solicit(USA, "Discard a card with >=3 Ops, or remove all influence from West Germany?", []string{"discard", "remove"})
+	switch choice {
+	case "discard":
+		card := SelectCard(s, USA)
+		s.Discard.Push(card)
+	case "remove":
+		s.Countries[WGermany].Inf[USA] = 0
+	}
 }
 
 func PlayKoreanWar(s *State, player Aff) {
@@ -69,11 +101,23 @@ func PlayKoreanWar(s *State, player Aff) {
 	   modified die roll of 4-6, the USSR receives 2 VP and replaces all US
 	   Influence in South Korea with USSR Influence. The USSR adds 2 to its
 	   Military Operations Track.  */
+	s.MilOps[SOV] += 2
+	roll := SelectRoll(s)
+	skorea := s.Countries[SKorea]
+	mod := skorea.NumControlledNeighbors(USA)
+	if (roll - mod) > 3 {
+		s.GainVP(SOV, 2)
+		skorea.Inf[SOV] += skorea.Inf[USA]
+		skorea.Inf[USA] = 0
+	}
 }
 
 func PlayRomanianAbdication(s *State, player Aff) {
 	/* Remove all US Influence from Romania. The USSR adds sufficient Influence
 	   to Romania for Control.  */
+	romania := s.Countries[Romania]
+	romania.Inf[USA] = 0
+	romania.Inf[SOV] = romania.Stability
 }
 
 func PlayArabIsraeliWar(s *State, player Aff) {
@@ -83,16 +127,38 @@ func PlayArabIsraeliWar(s *State, player Aff) {
 	   receives 2 VP and replaces all US Influence in Israel with USSR Influence.
 	   The USSR adds 2 to its Military Operations Track. This Event cannot be
 	   used after the “#65 – Camp David Accords” Event has been played.  */
+	s.MilOps[SOV] += 2
+	roll := SelectRoll(s)
+	israel := s.Countries[Israel]
+	mod := israel.NumControlledNeighbors(USA)
+	if israel.Controlled() == USA {
+		mod += 1
+	}
+	if (roll - mod) > 3 {
+		s.GainVP(SOV, 2)
+		israel.Inf[SOV] += israel.Inf[USA]
+		israel.Inf[USA] = 0
+	}
 }
 
 func PlayComecon(s *State, player Aff) {
 	/* Add 1 USSR Influence to each of 4 non-US controlled countries of Eastern
 	   Europe.  */
+	cs := SelectInfluenceForce(s, player, func() ([]*Country, error) {
+		return SelectNInfluenceCheck(s, player,
+			"Choose 4 non-US controlled countries", 4,
+			MaxPerCountry(1), InRegion(EastEurope), NotControlledBy(USA))
+	})
+	PlaceInfluence(s, SOV, cs)
 }
 
 func PlayNasser(s *State, player Aff) {
 	/* Add 2 USSR Influence to Egypt. The US removes half, rounded up, of its
 	   Influence from Egypt.  */
+	egypt := s.Countries[Egypt]
+	egypt.Inf[SOV] += 2
+	loss := egypt.Inf[USA] / 2
+	egypt.Inf[USA] -= loss
 }
 
 func PlayWarsawPactFormed(s *State, player Aff) {
@@ -100,19 +166,50 @@ func PlayWarsawPactFormed(s *State, player Aff) {
 	   Influence to any countries in Eastern Europe (adding no more than 2
 	   Influence per country). This Event allows the “#21 – NATO” card to be
 	   played as an Event.  */
+
+	s.Events[WarsawPactFormed] = player
+	choice := s.Solicit(player, "Remove US influence or add USSR influence?", []string{"remove", "add"})
+	switch choice {
+	case "remove":
+		cs := SelectInfluenceForce(s, player, func() ([]*Country, error) {
+			return SelectNInfluenceCheck(s, player,
+				"4 countries to lose all US influence", 4,
+				MaxPerCountry(1), InRegion(EastEurope))
+		})
+		for _, c := range cs {
+			c.Inf[USA] = 0
+		}
+	case "add":
+		cs := SelectInfluenceForce(s, player, func() ([]*Country, error) {
+			return SelectNInfluenceCheck(s, player, "5 influence", 5,
+				MaxPerCountry(2), InRegion(EastEurope))
+		})
+		PlaceInfluence(s, SOV, cs)
+	}
 }
 
 func PlayDeGaulleLeadsFrance(s *State, player Aff) {
 	/* Remove 2 US Influence from France and add 1 USSR Influence to France. This
 	   Event cancels the effect(s) of the “#21 – NATO” Event for France only.  */
+	s.Events[DeGaulleLeadsFrance] = player
+	france := s.Countries[France]
+	france.Inf[USA] = Max(0, france.Inf[USA]-2)
+	france.Inf[SOV] += 1
 }
 
 func PlayCapturedNaziScientist(s *State, player Aff) {
 	/* Move the Space Race Marker ahead by 1 space.  */
+	box, _ := nextSRBox(s, player)
+	box.Enter(s, player)
 }
 
 func PlayTrumanDoctrine(s *State, player Aff) {
 	/* Remove all USSR Influence from a single uncontrolled country in Europe.  */
+	cs := SelectInfluenceForce(s, player, func() ([]*Country, error) {
+		return SelectNInfluenceCheck(s, player, "1 country", 1,
+			InRegion(Europe), ControlledBy(NEU))
+	})
+	cs[0].Inf[SOV] = 0
 }
 
 func PlayOlympicGames(s *State, player Aff) {
@@ -122,6 +219,27 @@ func PlayOlympicGames(s *State, player Aff) {
 	   roll receives 2 VP (reroll ties). If the opponent boycotts, degrade the
 	   DEFCON level by 1 and the sponsor may conduct Operations as if they
 	   played a 4 Ops card.  */
+	choice := s.Solicit(player.Opp(), "Participate or boycott Olympics?", []string{"participate", "boycott"})
+	switch choice {
+	case "participate":
+		rolls := [2]int{0, 0}
+		tied := true
+		for tied {
+			rolls[USA] = SelectRoll(s)
+			rolls[SOV] = SelectRoll(s)
+			rolls[player] += 2
+			tied = rolls[USA] == rolls[SOV]
+		}
+		switch {
+		case rolls[USA] > rolls[SOV]:
+			s.GainVP(USA, 2)
+		case rolls[SOV] > rolls[USA]:
+			s.GainVP(SOV, 2)
+		}
+	case "boycott":
+		s.DegradeDefcon(1)
+		ConductOps(s, player, PseudoCard(4))
+	}
 }
 
 func PlayNATO(s *State, player Aff) {
@@ -130,17 +248,30 @@ func PlayNATO(s *State, player Aff) {
 	   be attacked by play of the “#36 – Brush War” Event. This card requires
 	   prior play of either the “#16 – Warsaw Pact Formed” or “#23 – Marshall
 	   Plan” Event(s) in order to be played as an Event.  */
+	s.Events[NATO] = player
 }
 
 func PlayIndependentReds(s *State, player Aff) {
 	/* Add US Influence to either Yugoslavia, Romania, Bulgaria, Hungary, or
 	   Czechoslovakia so that it equals the USSR Influence in that country.  */
+	choice := s.Solicit(player, "Choose a country to match USSR influence",
+		[]string{"yugoslavia", "romania", "bulgaria", "hungary", "Czechoslovakia"})
+	var c *Country
+	Unmarshal(choice, c)
+	c.Inf[USA] = Max(c.Inf[USA], c.Inf[SOV])
 }
 
 func PlayMarshallPlan(s *State, player Aff) {
 	/* Add 1 US Influence to each of any 7 non-USSR controlled countries in
 	   Western Europe. This Event allows the “#21 – NATO” card to be played as an
 	   Event.  */
+	cs := SelectInfluenceForce(s, player, func() ([]*Country, error) {
+		return SelectNInfluenceCheck(s, player,
+			"Choose 7 non-USSR controlled countries", 7,
+			MaxPerCountry(1), InRegion(WestEurope), NotControlledBy(SOV))
+	})
+	PlaceInfluence(s, USA, cs)
+	s.Events[MarshallPlan] = player
 }
 
 func PlayIndoPakistaniWar(s *State, player Aff) {
@@ -150,44 +281,95 @@ func PlayIndoPakistaniWar(s *State, player Aff) {
 	   die roll of 4-6, the player receives 2 VP and replaces all the opponent’s
 	   Influence in the target country with their Influence. The player adds 2 to
 	   its Military Operations Track.  */
+	choice := s.Solicit(player, "Choose who gets invaded",
+		[]string{"india", "pakistan"})
+	var c *Country
+	Unmarshal(choice, c)
+	s.MilOps[SOV] += 2
+	roll := SelectRoll(s)
+	mod := c.NumControlledNeighbors(player.Opp())
+	if (roll - mod) > 3 {
+		s.GainVP(player, 2)
+		c.Inf[player] += c.Inf[player.Opp()]
+		c.Inf[player.Opp()] = 0
+	}
 }
 
 func PlayContainment(s *State, player Aff) {
 	/* All Operations cards played by the US, for the remainder of this turn,
 	   receive +1 to their Operations value (to a maximum of 4 Operations per
 	   card).  */
+	// XXX turn-duration events #14
+	s.Events[Containment] = player
 }
 
 func PlayCIACreated(s *State, player Aff) {
 	/* The USSR reveals their hand of cards for this turn. The US may use the
 	   Operations value of this card to conduct Operations.  */
+	ShowHand(s, SOV, USA)
+	ConductOps(s, player, PseudoCard(1))
 }
 
 func PlayUSJapanMutualDefensePact(s *State, player Aff) {
 	/* The US adds sufficient Influence to Japan for Control. The USSR cannot
 	   make Coup Attempts or Realignment rolls against Japan.  */
+	japan := s.Countries[Japan]
+	toControl := japan.Stability + japan.Inf[SOV]
+	japan.Inf[USA] = Max(japan.Inf[USA], toControl)
+	s.Events[USJapanMutualDefensePact] = player
 }
 
 func PlaySuezCrisis(s *State, player Aff) {
 	/* Remove a total of 4 US Influence from France, the United Kingdom and
 	   Israel (removing no more than 2 Influence per country).  */
+	franceIsraelOrUK := func(c *Country) error {
+		switch c.Id {
+		case France, Israel, UK:
+			return nil
+		default:
+			return errors.New("Choose only France, UK, Israel")
+		}
+	}
+	cs := SelectInfluenceForce(s, player, func() ([]*Country, error) {
+		return SelectNInfluenceCheck(s, player,
+			"Remove 4 from France, UK, Israel", 4,
+			MaxPerCountry(2), franceIsraelOrUK)
+	})
+	RemoveInfluence(s, USA, cs)
 }
 
 func PlayEastEuropeanUnrest(s *State, player Aff) {
 	/* Early or Mid War: Remove 1 USSR Influence from 3 countries in Eastern
 	   Europe. Late War: Remove 2 USSR Influence from 3 countries in Eastern
 	   Europe.  */
+	cs := SelectInfluenceForce(s, player, func() ([]*Country, error) {
+		return SelectNInfluenceCheck(s, player,
+			"Choose 3 countries in E Europe", 3,
+			MaxPerCountry(1), InRegion(EastEurope))
+	})
+	RemoveInfluence(s, SOV, cs)
+	if s.Era() == Late {
+		RemoveInfluence(s, SOV, cs)
+	}
 }
 
 func PlayDecolonization(s *State, player Aff) {
 	/* Add 1 USSR Influence to each of any 4 countries in Africa and/or Southeast
 	   Asia.  */
+	cs := SelectInfluenceForce(s, player, func() ([]*Country, error) {
+		return SelectNInfluenceCheck(s, player,
+			"Choose 4 countries in Africa or SE Asia", 4,
+			MaxPerCountry(1), InRegion(Africa, SoutheastAsia))
+	})
+	PlaceInfluence(s, SOV, cs)
 }
 
 func PlayRedScarePurge(s *State, player Aff) {
 	/* All Operations cards played by the opponent, for the remainder of this
 	   turn, receive -1 to their Operations value (to a minimum value of 1
 	   Operations point).  */
+	// XXX turn-duration events #14
+	s.Events[RedScarePurge] = player
 }
 
 func PlayUNIntervention(s *State, player Aff) {
@@ -195,17 +377,43 @@ func PlayUNIntervention(s *State, player Aff) {
 	   associated Event. The opponent’s associated Event is canceled but you may
 	   use the Operations value of the opponent’s card to conduct Operations.
 	   This Event cannot be played during the Headline Phase.  */
+	// XXX: opponent's event
+	card := SelectCard(s, player)
+	ConductOps(s, player, card)
+	s.Discard.Push(card)
 }
 
 func PlayDeStalinization(s *State, player Aff) {
 	/* The USSR may reallocate up to a total of 4 Influence from one or more
 	   countries to any non-US controlled countries (adding no more than 2
 	   Influence per country).  */
+	removed := make(map[CountryId]int)
+	enoughSovInf := func(c *Country) error {
+		removed[c.Id] += 1
+		if removed[c.Id] > c.Inf[SOV] {
+			return fmt.Errorf("You only have %d influence in %s", c.Inf[SOV], c)
+		}
+		return nil
+	}
+	from := SelectInfluenceForce(s, player, func() ([]*Country, error) {
+		return SelectNInfluenceCheck(s, player,
+			"Choose 4 influence to relocate", 4,
+			enoughSovInf)
+	})
+	to := SelectInfluenceForce(s, player, func() ([]*Country, error) {
+		return SelectNInfluenceCheck(s, player,
+			"Relocate 4 influence to non-US controlled countries", 4,
+			MaxPerCountry(2), NotControlledBy(USA))
+	})
+	RemoveInfluence(s, SOV, from)
+	PlaceInfluence(s, SOV, to)
 }
 
 func PlayNuclearTestBan(s *State, player Aff) {
 	/* The player receives VP equal to the current DEFCON level minus 2 then
 	   improves the DEFCON level by 2.  */
+	s.GainVP(player, s.Defcon-2)
+	s.ImproveDefcon(2)
 }
 
 func PlayFormosanResolution(s *State, player Aff) {
@@ -213,6 +421,7 @@ func PlayFormosanResolution(s *State, player Aff) {
 	   Battleground country, for scoring purposes only, if Taiwan is US
 	   controlled when the Asia Scoring Card is played. This Event is cancelled
 	   after the US has played the “#6 – The China Card” card.  */
+	s.Events[FormosanResolution] = player
 }
 
 func PlayDefectors(s *State, player Aff) {
@@ -220,12 +429,29 @@ func PlayDefectors(s *State, player Aff) {
 	   USSR Headline Event (including a scoring card). The canceled card is
 	   placed into the discard pile. If this card is played by the USSR during
 	   its action round, the US gains 1 VP.  */
+	// XXX headline special case!
+	s.GainVP(USA, 1)
 }
 
 func PlayTheCambridgeFive(s *State, player Aff) {
 	/* The US reveals all scoring cards in their hand of cards. The USSR player
 	   may add 1 USSR Influence to a single Region named on one of the revealed
 	   scoring cards. This card can not be played as an Event during the Late War. */
+	scoringCards := []string{}
+	regions := []Region{}
+	for _, c := range s.Hands[USA].Cards {
+		if c.Scoring() {
+			scoringCards = append(scoringCards, c.Name)
+			regions = append(regions, c.ScoringRegion())
+		}
+	}
+	s.Message(player, fmt.Sprintf("%s scoring cards: %s\n", USA, strings.Join(scoringCards, ", ")))
+	cs := SelectInfluenceForce(s, player, func() ([]*Country, error) {
+		return SelectNInfluenceCheck(s, player,
+			"Place one influence in one of the regions", 1,
+			InRegion(regions...))
+	})
+	PlaceInfluence(s, SOV, cs)
 }
 
 func PlaySpecialRelationship(s *State, player Aff) {
@@ -233,6 +459,32 @@ func PlaySpecialRelationship(s *State, player Aff) {
 	   is US-controlled but NATO is not in effect. Add 2 US Influence to a single
 	   country in Western Europe, and the US gains 2 VP, if the U.K. is
 	   US-controlled and NATO is in effect. */
+	ukControlled := s.Countries[UK].Controlled() == USA
+	switch {
+	case ukControlled && s.Effect(NATO):
+		cs := SelectInfluenceForce(s, player, func() ([]*Country, error) {
+			return SelectNInfluenceCheck(s, player,
+				"Choose a country in W Europe", 1,
+				InRegion(WestEurope))
+		})
+		s.Countries[cs[0].Id].Inf[USA] += 2
+		s.GainVP(USA, 2)
+	case ukControlled:
+		nextToUK := func(c *Country) error {
+			for _, adj := range c.AdjCountries {
+				if adj.Id == UK {
+					return nil
+				}
+			}
+			return fmt.Errorf("%s not adjacent to UK", c)
+		}
+		cs := SelectInfluenceForce(s, player, func() ([]*Country, error) {
+			return SelectNInfluenceCheck(s, player,
+				"Choose a country adjacent to the UK", 1,
+				nextToUK)
+		})
+		PlaceInfluence(s, USA, cs)
+	}
 }
 
 func PlayNORAD(s *State, player Aff) {
@@ -240,6 +492,7 @@ func PlayNORAD(s *State, player Aff) {
 	   end of each Action Round, if Canada is US-controlled and the DEFCON level
 	   moved to 2 during that Action Round. This Event is canceled by the “#42 –
 	   Quagmire” Event. */
+	s.Events[NORAD] = player
 }
 
 /*
