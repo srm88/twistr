@@ -31,21 +31,19 @@ func Start(s *State) {
 	Deal(s)
 	// SOV chooses 6 influence in E europe
 	ShowHand(s, SOV, SOV)
-	il, err := SelectNInfluenceCheck(s, SOV, "6 influence in East Europe", 6,
-		InRegion(EastEurope))
-	for err != nil {
-		il, err = SelectNInfluenceCheck(s, SOV, err.Error(), 6,
+	il := SelectInfluenceForce(s, SOV, func() ([]*Country, error) {
+		return SelectNInfluenceCheck(s, SOV,
+			"6 influence in East Europe", 6,
 			InRegion(EastEurope))
-	}
+	})
 	PlaceInfluence(s, SOV, il)
 	ShowHand(s, USA, USA)
 	// US chooses 7 influence in W europe
-	ilUSA, err := SelectNInfluenceCheck(s, USA, "7 influence in West Europe", 7,
-		InRegion(WestEurope))
-	for err != nil {
-		ilUSA, err = SelectNInfluenceCheck(s, USA, err.Error(), 7,
+	ilUSA := SelectInfluenceForce(s, USA, func() ([]*Country, error) {
+		return SelectNInfluenceCheck(s, USA,
+			"7 influence in West Europe", 7,
 			InRegion(WestEurope))
-	}
+	})
 	PlaceInfluence(s, USA, ilUSA)
 	// Temporary
 	Turn(s)
@@ -320,7 +318,8 @@ func SelectInfluenceOps(s *State, player Aff, card Card) (il []*Country, err err
 	return
 }
 
-// Repeat selectFn until successful.
+// Repeat selectFn until the user's input is acceptible.
+// This should be reconsidered once we support log-replay and log-writing.
 func SelectInfluenceForce(s *State, player Aff, selectFn func() ([]*Country, error)) []*Country {
 	var cs []*Country
 	var err error
@@ -349,6 +348,8 @@ func RemoveInfluence(s *State, player Aff, il []*Country) {
 	}
 }
 
+// PseudoCard returns a card struct that can be used for events with text like
+// "then the player may conduct ops as if they played an N ops card"
 func PseudoCard(ops int) Card {
 	return Card{
 		Id:   FreeOps,
