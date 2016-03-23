@@ -42,6 +42,17 @@ func NewState(ui UI) *State {
 	}
 }
 
+func (s *State) ImproveDefcon(n int) {
+	s.Defcon = Min(s.Defcon+n, 5)
+}
+func (s *State) DegradeDefcon(n int) {
+	s.Defcon -= n
+	if s.Defcon < 2 {
+		// XXX writeme
+		panic("Thermonuclear war!")
+	}
+}
+
 func (s *State) Era() Era {
 	switch {
 	case s.Turn < 4:
