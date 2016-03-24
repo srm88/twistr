@@ -93,7 +93,7 @@ func Turn(s *State) {
 
 func Action(s *State) {
 	p := s.Phasing
-	card := SelectCard(s, p, cardBlacklist{})
+	card := SelectCard(s, p, nil)
 	// Safe to remove a card that isn't actually in the hand
 	s.Hands[p].Remove(card)
 	switch SelectPlay(s, p, card) {
