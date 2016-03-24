@@ -15,14 +15,14 @@ func Marshal(c interface{}) ([]byte, error) {
 	// returns the value.
 	cv := reflect.Indirect(reflect.ValueOf(c))
 	buf := new(bytes.Buffer)
+	var err error
 	if isLog(cv.Type()) {
-		if err := marshalLog(cv, buf); err != nil {
-			return nil, err
-		}
+		err := marshalLog(cv, buf)
 	} else {
-		if err := marshalValue(cv, buf); err != nil {
-			return nil, err
-		}
+		err = marshalValue(cv, buf)
+	}
+	if err != nil {
+		return nil, err
 	}
 	return buf.Bytes(), nil
 }
