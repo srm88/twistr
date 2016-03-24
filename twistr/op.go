@@ -54,9 +54,8 @@ func opsMod(s *State, player Aff, card Card, countries []*Country) (mod int) {
 }
 
 // Coup
-func coup(s *State, player Aff, card Card, roll int, target *Country) bool {
+func coup(s *State, player Aff, ops int, roll int, target *Country, free bool) bool {
 	bonus := coupBonus(s, player, target)
-	ops := card.Ops + opsMod(s, player, card, []*Country{target})
 	delta := roll + bonus + ops - (target.Stability * 2)
 	if delta <= 0 {
 		return false
@@ -66,12 +65,35 @@ func coup(s *State, player Aff, card Card, roll int, target *Country) bool {
 	gained := delta - removed
 	if target.Battleground {
 		// XXX: CubanMissileCrisis, NuclearSubs
-		s.Defcon -= 1
+		s.DegradeDefcon(1)
 	}
-	s.MilOps[player] += ops
+	if !free {
+		s.MilOps[player] += ops
+	}
 	target.Inf[player] += gained
 	target.Inf[player.Opp()] -= removed
 	return true
+}
+
+// A country cannot be coup'd if it lacks any of the opponent's influence.
+// Some permanent events also impose coup restrictions, e.g. NATO with Europe.
+func canCoup(s *State, player Aff, t *Country) bool {
+	switch {
+	case t.Inf[player.Opp()] < 1:
+		return false
+	case natoProtected(s, player, t):
+		return false
+	case s.Effect(USJapanMutualDefensePact) && t.Id == Japan && player == SOV:
+		return false
+	case s.Effect(TheReformer) && player == SOV && t.In(Europe):
+		return false
+	default:
+		return true
+	}
+}
+
+func natoProtected(s *State, player Aff, t *Country) bool {
+	return s.Effect(NATO) && player == SOV && t.In(Europe) && t.Controlled() == USA
 }
 
 func influenceCost(player Aff, target Country) int {
