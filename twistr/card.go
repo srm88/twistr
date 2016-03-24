@@ -13,6 +13,33 @@ func (c Card) String() string {
 	return c.Name
 }
 
+// Prevented returns whether the card's event is prevented from play. E.g.
+// "Tear Down this Wall" prevents play of Willy Brandt as an event.
+func (c Card) Prevented(s *State) bool {
+	switch {
+	case c.Id == WillyBrandt && s.Effect(TearDownThisWall):
+		return true
+	case c.Id == FlowerPower && s.Effect(AnEvilEmpire):
+		return true
+	case c.Id == ArabIsraeliWar && s.Effect(CampDavidAccords):
+		return true
+	case c.Id == SocialistGovernments && s.Effect(TheIronLady):
+		return true
+	case c.Id == OPEC && s.Effect(NorthSeaOil):
+		return true
+	case c.Id == MuslimRevolution && s.Effect(AWACSSaleToSaudis):
+		return true
+	case c.Id == NATO && !(s.Effect(MarshallPlan) || s.Effect(WarsawPactFormed)):
+		return true
+	case c.Id == Solidarity && !s.Effect(JohnPaulIIElectedPope):
+		return true
+	case c.Id == TheCambridgeFive && s.Era() == Late:
+		return true
+	default:
+		return false
+	}
+}
+
 type Deck struct {
 	Cards []Card
 }

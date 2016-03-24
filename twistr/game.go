@@ -29,7 +29,6 @@ func Start(s *State) {
 	s.Deck.Reorder(dsl.Cards)
 	// Deal out players' hands
 	Deal(s)
-	// China card handled in NewState
 	// SOV chooses 6 influence in E europe
 	ShowHand(s, SOV, SOV)
 	il, err := SelectNInfluenceCheck(s, SOV, "6 influence in East Europe", 6,
@@ -48,6 +47,8 @@ func Start(s *State) {
 			InRegion(WestEurope))
 	}
 	PlaceInfluence(s, USA, ilUSA)
+	// Temporary
+	Turn(s)
 }
 
 func ShowHand(s *State, whose, to Aff) {
@@ -71,6 +72,144 @@ func SelectCard(s *State, player Aff) *CardLog {
 	cl := &CardLog{}
 	GetInput(s, player, cl, "Choose a card", choices...)
 	return cl
+}
+
+func Turn(s *State) {
+	// Stub: awaiting implementation in issue#13
+	MessageBoth(s, fmt.Sprintf("TURN %d", s.Turn))
+	s.Phasing = SOV
+	Action(s)
+	s.Phasing = USA
+	Action(s)
+	s.Turn++
+}
+
+func Action(s *State) {
+	p := s.Phasing
+	card := SelectCard(s, p).Card
+	// Safe to remove a card that isn't actually in the hand
+	s.Hands[p].Remove(card)
+	switch SelectPlay(s, p, card).Kind {
+	case SPACE:
+		PlaySpace(s, p, card)
+	case OPS:
+		PlayOps(s, p, card)
+	case EVENT:
+		PlayEvent(s, p, card)
+	}
+	if card.Id == TheChinaCard {
+		s.ChinaCardPlayed()
+	}
+}
+
+func PlaySpace(s *State, player Aff, card Card) {
+	box, _ := nextSRBox(s, player)
+	roll := SelectSpaceRoll(s).Roll
+	MessageBoth(s, fmt.Sprintf("%s plays %s for the space race.", player, card))
+	if roll <= box.MaxRoll {
+		box.Enter(s, player)
+		MessageBoth(s, fmt.Sprintf("%s rolls %d. Space race attempt success!", player, roll))
+	} else {
+		MessageBoth(s, fmt.Sprintf("%s rolls %d. Space race attempt fails!", player, roll))
+	}
+	s.Discard.Push(card)
+}
+
+func SelectSpaceRoll(s *State) *SpaceLog {
+	// XXX: replay-log
+	return &SpaceLog{Roll: Roll()}
+}
+
+func PlayOps(s *State, player Aff, card Card) {
+	MessageBoth(s, fmt.Sprintf("%s plays %s for operations", player, card))
+	opp := player.Opp()
+	if card.Aff == opp {
+		if player == SelectFirst(s, player).First {
+			MessageBoth(s, fmt.Sprintf("%s will conduct operations first", player))
+			ConductOps(s, player, card)
+			PlayEvent(s, opp, card)
+		} else {
+			MessageBoth(s, fmt.Sprintf("%s will implement the event first", opp))
+			PlayEvent(s, opp, card)
+			ConductOps(s, player, card)
+		}
+	} else {
+		ConductOps(s, player, card)
+		if card.Id != TheChinaCard {
+			s.Discard.Push(card)
+		}
+	}
+}
+
+func ConductOps(s *State, player Aff, card Card) {
+	switch SelectOps(s, player, card).Kind {
+	case COUP:
+		panic("Not implemented")
+	case REALIGN:
+		panic("Not implemented")
+	case INFLUENCE:
+		panic("Not implemented")
+	}
+}
+
+func PlayEvent(s *State, player Aff, card Card) {
+	MessageBoth(s, fmt.Sprintf("%s implements %s", player, card))
+	switch {
+	case !card.Prevented(s) && card.Star:
+		s.Removed.Push(card)
+	default:
+		s.Discard.Push(card)
+	}
+	panic("Not implemented")
+}
+
+func SelectPlay(s *State, player Aff, card Card) *PlayLog {
+	pl := &PlayLog{}
+	canEvent, canSpace := true, true
+	// Scoring cards cannot be played for ops
+	canOps := card.Ops > 0
+	switch {
+	case card.Id == TheChinaCard:
+		canEvent = false
+	case card.Aff == player.Opp():
+		// It isn't clear from the rules that playing your opponent's card as
+		// an event is forbidden, but it is always a strictly worse move than
+		// playing it for ops, and the rules don't prevent you from flipping
+		// the table either ...
+		canEvent = false
+	case card.Prevented(s):
+		canEvent = false
+	}
+	ops := card.Ops + opsMod(s, player, card, nil)
+	if !CanAdvance(s, player, ops) {
+		canSpace = false
+	}
+	choices := []string{}
+	if canOps {
+		choices = append(choices, OPS.String())
+	}
+	if canEvent {
+		choices = append(choices, EVENT.String())
+	}
+	if canSpace {
+		choices = append(choices, SPACE.String())
+	}
+	GetInput(s, player, pl, fmt.Sprintf("Playing %s", card.Name), choices...)
+	return pl
+}
+
+func SelectOps(s *State, player Aff, card Card) *OpsLog {
+	ol := &OpsLog{}
+	GetInput(s, player, ol, fmt.Sprintf("Playing %s for ops", card.Name),
+		COUP.String(), REALIGN.String(), INFLUENCE.String())
+	return ol
+}
+
+func SelectFirst(s *State, player Aff) *FirstLog {
+	fl := &FirstLog{}
+	GetInput(s, player, fl, "Who will play first",
+		USA.String(), SOV.String())
+	return fl
 }
 
 type countryCheck func(*Country) error

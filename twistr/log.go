@@ -24,6 +24,10 @@ type CardLog struct {
 	Card Card
 }
 
+type PlayLog struct {
+	Kind PlayKind
+}
+
 type SpaceLog struct {
 	Roll int
 }
@@ -32,6 +36,6 @@ type OpsLog struct {
 	Kind OpsKind
 }
 
-type OpponentOpsLog struct {
+type FirstLog struct {
 	First Aff
 }
