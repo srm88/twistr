@@ -23,7 +23,7 @@ func Marshal(c interface{}) ([]byte, error) {
 	buf := new(bytes.Buffer)
 	var err error
 	if isLog(cv.Type()) {
-		err := marshalLog(cv, buf)
+		err = marshalLog(cv, buf)
 	} else {
 		err = marshalValue(cv, buf)
 	}
