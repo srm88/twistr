@@ -74,7 +74,7 @@ func SelectCard(s *State, player Aff) (c Card) {
 func SelectDiscarded(s *State, player Aff, bl cardBlacklist) (c Card) {
 	choices := []string{}
 	for _, c := range s.Discard.Cards {
-		if bl.Blacklisted(c) {
+		if bl.Blacklisted(c.Id) {
 			continue
 		}
 		choices = append(choices, c.Name)
