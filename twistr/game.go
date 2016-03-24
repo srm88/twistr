@@ -31,20 +31,20 @@ func Start(s *State) {
 	Deal(s)
 	// SOV chooses 6 influence in E europe
 	ShowHand(s, SOV, SOV)
-	il := SelectInfluenceForce(s, SOV, func() ([]*Country, error) {
+	cs := SelectInfluenceForce(s, SOV, func() ([]*Country, error) {
 		return SelectNInfluenceCheck(s, SOV,
 			"6 influence in East Europe", 6,
 			InRegion(EastEurope))
 	})
-	PlaceInfluence(s, SOV, il)
+	PlaceInfluence(s, SOV, cs)
 	ShowHand(s, USA, USA)
 	// US chooses 7 influence in W europe
-	ilUSA := SelectInfluenceForce(s, USA, func() ([]*Country, error) {
+	csUSA := SelectInfluenceForce(s, USA, func() ([]*Country, error) {
 		return SelectNInfluenceCheck(s, USA,
 			"7 influence in West Europe", 7,
 			InRegion(WestEurope))
 	})
-	PlaceInfluence(s, USA, ilUSA)
+	PlaceInfluence(s, USA, csUSA)
 	// Temporary
 	Turn(s)
 }
@@ -412,13 +412,13 @@ func MaxPerCountry(n int) countryCheck {
 
 // SelectNInfluenceCheck asks the player to choose a number of countries to
 // receive influence, and optional checks to perform on the chosen countries.
-func SelectNInfluenceCheck(s *State, player Aff, message string, n int, checks ...countryCheck) (il []*Country, err error) {
-	il = SelectInfluence(s, player, message)
-	if len(il) != n {
+func SelectNInfluenceCheck(s *State, player Aff, message string, n int, checks ...countryCheck) (cs []*Country, err error) {
+	cs = SelectInfluence(s, player, message)
+	if len(cs) != n {
 		err = fmt.Errorf("Select %d influence", n)
 		return
 	}
-	for _, placement := range il {
+	for _, placement := range cs {
 		for _, check := range checks {
 			if err = check(placement); err != nil {
 				return
@@ -428,20 +428,20 @@ func SelectNInfluenceCheck(s *State, player Aff, message string, n int, checks .
 	return
 }
 
-func SelectInfluenceOps(s *State, player Aff, card Card) (il []*Country, err error) {
+func SelectInfluenceOps(s *State, player Aff, card Card) (cs []*Country, err error) {
 	message := "Place influence"
-	il = SelectInfluence(s, player, message)
+	cs = SelectInfluence(s, player, message)
 	// Compute ops
-	ops := card.Ops + opsMod(s, player, card, il)
+	ops := card.Ops + opsMod(s, player, card, cs)
 	// Compute cost. Copy each country so that we can update its influence
 	// as we go. E.g. two ops are spent breaking control, then the next
 	// influence place costs one op.
 	cost := 0
 	workingCountries := make(map[CountryId]Country)
-	for _, c := range il {
+	for _, c := range cs {
 		workingCountries[c.Id] = *c
 	}
-	for _, c := range il {
+	for _, c := range cs {
 		cost += influenceCost(player, workingCountries[c.Id])
 		tmp := workingCountries[c.Id]
 		tmp.Inf[player] += 1
@@ -469,19 +469,19 @@ func SelectInfluenceForce(s *State, player Aff, selectFn func() ([]*Country, err
 	return cs
 }
 
-func SelectInfluence(s *State, player Aff, message string) (il []*Country) {
-	GetInput(s, player, &il, message)
+func SelectInfluence(s *State, player Aff, message string) (cs []*Country) {
+	GetInput(s, player, &cs, message)
 	return
 }
 
-func PlaceInfluence(s *State, player Aff, il []*Country) {
-	for _, c := range il {
+func PlaceInfluence(s *State, player Aff, cs []*Country) {
+	for _, c := range cs {
 		c.Inf[player] += 1
 	}
 }
 
-func RemoveInfluence(s *State, player Aff, il []*Country) {
-	for _, c := range il {
+func RemoveInfluence(s *State, player Aff, cs []*Country) {
+	for _, c := range cs {
 		c.Inf[player] -= 1
 	}
 }

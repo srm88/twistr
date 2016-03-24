@@ -10,6 +10,12 @@ import (
 	"strings"
 )
 
+// Logs must be referenced in this set, or we will not marshal them correctly.
+var logTypes map[string]bool = map[string]bool{
+	"CoupLog":    true,
+	"RealignLog": true,
+}
+
 func Marshal(c interface{}) ([]byte, error) {
 	// Indirect can always be used; if the value is not a pointer, it just
 	// returns the value.
