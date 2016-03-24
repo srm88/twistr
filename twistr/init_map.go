@@ -129,7 +129,7 @@ var countryTable = []struct {
 	{Norway, "Norway", 0, 0, 4, false, NEU, EUR},
 	{Denmark, "Denmark", 0, 0, 3, false, NEU, EUR},
 	{WGermany, "WGermany", 0, 0, 4, true, NEU, EUR},
-	{EGermany, "EGermany", 3, 0, 3, true, NEU, EUR},
+	{EGermany, "EGermany", 0, 3, 3, true, NEU, EUR},
 	{Italy, "Italy", 0, 0, 2, true, NEU, EUR},
 	{Austria, "Austria", 0, 0, 4, false, NEU, EUR},
 	{Sweden, "Sweden", 0, 0, 4, false, NEU, EUR},
