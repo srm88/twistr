@@ -54,8 +54,8 @@ var (
 			EGermany, Austria, Yugoslavia, Czechoslovakia, Poland, Hungary, Finland, Bulgaria, Romania,
 		},
 	}
-	SouthEastAsia Region = Region{
-		Name: "SouthEastAsia",
+	SoutheastAsia Region = Region{
+		Name: "SoutheastAsia",
 		Countries: []CountryId{
 			Burma, LaosCambodia, Vietnam, Thailand, Malaysia, Indonesia, Philippines,
 		},

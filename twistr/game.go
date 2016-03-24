@@ -31,21 +31,19 @@ func Start(s *State) {
 	Deal(s)
 	// SOV chooses 6 influence in E europe
 	ShowHand(s, SOV, SOV)
-	cs, err := SelectNInfluenceCheck(s, SOV, "6 influence in East Europe", 6,
-		InRegion(EastEurope))
-	for err != nil {
-		cs, err = SelectNInfluenceCheck(s, SOV, err.Error(), 6,
+	cs := SelectInfluenceForce(s, SOV, func() ([]*Country, error) {
+		return SelectNInfluenceCheck(s, SOV,
+			"6 influence in East Europe", 6,
 			InRegion(EastEurope))
-	}
+	})
 	PlaceInfluence(s, SOV, cs)
 	ShowHand(s, USA, USA)
 	// US chooses 7 influence in W europe
-	csUSA, err := SelectNInfluenceCheck(s, USA, "7 influence in West Europe", 7,
-		InRegion(WestEurope))
-	for err != nil {
-		csUSA, err = SelectNInfluenceCheck(s, USA, err.Error(), 7,
+	csUSA := SelectInfluenceForce(s, USA, func() ([]*Country, error) {
+		return SelectNInfluenceCheck(s, USA,
+			"7 influence in West Europe", 7,
 			InRegion(WestEurope))
-	}
+	})
 	PlaceInfluence(s, USA, csUSA)
 	// Temporary
 	Turn(s)
@@ -71,6 +69,11 @@ func SelectCard(s *State, player Aff) (c Card) {
 	}
 	GetInput(s, player, &c, "Choose a card", choices...)
 	return
+}
+
+func SelectRandomCard(s *State, player Aff) Card {
+	n := rng.Intn(len(s.Hands[player].Cards))
+	return s.Hands[player].Cards[n]
 }
 
 func Turn(s *State) {
@@ -103,7 +106,7 @@ func Action(s *State) {
 
 func PlaySpace(s *State, player Aff, card Card) {
 	box, _ := nextSRBox(s, player)
-	roll := SelectSpaceRoll(s)
+	roll := SelectRoll(s)
 	MessageBoth(s, fmt.Sprintf("%s plays %s for the space race.", player, card))
 	if roll <= box.MaxRoll {
 		box.Enter(s, player)
@@ -114,7 +117,7 @@ func PlaySpace(s *State, player Aff, card Card) {
 	s.Discard.Push(card)
 }
 
-func SelectSpaceRoll(s *State) int {
+func SelectRoll(s *State) int {
 	// XXX: replay-log
 	return Roll()
 }
@@ -143,23 +146,28 @@ func PlayOps(s *State, player Aff, card Card) {
 func ConductOps(s *State, player Aff, card Card) {
 	switch SelectOps(s, player, card) {
 	case COUP:
-		panic("Not implemented")
+		MessageBoth(s, "coup not implemented")
 	case REALIGN:
-		panic("Not implemented")
+		MessageBoth(s, "realign not implemented")
 	case INFLUENCE:
-		panic("Not implemented")
+		MessageBoth(s, "influence not implemented")
 	}
 }
 
 func PlayEvent(s *State, player Aff, card Card) {
 	MessageBoth(s, fmt.Sprintf("%s implements %s", player, card))
+	prevented := card.Prevented(s)
+	if !prevented {
+		card.Impl(s, player)
+	}
 	switch {
-	case !card.Prevented(s) && card.Star:
+	case !prevented && card.Star:
 		s.Removed.Push(card)
+		MessageBoth(s, fmt.Sprintf("%s removed", card))
 	default:
 		s.Discard.Push(card)
+		MessageBoth(s, fmt.Sprintf("%s to discard", card))
 	}
-	panic("Not implemented")
 }
 
 func SelectPlay(s *State, player Aff, card Card) (pk PlayKind) {
@@ -197,7 +205,13 @@ func SelectPlay(s *State, player Aff, card Card) (pk PlayKind) {
 }
 
 func SelectOps(s *State, player Aff, card Card) (o OpsKind) {
-	GetInput(s, player, &o, fmt.Sprintf("Playing %s for ops", card.Name),
+	var message string
+	if card.Id == FreeOps {
+		message = fmt.Sprintf("Playing a %d ops card", card.Ops)
+	} else {
+		message = fmt.Sprintf("Playing %s for ops", card.Name)
+	}
+	GetInput(s, player, &o, message,
 		COUP.String(), REALIGN.String(), INFLUENCE.String())
 	return
 }
@@ -224,6 +238,35 @@ func InRegion(regions ...Region) countryCheck {
 			rNames[i] = r.Name
 		}
 		return fmt.Errorf("%s not in %s", c.Name, strings.Join(rNames, " or "))
+	}
+}
+
+func ControlledBy(aff Aff) countryCheck {
+	return func(c *Country) error {
+		if c.Controlled() != aff {
+			return fmt.Errorf("%s is not %s-controlled", c, aff)
+		}
+		return nil
+	}
+}
+
+func NotControlledBy(aff Aff) countryCheck {
+	return func(c *Country) error {
+		if c.Controlled() == aff {
+			return fmt.Errorf("%s is %s-controlled", c, aff)
+		}
+		return nil
+	}
+}
+
+func MaxPerCountry(n int) countryCheck {
+	counts := make(map[CountryId]int)
+	return func(c *Country) error {
+		counts[c.Id] += 1
+		if counts[c.Id] > n {
+			return fmt.Errorf("Too much in %s", n, c.Name)
+		}
+		return nil
 	}
 }
 
@@ -273,6 +316,19 @@ func SelectInfluenceOps(s *State, player Aff, card Card) (cs []*Country, err err
 	return
 }
 
+// Repeat selectFn until the user's input is acceptible.
+// This should be reconsidered once we support log-replay and log-writing.
+func SelectInfluenceForce(s *State, player Aff, selectFn func() ([]*Country, error)) []*Country {
+	var cs []*Country
+	var err error
+	cs, err = selectFn()
+	for err != nil {
+		s.Message(player, err.Error())
+		cs, err = selectFn()
+	}
+	return cs
+}
+
 func SelectInfluence(s *State, player Aff, message string) (cs []*Country) {
 	GetInput(s, player, &cs, message)
 	return
@@ -282,4 +338,25 @@ func PlaceInfluence(s *State, player Aff, cs []*Country) {
 	for _, c := range cs {
 		c.Inf[player] += 1
 	}
+}
+
+func RemoveInfluence(s *State, player Aff, cs []*Country) {
+	for _, c := range cs {
+		c.Inf[player] -= 1
+	}
+}
+
+// PseudoCard returns a card struct that can be used for events with text like
+// "then the player may conduct ops as if they played an N ops card"
+func PseudoCard(ops int) Card {
+	return Card{
+		Id:   FreeOps,
+		Name: "-",
+		Aff:  NEU,
+		Ops:  ops,
+	}
+}
+
+func score(s *State, player Aff, region Region) {
+	// XXX writeme (#17)
 }

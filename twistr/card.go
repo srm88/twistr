@@ -7,10 +7,40 @@ type Card struct {
 	Name string
 	Text string
 	Star bool
+	Impl func(*State, Aff)
+}
+
+func (c Card) Equal(other Card) bool {
+	return c.Id == other.Id
 }
 
 func (c Card) String() string {
 	return c.Name
+}
+
+func (c Card) Scoring() bool {
+	return c.Ops == 0
+}
+
+func (c Card) ScoringRegion() Region {
+	switch c.Id {
+	case AsiaScoring:
+		return Asia
+	case EuropeScoring:
+		return Europe
+	case MiddleEastScoring:
+		return MiddleEast
+	case CentralAmericaScoring:
+		return CentralAmerica
+	case SouthAmericaScoring:
+		return SouthAmerica
+	case SoutheastAsiaScoring:
+		return SoutheastAsia
+	case AfricaScoring:
+		return Africa
+	default:
+		return Region{}
+	}
 }
 
 // Prevented returns whether the card's event is prevented from play. E.g.
@@ -77,7 +107,7 @@ func (d *Deck) Reorder(ordering []Card) {
 
 func (d *Deck) Remove(card Card) {
 	for i, c := range d.Cards {
-		if c == card {
+		if c.Equal(card) {
 			d.Cards = append(d.Cards[:i], d.Cards[i+1:]...)
 		}
 	}
