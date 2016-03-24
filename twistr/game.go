@@ -149,3 +149,9 @@ func PlaceInfluence(s *State, player Aff, il *InfluenceLog) {
 		c.Inf[player] += 1
 	}
 }
+
+func RemoveInfluence(s *State, player Aff, il *InfluenceLog) {
+	for _, c := range il.Countries {
+		c.Inf[player] = Max(0, c.Inf[player]-1)
+	}
+}
