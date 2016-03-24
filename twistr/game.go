@@ -58,24 +58,15 @@ func SelectShuffle(d *Deck) []Card {
 	return d.Shuffle()
 }
 
-func SelectCard(s *State, player Aff, blacklist ...CardId) (c Card) {
+func SelectCard(s *State, player Aff, cbl cardBlackList) (c Card) {
 	canPlayChina := s.ChinaCardPlayer == player && s.ChinaCardFaceUp
-	choices := make([]string, len(s.Hands[player].Cards))
-
-	isBlacklisted := func(c Card) bool {
-		for _, bl := range blacklist {
-			if c.Id == bl {
-				return true
-			}
-		}
-		return false
-	}
+	choices := []string{}
 
 	for i, c := range s.Hands[player].Cards {
-		if isBlacklisted(c) {
+		if cbl.BlackListed(c) {
 			continue
 		}
-		choices[i] = c.Name
+		choices = append(choices, c.Name)
 	}
 
 	if canPlayChina {
