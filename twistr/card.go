@@ -136,9 +136,9 @@ func CardBlacklist(blacklist ...CardId) cardBlacklist {
 	return blacklist
 }
 
-func (cb cardBlacklist) Blacklisted(c Card) bool {
+func (cb cardBlacklist) Blacklisted(cid CardId) bool {
 	for _, bad := range cb {
-		if bad == c.Id {
+		if bad == cid {
 			return true
 		}
 	}
