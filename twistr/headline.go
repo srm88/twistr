@@ -3,8 +3,8 @@ package twistr
 import "fmt"
 
 func Headline(s *State) {
-	usaHl := SelectCard(s, USA, TheChinaCard)
-	sovHl := SelectCard(s, SOV, TheChinaCard)
+	usaHl := SelectCard(s, USA, CardBlacklist(TheChinaCard))
+	sovHl := SelectCard(s, SOV, CardBlacklist(TheChinaCard))
 	// XXX: If space race show headline is in play, deal with that yo
 	MessageBoth(s, fmt.Sprintf("USA selects %s, and USSR selects %s", usaHl.Name, sovHl.Name))
 	// Check ops

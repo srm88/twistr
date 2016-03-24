@@ -58,12 +58,12 @@ func SelectShuffle(d *Deck) []Card {
 	return d.Shuffle()
 }
 
-func SelectCard(s *State, player Aff, cbl cardBlackList) (c Card) {
+func SelectCard(s *State, player Aff, cbl cardBlacklist) (c Card) {
 	canPlayChina := s.ChinaCardPlayer == player && s.ChinaCardFaceUp
 	choices := []string{}
 
-	for i, c := range s.Hands[player].Cards {
-		if cbl.BlackListed(c) {
+	for _, c := range s.Hands[player].Cards {
+		if cbl.Blacklisted(c) {
 			continue
 		}
 		choices = append(choices, c.Name)
@@ -93,7 +93,7 @@ func Turn(s *State) {
 
 func Action(s *State) {
 	p := s.Phasing
-	card := SelectCard(s, p)
+	card := SelectCard(s, p, cardBlacklist{})
 	// Safe to remove a card that isn't actually in the hand
 	s.Hands[p].Remove(card)
 	switch SelectPlay(s, p, card) {

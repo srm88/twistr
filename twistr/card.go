@@ -129,17 +129,18 @@ func (d *Deck) Names() []string {
 	}
 	return names
 }
+
 type cardBlacklist []CardId
 
 func CardBlacklist(blacklist ...CardId) cardBlacklist {
-       return blacklist
+	return blacklist
 }
 
 func (cb cardBlacklist) Blacklisted(c Card) bool {
-       for _, bad := range cb {
-               if bad == c.Id {
-                       return true
-               }
-       }
-       return false
+	for _, bad := range cb {
+		if bad == c.Id {
+			return true
+		}
+	}
+	return false
 }
