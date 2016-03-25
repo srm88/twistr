@@ -85,6 +85,8 @@ func (s *State) Effect(which CardId, player ...Aff) bool {
 
 // Cancel ends an event.
 func (s *State) Cancel(event CardId) {
+	// XXX: this would clobber NorthSeaOil, which registers both a turn-
+	// and permanent event.
 	delete(s.Events, event)
 	delete(s.TurnEvents, event)
 }

@@ -254,10 +254,9 @@ func PlayNATO(s *State, player Aff) {
 func PlayIndependentReds(s *State, player Aff) {
 	/* Add US Influence to either Yugoslavia, Romania, Bulgaria, Hungary, or
 	   Czechoslovakia so that it equals the USSR Influence in that country.  */
-	choice := s.Solicit(player, "Choose a country to match USSR influence",
-		[]string{"yugoslavia", "romania", "bulgaria", "hungary", "Czechoslovakia"})
-	var c *Country
-	Unmarshal(choice, c)
+	c := SelectCountry(s, player, "Choose a country to match USSR influence",
+		s.Countries[Yugoslavia], s.Countries[Romania], s.Countries[Bulgaria],
+		s.Countries[Hungary], s.Countries[Czechoslovakia])
 	c.Inf[USA] = Max(c.Inf[USA], c.Inf[SOV])
 }
 
@@ -281,10 +280,7 @@ func PlayIndoPakistaniWar(s *State, player Aff) {
 	   die roll of 4-6, the player receives 2 VP and replaces all the opponent’s
 	   Influence in the target country with their Influence. The player adds 2 to
 	   its Military Operations Track.  */
-	choice := s.Solicit(player, "Choose who gets invaded",
-		[]string{"india", "pakistan"})
-	var c *Country
-	Unmarshal(choice, c)
+	c := SelectCountry(s, player, "Choose who gets invaded", s.Countries[India], s.Countries[Pakistan])
 	s.MilOps[SOV] += 2
 	roll := SelectRoll(s)
 	mod := c.NumControlledNeighbors(player.Opp())
@@ -823,6 +819,8 @@ func PlayStarWars(s *State, player Aff) {
 func PlayNorthSeaOil(s *State, player Aff) {
 	/* The US may play 8 cards (in 8 action rounds) for this turn only. This
 	   Event prevents the “#61 – OPEC” card from being played as an Event. */
+	// Turn event handles the 8 action rounds, permanent event handles
+	// preventing OPEC
 }
 
 func PlayTheReformer(s *State, player Aff) {

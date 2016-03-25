@@ -75,6 +75,18 @@ func SelectCard(s *State, player Aff, cbl cardBlacklist) (c Card) {
 	return
 }
 
+func SelectDiscarded(s *State, player Aff, bl cardBlacklist) (c Card) {
+	choices := []string{}
+	for _, c := range s.Discard.Cards {
+		if bl.Blacklisted(c.Id) {
+			continue
+		}
+		choices = append(choices, c.Name)
+	}
+	GetInput(s, player, &c, "Choose a discarded card", choices...)
+	return
+}
+
 func SelectRandomCard(s *State, player Aff) Card {
 	n := rng.Intn(len(s.Hands[player].Cards))
 	return s.Hands[player].Cards[n]
@@ -147,8 +159,8 @@ func PlayOps(s *State, player Aff, card Card) {
 	}
 }
 
-func ConductOps(s *State, player Aff, card Card) {
-	switch SelectOps(s, player, card) {
+func ConductOps(s *State, player Aff, card Card, exclude ...OpsKind) {
+	switch SelectOps(s, player, card, exclude...) {
 	case COUP:
 		MessageBoth(s, "coup not implemented")
 	case REALIGN:
@@ -156,6 +168,23 @@ func ConductOps(s *State, player Aff, card Card) {
 	case INFLUENCE:
 		MessageBoth(s, "influence not implemented")
 	}
+}
+
+func DoFreeCoup(s *State, player Aff, card Card, allowedTargets []*Country) bool {
+	targets := []*Country{}
+	for _, t := range allowedTargets {
+		if canCoup(s, player, t) {
+			targets = append(targets, t)
+		}
+	}
+	if len(targets) == 0 {
+		// Awkward
+		return false
+	}
+	target := SelectCountry(s, player, "Free coup where?", targets...)
+	roll := SelectRoll(s)
+	ops := card.Ops + opsMod(s, player, card, []*Country{target})
+	return coup(s, player, ops, roll, target, true)
 }
 
 func PlayEvent(s *State, player Aff, card Card) {
@@ -208,15 +237,27 @@ func SelectPlay(s *State, player Aff, card Card) (pk PlayKind) {
 	return
 }
 
-func SelectOps(s *State, player Aff, card Card) (o OpsKind) {
+// We only support excluding 0 or 1 opskind. Excluding more than one means
+// there is only one remaining kind, so there isn't a choice.
+func SelectOps(s *State, player Aff, card Card, exclude ...OpsKind) (o OpsKind) {
 	var message string
 	if card.Id == FreeOps {
 		message = fmt.Sprintf("Playing a %d ops card", card.Ops)
 	} else {
 		message = fmt.Sprintf("Playing %s for ops", card.Name)
 	}
-	GetInput(s, player, &o, message,
-		COUP.String(), REALIGN.String(), INFLUENCE.String())
+	var choices []string
+	switch {
+	case len(exclude) == 0:
+		choices = []string{COUP.String(), REALIGN.String(), INFLUENCE.String()}
+	case exclude[0] == COUP:
+		choices = []string{REALIGN.String(), INFLUENCE.String()}
+	case exclude[0] == REALIGN:
+		choices = []string{COUP.String(), INFLUENCE.String()}
+	case exclude[0] == INFLUENCE:
+		choices = []string{COUP.String(), REALIGN.String()}
+	}
+	GetInput(s, player, &o, message, choices...)
 	return
 }
 
@@ -335,6 +376,15 @@ func SelectInfluenceForce(s *State, player Aff, selectFn func() ([]*Country, err
 
 func SelectInfluence(s *State, player Aff, message string) (cs []*Country) {
 	GetInput(s, player, &cs, message)
+	return
+}
+
+func SelectCountry(s *State, player Aff, message string, countries ...*Country) (c *Country) {
+	choices := make([]string, len(countries))
+	for i, cn := range countries {
+		choices[i] = cn.Name
+	}
+	GetInput(s, player, c, message, choices...)
 	return
 }
 
