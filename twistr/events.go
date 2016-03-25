@@ -43,6 +43,9 @@ func PlayFiveYearPlan(s *State, player Aff) {
 	   Event, the Event occurs immediately. If the card has a USSR associated Event
 	   or an Event applicable to both players, then the card must be discarded
 	   without triggering the Event.  */
+	if len(s.Hands[SOV].Cards) == 0 {
+		return
+	}
 	card := SelectRandomCard(s, SOV)
 	s.Hands[SOV].Remove(card)
 	if card.Aff == USA {
@@ -908,11 +911,25 @@ func PlayTerrorism(s *State, player Aff) {
 	/* The player’s opponent must randomly discard 1 card from their hand. If
 	   the “#82 – Iranian Hostage Crisis” Event has already been played, a US
 	   player (if applicable) must randomly discard 2 cards from their hand. */
+	opp := player.Opp()
+	if len(s.Hands[opp].Cards) == 0 {
+		return
+	}
+	card := SelectRandomCard(s, opp)
+	s.Hands[opp].Remove(card)
+	if opp == USA && s.Effect(IranianHostageCrisis) {
+		if len(s.Hands[opp].Cards) == 0 {
+			return
+		}
+		card := SelectRandomCard(s, opp)
+		s.Hands[opp].Remove(card)
+	}
 }
 
 func PlayIranContraScandal(s *State, player Aff) {
 	/* All US Realignment rolls, for the remainder of this turn, receive -1 to
 	   their die roll. */
+	s.TurnEvents[IranContraScandal] = player
 }
 
 func PlayChernobyl(s *State, player Aff) {
