@@ -442,6 +442,9 @@ func PlayTheCambridgeFive(s *State, player Aff) {
 		}
 	}
 	s.Message(player, fmt.Sprintf("%s scoring cards: %s\n", USA, strings.Join(scoringCards, ", ")))
+	if len(scoringCards) == 0 {
+		return
+	}
 	cs := SelectInfluenceForce(s, player, func() ([]*Country, error) {
 		return SelectNInfluenceCheck(s, player,
 			"Place one influence in one of the regions", 1,
