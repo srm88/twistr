@@ -88,7 +88,7 @@ func PlayBlockade(s *State, player Aff) {
 	choice := s.Solicit(USA, "Discard a card with >=3 Ops, or remove all influence from West Germany?", []string{"discard", "remove"})
 	switch choice {
 	case "discard":
-		card := SelectCard(s, USA)
+		card := SelectCard(s, USA, CardBlacklist(TheChinaCard), ExceedsOps(2))
 		s.Discard.Push(card)
 	case "remove":
 		s.Countries[WGermany].Inf[USA] = 0

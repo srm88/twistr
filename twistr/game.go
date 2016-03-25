@@ -61,6 +61,12 @@ func SelectShuffle(d *Deck) []Card {
 // Return whether the card is an acceptible choice.
 type cardFilter func(Card) bool
 
+func ExceedsOps(minOps int) cardFilter {
+	return func(c Card) bool {
+		return c.Ops > minOps
+	}
+}
+
 func passesFilters(c Card, filters []cardFilter) bool {
 	for _, filter := range filters {
 		if !filter(c) {
