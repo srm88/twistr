@@ -84,6 +84,7 @@ func SelectDiscarded(s *State, player Aff, bl cardBlacklist) (c Card) {
 		choices = append(choices, c.Name)
 	}
 	GetInput(s, player, &c, "Choose a discarded card", choices...)
+	return
 }
 
 func SelectRandomCard(s *State, player Aff) Card {
@@ -169,7 +170,7 @@ func ConductOps(s *State, player Aff, card Card, exclude ...OpsKind) {
 	}
 }
 
-func DoFreeCoup(s *State, player Aff, card Card, allowedTargets []*Countries) bool {
+func DoFreeCoup(s *State, player Aff, card Card, allowedTargets []*Country) bool {
 	targets := []*Country{}
 	for _, t := range allowedTargets {
 		if canCoup(s, player, t) {
@@ -178,7 +179,7 @@ func DoFreeCoup(s *State, player Aff, card Card, allowedTargets []*Countries) bo
 	}
 	if len(targets) == 0 {
 		// Awkward
-		return
+		return false
 	}
 	target := SelectCountry(s, player, "Free coup where?", targets...)
 	roll := SelectRoll(s)
@@ -379,11 +380,11 @@ func SelectInfluence(s *State, player Aff, message string) (cs []*Country) {
 }
 
 func SelectCountry(s *State, player Aff, message string, countries ...*Country) (c *Country) {
-	choices := make([]string{}, len(countries))
+	choices := make([]string, len(countries))
 	for i, cn := range countries {
 		choices[i] = cn.Name
 	}
-	GetInput(s, player, c, message, choices)
+	GetInput(s, player, c, message, choices...)
 	return
 }
 
