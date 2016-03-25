@@ -58,27 +58,45 @@ func SelectShuffle(d *Deck) []Card {
 	return d.Shuffle()
 }
 
-func SelectCard(s *State, player Aff, cbl cardBlacklist) (c Card) {
+// Return whether the card is an acceptible choice.
+type cardFilter func(Card) bool
+
+func ExceedsOps(minOps int) cardFilter {
+	return func(c Card) bool {
+		return c.Ops > minOps
+	}
+}
+
+func passesFilters(c Card, filters []cardFilter) bool {
+	for _, filter := range filters {
+		if !filter(c) {
+			return false
+		}
+	}
+	return true
+}
+
+func SelectCard(s *State, player Aff, filters ...cardFilter) (c Card) {
 	canPlayChina := s.ChinaCardPlayer == player && s.ChinaCardFaceUp
 	choices := []string{}
 	for _, c := range s.Hands[player].Cards {
-		if cbl.Blacklisted(c.Id) {
+		if !passesFilters(c, filters) {
 			continue
 		}
 		choices = append(choices, c.Name)
 	}
 
-	if canPlayChina && !cbl.Blacklisted(TheChinaCard) {
+	if canPlayChina && passesFilters(Cards[TheChinaCard], filters) {
 		choices = append(choices, Cards[TheChinaCard].Name)
 	}
 	GetInput(s, player, &c, "Choose a card", choices...)
 	return
 }
 
-func SelectDiscarded(s *State, player Aff, bl cardBlacklist) (c Card) {
+func SelectDiscarded(s *State, player Aff, filters ...cardFilter) (c Card) {
 	choices := []string{}
 	for _, c := range s.Discard.Cards {
-		if bl.Blacklisted(c.Id) {
+		if !passesFilters(c, filters) {
 			continue
 		}
 		choices = append(choices, c.Name)
@@ -104,7 +122,7 @@ func Turn(s *State) {
 
 func Action(s *State) {
 	p := s.Phasing
-	card := SelectCard(s, p, nil)
+	card := SelectCard(s, p)
 	// Safe to remove a card that isn't actually in the hand
 	s.Hands[p].Remove(card)
 	switch SelectPlay(s, p, card) {

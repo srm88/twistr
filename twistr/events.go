@@ -88,7 +88,7 @@ func PlayBlockade(s *State, player Aff) {
 	choice := s.Solicit(USA, "Discard a card with >=3 Ops, or remove all influence from West Germany?", []string{"discard", "remove"})
 	switch choice {
 	case "discard":
-		card := SelectCard(s, USA, nil)
+		card := SelectCard(s, USA, CardBlacklist(TheChinaCard), ExceedsOps(2))
 		s.Discard.Push(card)
 	case "remove":
 		s.Countries[WGermany].Inf[USA] = 0
@@ -374,7 +374,7 @@ func PlayUNIntervention(s *State, player Aff) {
 	   use the Operations value of the opponent’s card to conduct Operations.
 	   This Event cannot be played during the Headline Phase.  */
 	// XXX: opponent's event
-	card := SelectCard(s, player, nil)
+	card := SelectCard(s, player)
 	ConductOps(s, player, card)
 	s.Discard.Push(card)
 }
@@ -442,6 +442,9 @@ func PlayTheCambridgeFive(s *State, player Aff) {
 		}
 	}
 	s.Message(player, fmt.Sprintf("%s scoring cards: %s\n", USA, strings.Join(scoringCards, ", ")))
+	if len(scoringCards) == 0 {
+		return
+	}
 	cs := SelectInfluenceForce(s, player, func() ([]*Country, error) {
 		return SelectNInfluenceCheck(s, player,
 			"Place one influence in one of the regions", 1,

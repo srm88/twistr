@@ -130,17 +130,14 @@ func (d *Deck) Names() []string {
 	return names
 }
 
-type cardBlacklist []CardId
-
-func CardBlacklist(blacklist ...CardId) cardBlacklist {
-	return blacklist
-}
-
-func (cb cardBlacklist) Blacklisted(cid CardId) bool {
-	for _, bad := range cb {
-		if bad == cid {
-			return true
+// Create a cardFilter that rejects specific cards.
+func CardBlacklist(blacklist ...CardId) func(Card) bool {
+	return func(c Card) bool {
+		for _, bad := range blacklist {
+			if bad == c.Id {
+				return false
+			}
 		}
+		return true
 	}
-	return false
 }
