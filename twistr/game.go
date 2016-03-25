@@ -78,30 +78,25 @@ func passesFilters(c Card, filters []cardFilter) bool {
 
 func SelectCard(s *State, player Aff, filters ...cardFilter) (c Card) {
 	canPlayChina := s.ChinaCardPlayer == player && s.ChinaCardFaceUp
-	choices := []string{}
-	for _, c := range s.Hands[player].Cards {
-		if !passesFilters(c, filters) {
-			continue
-		}
-		choices = append(choices, c.Name)
-	}
-
-	if canPlayChina && passesFilters(Cards[TheChinaCard], filters) {
-		choices = append(choices, Cards[TheChinaCard].Name)
-	}
-	GetInput(s, player, &c, "Choose a card", choices...)
-	return
+	return selectCardFrom(s, player, s.Hands[player].Cards, canPlayChina, filters...)
 }
 
 func SelectDiscarded(s *State, player Aff, filters ...cardFilter) (c Card) {
+	return selectCardFrom(s, player, s.Discard.Cards, false, filters...)
+}
+
+func selectCardFrom(s *State, player Aff, from []Card, includeChina bool, filters ...cardFilter) (c Card) {
 	choices := []string{}
-	for _, c := range s.Discard.Cards {
+	for _, c := range from {
 		if !passesFilters(c, filters) {
 			continue
 		}
 		choices = append(choices, c.Name)
 	}
-	GetInput(s, player, &c, "Choose a discarded card", choices...)
+	if includeChina && passesFilters(Cards[TheChinaCard], filters) {
+		choices = append(choices, Cards[TheChinaCard].Name)
+	}
+	GetInput(s, player, &c, "Choose a card", choices...)
 	return
 }
 
@@ -333,6 +328,15 @@ func MaxPerCountry(n int) countryCheck {
 	}
 }
 
+func HasInfluence(aff Aff) countryCheck {
+	return func(c *Country) error {
+		if c.Inf[aff] == 0 {
+			return fmt.Errorf("%s has no %s influence", c.Name, aff)
+		}
+		return nil
+	}
+}
+
 // SelectNInfluenceCheck asks the player to choose a number of countries to
 // receive influence, and optional checks to perform on the chosen countries.
 func SelectNInfluenceCheck(s *State, player Aff, message string, n int, checks ...countryCheck) (cs []*Country, err error) {
@@ -403,6 +407,17 @@ func SelectCountry(s *State, player Aff, message string, countries ...*Country) 
 		choices[i] = cn.Name
 	}
 	GetInput(s, player, c, message, choices...)
+	return
+}
+
+func SelectRegion(s *State, player Aff, message string) (r Region) {
+	choices := make([]string, len(regionIdLookup))
+	i := 0
+	for name := range regionIdLookup {
+		choices[i] = name
+		i++
+	}
+	GetInput(s, player, &r, message, choices...)
 	return
 }
 

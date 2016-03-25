@@ -86,6 +86,11 @@ func marshalCard(field reflect.Value) string {
 	return strings.ToLower(card.FieldByName("Name").String())
 }
 
+func marshalRegion(field reflect.Value) string {
+	region := reflect.Indirect(field)
+	return strings.ToLower(region.FieldByName("Name").String())
+}
+
 func marshalValue(field reflect.Value, buf *bytes.Buffer) error {
 	switch valueKind(field.Type()) {
 	case "int":
@@ -100,6 +105,8 @@ func marshalValue(field reflect.Value, buf *bytes.Buffer) error {
 		buf.WriteString(strconv.Itoa(int(field.Int())))
 	case "opskind":
 		buf.WriteString(strconv.Itoa(int(field.Int())))
+	case "region":
+		buf.WriteString(marshalRegion(field))
 	default:
 		return fmt.Errorf("Unknown field '%s'", field.Type().Name())
 	}
@@ -226,6 +233,12 @@ func unmarshalWord(word string, v reflect.Value) (err error) {
 			return err
 		}
 		v.SetInt(int64(ok))
+	case "region":
+		var r Region
+		if r, err = lookupRegion(word); err != nil {
+			return err
+		}
+		v.Set(reflect.ValueOf(r))
 	}
 	return
 }
@@ -257,6 +270,8 @@ func valueKind(vtype reflect.Type) string {
 		return "playkind"
 	case "OpsKind":
 		return "opskind"
+	case "Region":
+		return "region"
 	default:
 		return "?"
 	}
