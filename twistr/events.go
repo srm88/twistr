@@ -504,6 +504,26 @@ func PlayBrushWar(s *State, player Aff) {
 	   country. On a modified die roll of 3-6, the player receives 1 VP and
 	   replaces all the opponent’s Influence in the target country with their
 	   Influence. The player adds 3 to its Military Operations Track. */
+    stabLTE := func(c *Country) error {
+        if c.Stability > 2 {
+            return fmt.Errorf("Country needs to have stability of 1 or 2")
+        }
+        return nil
+    }
+
+	cl := SelectInfluenceForce(s, player, func() ([]*Country, error) {
+		return SelectNInfluenceCheck(s, player, "1 country", 1,
+        stabLTE)
+    })
+    c := cl[0]
+	s.MilOps[player] += 3
+	roll := SelectRoll(s)
+	mod := c.NumControlledNeighbors(player.Opp())
+	if (roll - mod) > 2 {
+		s.GainVP(player, 1)
+		c.Inf[player] += c.Inf[player.Opp()]
+		c.Inf[player.Opp()] = 0
+	}
 }
 
 func PlayCentralAmericaScoring(s *State, player Aff) {
