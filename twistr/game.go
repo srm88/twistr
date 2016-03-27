@@ -89,7 +89,7 @@ func SelectCard(s *State, player Aff, filters ...cardFilter) (c Card) {
 	if canPlayChina && passesFilters(Cards[TheChinaCard], filters) {
 		choices = append(choices, Cards[TheChinaCard].Name)
 	}
-	GetInput(s, player, &c, "Choose a card", choices...)
+	GetOrLog(s, player, &c, "Choose a card", choices...)
 	return
 }
 
@@ -101,8 +101,16 @@ func SelectDiscarded(s *State, player Aff, filters ...cardFilter) (c Card) {
 		}
 		choices = append(choices, c.Name)
 	}
-	GetInput(s, player, &c, "Choose a discarded card", choices...)
+	GetOrLog(s, player, &c, "Choose a discarded card", choices...)
 	return
+}
+
+func GetOrLog(s *State, player Aff, thing interface{}, message string, choices ...string) {
+	if s.Aof.Next(thing) {
+		return
+	}
+	GetInput(s, player, thing, message, choices...)
+	s.Aof.Log(thing)
 }
 
 func SelectRandomCard(s *State, player Aff) Card {
@@ -251,7 +259,7 @@ func SelectPlay(s *State, player Aff, card Card) (pk PlayKind) {
 	if canSpace {
 		choices = append(choices, SPACE.String())
 	}
-	GetInput(s, player, &pk, fmt.Sprintf("Playing %s", card.Name), choices...)
+	GetOrLog(s, player, &pk, fmt.Sprintf("Playing %s", card.Name), choices...)
 	return
 }
 
@@ -275,12 +283,12 @@ func SelectOps(s *State, player Aff, card Card, exclude ...OpsKind) (o OpsKind) 
 	case exclude[0] == INFLUENCE:
 		choices = []string{COUP.String(), REALIGN.String()}
 	}
-	GetInput(s, player, &o, message, choices...)
+	GetOrLog(s, player, &o, message, choices...)
 	return
 }
 
 func SelectFirst(s *State, player Aff) (first Aff) {
-	GetInput(s, player, &first, "Who will play first",
+	GetOrLog(s, player, &first, "Who will play first",
 		USA.String(), SOV.String())
 	return
 }
@@ -393,7 +401,7 @@ func SelectInfluenceForce(s *State, player Aff, selectFn func() ([]*Country, err
 }
 
 func SelectInfluence(s *State, player Aff, message string) (cs []*Country) {
-	GetInput(s, player, &cs, message)
+	GetOrLog(s, player, &cs, message)
 	return
 }
 
@@ -402,7 +410,7 @@ func SelectCountry(s *State, player Aff, message string, countries ...*Country) 
 	for i, cn := range countries {
 		choices[i] = cn.Name
 	}
-	GetInput(s, player, c, message, choices...)
+	GetOrLog(s, player, c, message, choices...)
 	return
 }
 
