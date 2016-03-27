@@ -472,6 +472,14 @@ var cardIdLookup = map[string]CardId{
 	"awacssaletosaudis":         AWACSSaleToSaudis,
 }
 
+var cardNameLookup = map[CardId]string{}
+
+func init() {
+	for k, v := range cardIdLookup {
+		cardNameLookup[v] = k
+	}
+}
+
 var regionIdLookup = map[string]RegionId{
 	"centralamerica": CAM,
 	"southamerica":   SAM,

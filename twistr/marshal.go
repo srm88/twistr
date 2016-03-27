@@ -77,7 +77,7 @@ func marshalCountryPtr(field reflect.Value) string {
 
 func marshalCard(field reflect.Value) string {
 	card := reflect.Indirect(field)
-	return strings.ToLower(card.FieldByName("Name").String())
+	return cardNameLookup[CardId(card.FieldByName("Id").Int())]
 }
 
 func marshalValue(field reflect.Value, buf *bytes.Buffer) error {
