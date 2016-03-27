@@ -85,6 +85,8 @@ func marshalValue(field reflect.Value, buf *bytes.Buffer) error {
 		return marshalSlice(field, buf)
 	}
 	switch valueKind(field.Type()) {
+	case "string":
+		buf.WriteString(field.String())
 	case "int":
 		buf.WriteString(strconv.Itoa(int(field.Int())))
 	case "country":
@@ -94,9 +96,9 @@ func marshalValue(field reflect.Value, buf *bytes.Buffer) error {
 	case "aff":
 		buf.WriteString(strings.ToLower(Aff(field.Int()).String()))
 	case "playkind":
-		buf.WriteString(strconv.Itoa(int(field.Int())))
+		buf.WriteString(strings.ToLower(PlayKind(field.Int()).String()))
 	case "opskind":
-		buf.WriteString(strconv.Itoa(int(field.Int())))
+		buf.WriteString(strings.ToLower(OpsKind(field.Int()).String()))
 	default:
 		return fmt.Errorf("Unknown field '%s'", field.Type().Name())
 	}
@@ -182,11 +184,12 @@ func unmarshalValue(scanner *bufio.Scanner, v reflect.Value) (err error) {
 		}
 	}
 	return
-
 }
 
 func unmarshalWord(word string, v reflect.Value) (err error) {
 	switch valueKind(v.Type()) {
+	case "string":
+		v.SetString(word)
 	case "int":
 		var num int
 		if num, err = strconv.Atoi(word); err != nil {

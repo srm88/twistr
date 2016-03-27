@@ -85,7 +85,7 @@ func PlayVietnamRevolts(s *State, player Aff) {
 func PlayBlockade(s *State, player Aff) {
 	/* Unless the US immediately discards a card with an Operations value of 3 or
 	   more, remove all US Influence from West Germany.  */
-	choice := s.Solicit(USA, "Discard a card with >=3 Ops, or remove all influence from West Germany?", []string{"discard", "remove"})
+	choice := SelectChoice(s, USA, "Discard a card with >=3 Ops, or remove all influence from West Germany?", "discard", "remove")
 	switch choice {
 	case "discard":
 		card := SelectCard(s, USA, CardBlacklist(TheChinaCard), ExceedsOps(2))
@@ -168,7 +168,7 @@ func PlayWarsawPactFormed(s *State, player Aff) {
 	   played as an Event.  */
 
 	s.Events[WarsawPactFormed] = player
-	choice := s.Solicit(player, "Remove US influence or add USSR influence?", []string{"remove", "add"})
+	choice := SelectChoice(s, player, "Remove US influence or add USSR influence?", "remove", "add")
 	switch choice {
 	case "remove":
 		cs := SelectInfluenceForce(s, player, func() ([]*Country, error) {
@@ -219,7 +219,7 @@ func PlayOlympicGames(s *State, player Aff) {
 	   roll receives 2 VP (reroll ties). If the opponent boycotts, degrade the
 	   DEFCON level by 1 and the sponsor may conduct Operations as if they
 	   played a 4 Ops card.  */
-	choice := s.Solicit(player.Opp(), "Participate or boycott Olympics?", []string{"participate", "boycott"})
+	choice := SelectChoice(s, player.Opp(), "Participate or boycott Olympics?", "participate", "boycott")
 	switch choice {
 	case "participate":
 		rolls := [2]int{0, 0}
