@@ -38,14 +38,8 @@ func marshalLog(v reflect.Value, buf *bytes.Buffer) error {
 	n := v.NumField()
 	for i := 0; i < n; i++ {
 		field = v.Field(i)
-		if field.Type().Kind() == reflect.Slice {
-			if err := marshalSlice(field, buf); err != nil {
-				return err
-			}
-		} else {
-			if err := marshalValue(field, buf); err != nil {
-				return err
-			}
+		if err := marshalValue(field, buf); err != nil {
+			return err
 		}
 		if i < (n - 1) {
 			buf.WriteString(" ")
@@ -87,6 +81,9 @@ func marshalCard(field reflect.Value) string {
 }
 
 func marshalValue(field reflect.Value, buf *bytes.Buffer) error {
+	if field.Type().Kind() == reflect.Slice {
+		return marshalSlice(field, buf)
+	}
 	switch valueKind(field.Type()) {
 	case "int":
 		buf.WriteString(strconv.Itoa(int(field.Int())))
