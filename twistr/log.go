@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"io"
 	"log"
+	"os"
 )
 
 type CoupLog struct {
@@ -19,19 +20,45 @@ type RealignLog struct {
 
 type Aof struct {
 	*bufio.Scanner
-	io.Writer
+	in io.ReadCloser
+	io.WriteCloser
 	done bool
 }
 
-func NewAof(r io.Reader, w io.Writer) *Aof {
+func OpenAof(path string) (*Aof, error) {
+	in, err := os.Open(path)
+	if err != nil {
+		if !os.IsNotExist(err) {
+			return nil, err
+		}
+		in, err = os.OpenFile(path, os.O_CREATE|os.O_RDONLY, 0666)
+		if err != nil {
+			return nil, err
+		}
+	}
+	out, err2 := os.OpenFile(path, os.O_WRONLY|os.O_APPEND, 0666)
+	if err2 != nil {
+		in.Close()
+		return nil, err2
+	}
+	return NewAof(in, out), nil
+}
+
+func NewAof(r io.ReadCloser, w io.WriteCloser) *Aof {
 	return &Aof{
-		Scanner: bufio.NewScanner(r),
-		Writer:  w,
-		done:    false,
+		Scanner:     bufio.NewScanner(r),
+		in:          r,
+		WriteCloser: w,
+		done:        false,
 	}
 }
 
-func (aof *Aof) Next(thing interface{}) bool {
+func (aof *Aof) Close() {
+	aof.in.Close()
+	aof.Close()
+}
+
+func (aof *Aof) ReadInto(thing interface{}) bool {
 	if aof.done || !aof.Scan() {
 		aof.done = true
 		return false

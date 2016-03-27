@@ -106,7 +106,7 @@ func SelectDiscarded(s *State, player Aff, filters ...cardFilter) (c Card) {
 }
 
 func GetOrLog(s *State, player Aff, thing interface{}, message string, choices ...string) {
-	if s.Aof.Next(thing) {
+	if s.Aof.ReadInto(thing) {
 		return
 	}
 	GetInput(s, player, thing, message, choices...)

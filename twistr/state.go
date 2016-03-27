@@ -1,7 +1,5 @@
 package twistr
 
-import "io"
-
 type State struct {
 	UI
 	Aof             *Aof
@@ -24,10 +22,14 @@ type State struct {
 	ChinaCardFaceUp bool
 }
 
-func NewState(ui UI, r io.Reader, w io.Writer) *State {
-	return &State{
+func NewState(ui UI, aofPath string) (*State, error) {
+	aof, err := OpenAof(aofPath)
+	if err != nil {
+		return nil, err
+	}
+	s := &State{
 		UI:              ui,
-		Aof:             NewAof(r, w),
+		Aof:             aof,
 		VP:              0,
 		Defcon:          5,
 		MilOps:          [2]int{0, 0},
@@ -46,6 +48,7 @@ func NewState(ui UI, r io.Reader, w io.Writer) *State {
 		ChinaCardPlayer: SOV,
 		ChinaCardFaceUp: true,
 	}
+	return s, nil
 }
 
 func (s *State) ImproveDefcon(n int) {
