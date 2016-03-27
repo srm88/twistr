@@ -1,5 +1,7 @@
 package twistr
 
+import "strings"
+
 // Shortcut. USA = 0 and SOV = 1, so we can index into any [2] array with a
 // player constant.
 type Influence [2]int
@@ -17,6 +19,10 @@ type Country struct {
 
 func (c Country) String() string {
 	return c.Name
+}
+
+func (c Country) Ref() string {
+	return strings.ToLower(c.Name)
 }
 
 func (c Country) Controlled() Aff {
@@ -66,4 +72,8 @@ type Region struct {
 
 func (r Region) String() string {
 	return r.Name
+}
+
+func (r Region) Ref() string {
+	return strings.ToLower(r.Name)
 }

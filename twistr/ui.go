@@ -1,11 +1,29 @@
 package twistr
 
+import (
+	"fmt"
+)
+
 func GetInput(ui UI, player Aff, inp interface{}, message string, choices ...string) {
+	var err error
+	validChoice := func(in string) bool {
+		for _, choice := range choices {
+			if choice == in {
+				return true
+			}
+		}
+		return false
+	}
+retry:
 	inputStr := ui.Solicit(player, message, choices)
-	err := Unmarshal(inputStr, inp)
-	for err != nil {
-		inputStr = ui.Solicit(player, err.Error()+"\nTry again?", nil)
+	if !validChoice(inputStr) {
+		err = fmt.Errorf("'%s' is not a valid choice", inputStr)
+	} else {
 		err = Unmarshal(inputStr, inp)
+	}
+	if err != nil {
+		message = err.Error() + "\nTry again?"
+		goto retry
 	}
 }
 

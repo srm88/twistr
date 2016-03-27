@@ -83,11 +83,11 @@ func SelectCard(s *State, player Aff, filters ...cardFilter) (c Card) {
 		if !passesFilters(c, filters) {
 			continue
 		}
-		choices = append(choices, c.Name)
+		choices = append(choices, c.Ref())
 	}
 
 	if canPlayChina && passesFilters(Cards[TheChinaCard], filters) {
-		choices = append(choices, Cards[TheChinaCard].Name)
+		choices = append(choices, Cards[TheChinaCard].Ref())
 	}
 	GetOrLog(s, player, &c, "Choose a card", choices...)
 	return
@@ -99,7 +99,7 @@ func SelectDiscarded(s *State, player Aff, filters ...cardFilter) (c Card) {
 		if !passesFilters(c, filters) {
 			continue
 		}
-		choices = append(choices, c.Name)
+		choices = append(choices, c.Ref())
 	}
 	GetOrLog(s, player, &c, "Choose a discarded card", choices...)
 	return
@@ -256,13 +256,13 @@ func SelectPlay(s *State, player Aff, card Card) (pk PlayKind) {
 	}
 	choices := []string{}
 	if canOps {
-		choices = append(choices, OPS.String())
+		choices = append(choices, OPS.Ref())
 	}
 	if canEvent {
-		choices = append(choices, EVENT.String())
+		choices = append(choices, EVENT.Ref())
 	}
 	if canSpace {
-		choices = append(choices, SPACE.String())
+		choices = append(choices, SPACE.Ref())
 	}
 	GetOrLog(s, player, &pk, fmt.Sprintf("Playing %s", card.Name), choices...)
 	return
@@ -280,13 +280,13 @@ func SelectOps(s *State, player Aff, card Card, exclude ...OpsKind) (o OpsKind) 
 	var choices []string
 	switch {
 	case len(exclude) == 0:
-		choices = []string{COUP.String(), REALIGN.String(), INFLUENCE.String()}
+		choices = []string{COUP.Ref(), REALIGN.Ref(), INFLUENCE.Ref()}
 	case exclude[0] == COUP:
-		choices = []string{REALIGN.String(), INFLUENCE.String()}
+		choices = []string{REALIGN.Ref(), INFLUENCE.Ref()}
 	case exclude[0] == REALIGN:
-		choices = []string{COUP.String(), INFLUENCE.String()}
+		choices = []string{COUP.Ref(), INFLUENCE.Ref()}
 	case exclude[0] == INFLUENCE:
-		choices = []string{COUP.String(), REALIGN.String()}
+		choices = []string{COUP.Ref(), REALIGN.Ref()}
 	}
 	GetOrLog(s, player, &o, message, choices...)
 	return
@@ -413,7 +413,7 @@ func SelectInfluence(s *State, player Aff, message string) (cs []*Country) {
 func SelectCountry(s *State, player Aff, message string, countries ...*Country) (c *Country) {
 	choices := make([]string, len(countries))
 	for i, cn := range countries {
-		choices[i] = cn.Name
+		choices[i] = cn.Ref()
 	}
 	GetOrLog(s, player, c, message, choices...)
 	return
