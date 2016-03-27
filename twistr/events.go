@@ -905,7 +905,11 @@ func PlayOrtegaElectedInNicaragua(s *State, player Aff) {
 	   Nicaragua. */
 	nicaragua := s.Countries[Nicaragua]
 	nicaragua.Inf[USA] = 0
-	DoFreeCoup(s, player, Cards[OrtegaElectedInNicaragua], nicaragua.AdjCountries)
+	adjToNicaragua := make([]CountryId, len(nicaragua.AdjCountries))
+	for i, c := range nicaragua.AdjCountries {
+		adjToNicaragua[i] = c.Id
+	}
+	DoFreeCoup(s, player, Cards[OrtegaElectedInNicaragua], adjToNicaragua)
 }
 
 func PlayTerrorism(s *State, player Aff) {
