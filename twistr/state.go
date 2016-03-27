@@ -1,7 +1,10 @@
 package twistr
 
+import "io"
+
 type State struct {
 	UI
+	Aof             *Aof
 	VP              int
 	Defcon          int
 	MilOps          [2]int
@@ -21,9 +24,10 @@ type State struct {
 	ChinaCardFaceUp bool
 }
 
-func NewState(ui UI) *State {
+func NewState(ui UI, r io.Reader, w io.Writer) *State {
 	return &State{
 		UI:              ui,
+		Aof:             NewAof(r, w),
 		VP:              0,
 		Defcon:          5,
 		MilOps:          [2]int{0, 0},
