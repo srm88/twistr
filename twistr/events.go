@@ -255,7 +255,8 @@ func PlayIndependentReds(s *State, player Aff) {
 	/* Add US Influence to either Yugoslavia, Romania, Bulgaria, Hungary, or
 	   Czechoslovakia so that it equals the USSR Influence in that country.  */
 	c := SelectCountry(s, player, "Choose a country to match USSR influence",
-		Yugoslavia, Romania, Bulgaria, Hungary, Czechoslovakia)
+		Yugoslavia, Romania, Bulgaria,
+		Hungary, Czechoslovakia)
 	c.Inf[USA] = Max(c.Inf[USA], c.Inf[SOV])
 }
 
@@ -793,6 +794,7 @@ func PlayOneSmallStep(s *State, player Aff) {
 func PlaySouthAmericaScoring(s *State, player Aff) {
 	/* Presence: 2; Domination: 5; Control: 6; +1 VP per controlled Battleground
 	   country in Region; MAY NOT BE HELD! */
+	score(s, player, SouthAmerica)
 }
 
 func PlayChe(s *State, player Aff) {
@@ -801,7 +803,14 @@ func PlayChe(s *State, player Aff) {
 	   Africa. The USSR may perform a second Coup Attempt, against a different
 	   non-Battleground country in Central America, South America or Africa, if the
 	   first Coup Attempt removed any US Influence from the target country. */
-}
+       // Free coup
+       targets := []CountryId{}
+       targets = append(targets, SouthAmerica.Countries...)
+       targets = append(targets, CentralAmerica.Countries...)
+       targets = append(targets, Africa.Countries...)
+       couped := DoFreeCoup(s, player, Cards[Che], targets)
+       fmt.Println("placeholder %s", couped)
+   }
 
 func PlayOurManInTehran(s *State, player Aff) {
 	/* If the US controls at least one Middle East country, the US player uses
