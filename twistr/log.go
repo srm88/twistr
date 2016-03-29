@@ -5,6 +5,7 @@ import (
 	"io"
 	"log"
 	"os"
+    "bytes"
 )
 
 type CoupLog struct {
@@ -25,6 +26,36 @@ type Aof struct {
 	done bool
 }
 
+type TxnLog struct {
+    *bytes.Buffer
+    wc io.WriteCloser
+}
+
+func NewTxnLog(wc io.WriteCloser) *TxnLog{
+    return &TxnLog{
+        Buffer: new(bytes.Buffer),
+        wc: wc,
+    }
+}
+
+func (log TxnLog) Close() error {
+    return log.wc.Close()
+}
+
+func (log *TxnLog) Flush() {
+    // Writes the contents of its internal buffer into the
+    // WriteCloser
+    log.WriteTo(log.wc)
+}
+
+func OpenTxnLog(path string) (*TxnLog, error) {
+	out, err := os.OpenFile(path, os.O_WRONLY|os.O_APPEND, 0666)
+    if err != nil {
+        return nil, err
+    }
+    return NewTxnLog(out), nil
+}
+
 func OpenAof(path string) (*Aof, error) {
 	in, err := os.Open(path)
 	if err != nil {
@@ -36,7 +67,7 @@ func OpenAof(path string) (*Aof, error) {
 			return nil, err
 		}
 	}
-	out, err2 := os.OpenFile(path, os.O_WRONLY|os.O_APPEND, 0666)
+	out, err2 := OpenTxnLog(path)
 	if err2 != nil {
 		in.Close()
 		return nil, err2
