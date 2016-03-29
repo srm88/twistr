@@ -51,6 +51,10 @@ func NewState(ui UI, aofPath string) (*State, error) {
 	return s, nil
 }
 
+func (s *State) Close() error {
+	return s.Aof.Close()
+}
+
 func (s *State) ImproveDefcon(n int) {
 	s.Defcon = Min(s.Defcon+n, 5)
 }

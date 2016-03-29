@@ -12,6 +12,7 @@ func main() {
 	if err != nil {
 		panic(fmt.Sprintf("Failed to start game: %s\n", err.Error()))
 	}
+	defer state.Close()
 	twistr.Start(state)
 	fmt.Println("Nice.")
 }

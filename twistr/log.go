@@ -53,9 +53,11 @@ func NewAof(r io.ReadCloser, w io.WriteCloser) *Aof {
 	}
 }
 
-func (aof *Aof) Close() {
-	aof.in.Close()
-	aof.Close()
+func (aof *Aof) Close() error {
+	if err := aof.in.Close(); err != nil {
+		return err
+	}
+	return aof.Close()
 }
 
 func (aof *Aof) ReadInto(thing interface{}) bool {
