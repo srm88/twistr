@@ -37,6 +37,7 @@ func Start(s *State) {
 			InRegion(EastEurope))
 	})
 	PlaceInfluence(s, SOV, cs)
+    s.Txn.Flush()
 	ShowHand(s, USA, USA)
 	// US chooses 7 influence in W europe
 	csUSA := SelectInfluenceForce(s, USA, func() ([]*Country, error) {
@@ -45,6 +46,7 @@ func Start(s *State) {
 			InRegion(WestEurope))
 	})
 	PlaceInfluence(s, USA, csUSA)
+    s.Txn.Flush()
 	// Temporary
 	Turn(s)
 }
@@ -149,6 +151,7 @@ func Action(s *State) {
 	if card.Id == TheChinaCard {
 		s.ChinaCardPlayed()
 	}
+    s.Txn.Flush()
 }
 
 func PlaySpace(s *State, player Aff, card Card) {
