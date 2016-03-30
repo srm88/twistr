@@ -201,10 +201,10 @@ func ConductOps(s *State, player Aff, card Card, exclude ...OpsKind) {
 	}
 }
 
-func DoFreeCoup(s *State, player Aff, card Card, allowedTargets []*Country) bool {
-	targets := []*Country{}
+func DoFreeCoup(s *State, player Aff, card Card, allowedTargets []CountryId) bool {
+	targets := []CountryId{}
 	for _, t := range allowedTargets {
-		if canCoup(s, player, t) {
+		if canCoup(s, player, s.Countries[t]) {
 			targets = append(targets, t)
 		}
 	}
@@ -340,7 +340,7 @@ func MaxPerCountry(n int) countryCheck {
 	return func(c *Country) error {
 		counts[c.Id] += 1
 		if counts[c.Id] > n {
-			return fmt.Errorf("Too much in %s", n, c.Name)
+			return fmt.Errorf("Too much in %s", c.Name)
 		}
 		return nil
 	}
@@ -410,12 +410,12 @@ func SelectInfluence(s *State, player Aff, message string) (cs []*Country) {
 	return
 }
 
-func SelectCountry(s *State, player Aff, message string, countries ...*Country) (c *Country) {
+func SelectCountry(s *State, player Aff, message string, countries ...CountryId) (c *Country) {
 	choices := make([]string, len(countries))
 	for i, cn := range countries {
 		choices[i] = cn.Ref()
 	}
-	GetOrLog(s, player, c, message, choices...)
+	GetOrLog(s, player, &c, message, choices...)
 	return
 }
 

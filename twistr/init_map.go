@@ -121,7 +121,7 @@ var countryTable = []struct {
 	{Paraguay, "Paraguay", 0, 0, 2, false, NEU, SAM},
 	{Uruguay, "Uruguay", 0, 0, 2, false, NEU, SAM},
 	{Brazil, "Brazil", 0, 0, 2, true, NEU, SAM},
-	{Canada, "Canada", 0, 0, 4, false, USA, EUR},
+	{Canada, "Canada", 2, 0, 4, false, USA, EUR},
 	{UK, "UK", 5, 0, 5, false, NEU, EUR},
 	{SpainPortugal, "SpainPortugal", 0, 0, 2, false, NEU, EUR},
 	{France, "France", 0, 0, 3, true, NEU, EUR},
