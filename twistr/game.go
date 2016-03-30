@@ -294,7 +294,7 @@ func SelectOps(s *State, player Aff, card Card, exclude ...OpsKind) (o OpsKind) 
 
 func SelectFirst(s *State, player Aff) (first Aff) {
 	GetOrLog(s, player, &first, "Who will play first",
-		USA.String(), SOV.String())
+		USA.Ref(), SOV.Ref())
 	return
 }
 
