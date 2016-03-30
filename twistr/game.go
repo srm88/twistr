@@ -183,10 +183,10 @@ func ConductOps(s *State, player Aff, card Card, exclude ...OpsKind) {
 	}
 }
 
-func DoFreeCoup(s *State, player Aff, card Card, allowedTargets []*Country) bool {
-	targets := []*Country{}
+func DoFreeCoup(s *State, player Aff, card Card, allowedTargets []CountryId) bool {
+	targets := []CountryId{}
 	for _, t := range allowedTargets {
-		if canCoup(s, player, t) {
+		if canCoup(s, player, s.Countries[t]) {
 			targets = append(targets, t)
 		}
 	}
@@ -401,10 +401,10 @@ func SelectInfluence(s *State, player Aff, message string) (cs []*Country) {
 	return
 }
 
-func SelectCountry(s *State, player Aff, message string, countries ...*Country) (c *Country) {
+func SelectCountry(s *State, player Aff, message string, countries ...CountryId) (c *Country) {
 	choices := make([]string, len(countries))
 	for i, cn := range countries {
-		choices[i] = cn.Name
+		choices[i] = s.Countries[cn].Name
 	}
 	GetInput(s, player, c, message, choices...)
 	return

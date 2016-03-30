@@ -259,8 +259,7 @@ func PlayIndependentReds(s *State, player Aff) {
 	/* Add US Influence to either Yugoslavia, Romania, Bulgaria, Hungary, or
 	   Czechoslovakia so that it equals the USSR Influence in that country.  */
 	c := SelectCountry(s, player, "Choose a country to match USSR influence",
-		s.Countries[Yugoslavia], s.Countries[Romania], s.Countries[Bulgaria],
-		s.Countries[Hungary], s.Countries[Czechoslovakia])
+		Yugoslavia, Romania, Bulgaria, Hungary, Czechoslovakia)
 	c.Inf[USA] = Max(c.Inf[USA], c.Inf[SOV])
 }
 
@@ -284,7 +283,7 @@ func PlayIndoPakistaniWar(s *State, player Aff) {
 	   die roll of 4-6, the player receives 2 VP and replaces all the opponent’s
 	   Influence in the target country with their Influence. The player adds 2 to
 	   its Military Operations Track.  */
-	c := SelectCountry(s, player, "Choose who gets invaded", s.Countries[India], s.Countries[Pakistan])
+	c := SelectCountry(s, player, "Choose who gets invaded", India, Pakistan)
 	s.MilOps[SOV] += 2
 	roll := SelectRoll(s)
 	mod := c.NumControlledNeighbors(player.Opp())
