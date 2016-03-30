@@ -327,7 +327,7 @@ func MaxPerCountry(n int) countryCheck {
 	return func(c *Country) error {
 		counts[c.Id] += 1
 		if counts[c.Id] > n {
-			return fmt.Errorf("Too much in %s", n, c.Name)
+			return fmt.Errorf("Too much in %s", c.Name)
 		}
 		return nil
 	}
@@ -402,7 +402,7 @@ func SelectCountry(s *State, player Aff, message string, countries ...CountryId)
 	for i, cn := range countries {
 		choices[i] = s.Countries[cn].Name
 	}
-	GetInput(s, player, c, message, choices...)
+	GetInput(s, player, &c, message, choices...)
 	return
 }
 
