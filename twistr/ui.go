@@ -7,6 +7,9 @@ import (
 func GetInput(ui UI, player Aff, inp interface{}, message string, choices ...string) {
 	var err error
 	validChoice := func(in string) bool {
+        if len(choices) == 0 {
+            return true
+        }
 		for _, choice := range choices {
 			if choice == in {
 				return true
@@ -16,7 +19,7 @@ func GetInput(ui UI, player Aff, inp interface{}, message string, choices ...str
 	}
 retry:
 	inputStr := ui.Solicit(player, message, choices)
-	if !validChoice(inputStr) {
+	if len(choices) > 0 && !validChoice(inputStr) {
 		err = fmt.Errorf("'%s' is not a valid choice", inputStr)
 	} else {
 		err = Unmarshal(inputStr, inp)
