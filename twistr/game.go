@@ -413,7 +413,7 @@ func SelectInfluence(s *State, player Aff, message string) (cs []*Country) {
 func SelectCountry(s *State, player Aff, message string, countries ...CountryId) (c *Country) {
 	choices := make([]string, len(countries))
 	for i, cn := range countries {
-		choices[i] = cn.Ref()
+		choices[i] = s.Countries[cn].Ref()
 	}
 	GetOrLog(s, player, &c, message, choices...)
 	return
