@@ -1,8 +1,13 @@
 package twistr
 
+import (
+	"os"
+)
+
 type State struct {
 	UI
 	Aof             *Aof
+	Txn             *TxnLog
 	VP              int
 	Defcon          int
 	MilOps          [2]int
@@ -23,13 +28,27 @@ type State struct {
 }
 
 func NewState(ui UI, aofPath string) (*State, error) {
-	aof, err := OpenAof(aofPath)
+	in, err := os.Open(aofPath)
+	if err != nil {
+		if !os.IsNotExist(err) {
+			return nil, err
+		}
+		in, err = os.OpenFile(aofPath, os.O_CREATE|os.O_RDONLY, 0666)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	txn, err := OpenTxnLog(aofPath)
 	if err != nil {
 		return nil, err
 	}
+
+	aof := NewAof(in, txn)
 	s := &State{
 		UI:              ui,
 		Aof:             aof,
+		Txn:             txn,
 		VP:              0,
 		Defcon:          5,
 		MilOps:          [2]int{0, 0},
