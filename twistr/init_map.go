@@ -54,8 +54,8 @@ var (
 			EGermany, Austria, Yugoslavia, Czechoslovakia, Poland, Hungary, Finland, Bulgaria, Romania,
 		},
 	}
-	SouthEastAsia Region = Region{
-		Name: "SouthEastAsia",
+	SoutheastAsia Region = Region{
+		Name: "SoutheastAsia",
 		Countries: []CountryId{
 			Burma, LaosCambodia, Vietnam, Thailand, Malaysia, Indonesia, Philippines,
 		},
@@ -121,7 +121,7 @@ var countryTable = []struct {
 	{Paraguay, "Paraguay", 0, 0, 2, false, NEU, SAM},
 	{Uruguay, "Uruguay", 0, 0, 2, false, NEU, SAM},
 	{Brazil, "Brazil", 0, 0, 2, true, NEU, SAM},
-	{Canada, "Canada", 0, 0, 4, false, USA, EUR},
+	{Canada, "Canada", 2, 0, 4, false, USA, EUR},
 	{UK, "UK", 5, 0, 5, false, NEU, EUR},
 	{SpainPortugal, "SpainPortugal", 0, 0, 2, false, NEU, EUR},
 	{France, "France", 0, 0, 3, true, NEU, EUR},
@@ -138,7 +138,7 @@ var countryTable = []struct {
 	{Poland, "Poland", 0, 0, 3, true, SOV, EUR},
 	{Greece, "Greece", 0, 0, 2, false, NEU, EUR},
 	{Hungary, "Hungary", 0, 0, 3, false, NEU, EUR},
-	{Finland, "Finland", 1, 0, 4, false, SOV, EUR},
+	{Finland, "Finland", 0, 1, 4, false, SOV, EUR},
 	{Romania, "Romania", 0, 0, 3, false, SOV, EUR},
 	{Bulgaria, "Bulgaria", 0, 0, 3, false, NEU, EUR},
 	{Turkey, "Turkey", 0, 0, 2, false, NEU, EUR},
@@ -165,8 +165,8 @@ var countryTable = []struct {
 	{Israel, "Israel", 1, 0, 4, true, NEU, MDE},
 	{Lebanon, "Lebanon", 0, 0, 1, false, NEU, MDE},
 	{Jordan, "Jordan", 0, 0, 2, false, NEU, MDE},
-	{Syria, "Syria", 1, 0, 2, false, NEU, MDE},
-	{Iraq, "Iraq", 1, 0, 3, true, NEU, MDE},
+	{Syria, "Syria", 0, 1, 2, false, NEU, MDE},
+	{Iraq, "Iraq", 0, 1, 3, true, NEU, MDE},
 	{SaudiArabia, "SaudiArabia", 0, 0, 3, true, NEU, MDE},
 	{GulfStates, "GulfStates", 0, 0, 3, false, NEU, MDE},
 	{Iran, "Iran", 1, 0, 2, true, NEU, MDE},
@@ -181,7 +181,7 @@ var countryTable = []struct {
 	{Indonesia, "Indonesia", 0, 0, 1, false, NEU, ASI},
 	{Australia, "Australia", 4, 0, 4, false, NEU, ASI},
 	{Taiwan, "Taiwan", 0, 0, 3, false, NEU, ASI},
-	{NKorea, "NKorea", 3, 0, 3, true, SOV, ASI},
+	{NKorea, "NKorea", 0, 3, 3, true, SOV, ASI},
 	{SKorea, "SKorea", 1, 0, 3, true, NEU, ASI},
 	{Philippines, "Philippines", 1, 0, 2, false, NEU, ASI},
 	{Japan, "Japan", 1, 0, 4, true, USA, ASI},

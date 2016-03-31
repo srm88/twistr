@@ -44,6 +44,18 @@ func NewState(ui UI) *State {
 	}
 }
 
+func (s *State) ImproveDefcon(n int) {
+	s.Defcon = Min(s.Defcon+n, 5)
+}
+
+func (s *State) DegradeDefcon(n int) {
+	s.Defcon -= n
+	if s.Defcon < 2 {
+		// XXX writeme
+		panic("Thermonuclear war!")
+	}
+}
+
 func (s *State) Era() Era {
 	switch {
 	case s.Turn < 4:
@@ -73,6 +85,8 @@ func (s *State) Effect(which CardId, player ...Aff) bool {
 
 // Cancel ends an event.
 func (s *State) Cancel(event CardId) {
+	// XXX: this would clobber NorthSeaOil, which registers both a turn-
+	// and permanent event.
 	delete(s.Events, event)
 	delete(s.TurnEvents, event)
 }
