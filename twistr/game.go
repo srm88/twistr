@@ -55,6 +55,14 @@ func ShowHand(s *State, whose, to Aff) {
 	s.Message(to, fmt.Sprintf("%s hand: %s\n", whose, strings.Join(s.Hands[whose].Names(), ", ")))
 }
 
+func ShowDiscard(s *State, to Aff) {
+    s.Message(to, fmt.Sprintf("Discard pile: %s\n", strings.Join(s.Discard.Names(), ", ")))
+}
+
+func ShowCard(s *State, c Card, to Aff) {
+    s.Message(to, fmt.Sprintf("Card: %s\n", c.Name))
+}
+
 func SelectShuffle(d *Deck) []Card {
 	// XXX: replay-log
 	return d.Shuffle()
