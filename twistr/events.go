@@ -605,16 +605,16 @@ func PlaySALTNegotiations(s *State, player Aff) {
 	s.TurnEvents[SALTNegotiations] = player
 	ShowDiscard(s, player)
 	choice := s.Solicit(player, "Choose a card to show to your opponent and add to your hand?", []string{"yes", "no"})
-    notScoring := func(c Card) bool {
-        return c.Ops != 0
-    }
+	notScoring := func(c Card) bool {
+		return c.Ops != 0
+	}
 	switch choice {
 	case "yes":
-        selected := SelectDiscarded(s, player, notScoring)
-        ShowCard(s, selected, player.Opp())
-        s.Hands[player].Push(selected)
+		selected := SelectDiscarded(s, player, notScoring)
+		ShowCard(s, selected, player.Opp())
+		s.Hands[player].Push(selected)
 	case "no":
-        return
+		return
 	}
 }
 
@@ -633,6 +633,39 @@ func PlaySummit(s *State, player Aff) {
 	   Region (Europe, Asia, etc.) they Dominate or Control. The player with the
 	   highest modified die roll receives 2 VP and may degrade or improve the
 	   DEFCON level by 1 (do not reroll ties). */
+	regions := []Region{CentralAmerica, SouthAmerica, Europe, MiddleEast, Africa, Asia}
+	playerRoll := SelectRoll(s)
+	oppRoll := SelectRoll(s)
+	for _, region := range regions {
+		sr := ScoreRegion(s, region)
+		if sr.Levels[player] == Domination || sr.Levels[player] == Control {
+			playerRoll++
+		}
+		if sr.Levels[player.Opp()] == Domination || sr.Levels[player.Opp()] == Control {
+			oppRoll++
+		}
+	}
+	if playerRoll == oppRoll {
+		return
+	}
+
+	var winner Aff
+	if playerRoll > oppRoll {
+		winner = player
+	} else {
+		winner = player.Opp()
+	}
+
+	s.GainVP(winner, 2)
+	choice := s.Solicit(winner, "Degrade or improve DEFCON by one level?", []string{"improve", "degrade", "leave it"})
+	select {
+	case "leave it":
+		return
+	case "improve":
+		s.ImproveDefcon(1)
+	case "degrade":
+		s.DegradeDefcon(1)
+	}
 }
 
 func PlayHowILearnedToStopWorrying(s *State, player Aff) {
