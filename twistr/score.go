@@ -1,7 +1,5 @@
 package twistr
 
-import "fmt"
-
 type ScoreLevel int
 
 const (
@@ -92,7 +90,6 @@ func ScoreRegion(s *State, r Region) ScoreResult {
 	allBattlegrounds := 0
 	for _, cid := range r.Countries {
 		c := s.Countries[cid]
-		fmt.Println(c)
 		if c.Battleground {
 			allBattlegrounds += 1
 		}
@@ -100,7 +97,6 @@ func ScoreRegion(s *State, r Region) ScoreResult {
 		if aff == NEU {
 			continue
 		}
-		fmt.Println(aff)
 		counts[aff] += 1
 		if c.Battleground {
 			result.Battlegrounds[aff] = append(result.Battlegrounds[aff], c)
@@ -126,6 +122,5 @@ func ScoreRegion(s *State, r Region) ScoreResult {
 			result.Levels[aff] = Presence
 		}
 	}
-	fmt.Println(counts)
 	return result
 }
