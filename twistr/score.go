@@ -105,22 +105,23 @@ func ScoreRegion(s *State, r Region) ScoreResult {
 			result.AdjSuper[aff] = append(result.AdjSuper[aff], c)
 		}
 	}
-	// Determine scoring levels. Goofy for-loop.
-	for aff := USA; aff < NEU; aff++ {
+	score := func(aff Aff) ScoreLevel {
 		opp := aff.Opp()
 		switch {
 		case counts[aff] == 0:
-			result.Levels[aff] = Nothing
+			return Nothing
 		case counts[aff] <= counts[opp]:
-			result.Levels[aff] = Presence
+			return Presence
 		case len(result.Battlegrounds[aff]) == allBattlegrounds:
-			result.Levels[aff] = Control
+			return Control
 		case len(result.Battlegrounds[aff]) > len(result.Battlegrounds[opp]) && counts[aff] > len(result.Battlegrounds[aff]):
-			result.Levels[aff] = Domination
+			return Domination
 		default:
 			// Case where you have more countries but fewer battlegrounds
-			result.Levels[aff] = Presence
+			return Presence
 		}
 	}
+	result.Levels[USA] = score(USA)
+	result.Levels[SOV] = score(SOV)
 	return result
 }
