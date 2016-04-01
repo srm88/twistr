@@ -3,8 +3,8 @@ package twistr
 import (
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
-    "strconv"
 )
 
 /*
@@ -659,7 +659,7 @@ func PlaySummit(s *State, player Aff) {
 
 	s.GainVP(winner, 2)
 	choice := s.Solicit(winner, "Degrade or improve DEFCON by one level?", []string{"improve", "degrade", "leave it"})
-	switch choice{
+	switch choice {
 	case "leave it":
 		return
 	case "improve":
@@ -673,14 +673,31 @@ func PlayHowILearnedToStopWorrying(s *State, player Aff) {
 	/* Set the DEFCON level to any level desired (1-5). The player adds 5 to its
 	   Military Operations Track. */
 	choice := s.Solicit(player, "Set DEFCON.", []string{"1", "2", "3", "4", "5"})
-    s.Defcon, _ = strconv.Atoi(choice)
-    s.MilOps[player] = 5
+	s.Defcon, _ = strconv.Atoi(choice)
+	s.MilOps[player] = 5
 }
 
 func PlayJunta(s *State, player Aff) {
 	/* Add 2 Influence to a single country in Central or South America. The
 	   player may make free Coup Attempts or Realignment rolls in either Central or
 	   South America using the Operations value of this card. */
+	c := SelectCountry(s, player, "Choose a country in Central or South America",
+		append(SouthAmerica.Countries, CentralAmerica.Countries...)...)
+	PlaceInfluence(s, player, []*Country{c})
+	choice := s.Solicit(player, "Do you want to coup, realign or do nothing in Central/South America?", []string{"coup, realign, nothing"})
+	switch choice {
+	case "nothing":
+		return
+	case "coup":
+		couped := DoFreeCoup(s, player, Cards[Che], append(SouthAmerica.Countries, CentralAmerica.Countries...))
+		fmt.Println("coup isn't implemented, but like, ya did it. ya couped %s", couped)
+	case "realign":
+		c := SelectCountry(s, player, "Choose a country in Central or South America to realign",
+			append(SouthAmerica.Countries, CentralAmerica.Countries...)...)
+		rollUSA := SelectRoll(s)
+		rollSOV := SelectRoll(s)
+		realign(s, c, rollUSA, rollSOV)
+	}
 }
 
 func PlayKitchenDebates(s *State, player Aff) {
