@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+    "strconv"
 )
 
 /*
@@ -658,7 +659,7 @@ func PlaySummit(s *State, player Aff) {
 
 	s.GainVP(winner, 2)
 	choice := s.Solicit(winner, "Degrade or improve DEFCON by one level?", []string{"improve", "degrade", "leave it"})
-	select {
+	switch choice{
 	case "leave it":
 		return
 	case "improve":
@@ -671,6 +672,9 @@ func PlaySummit(s *State, player Aff) {
 func PlayHowILearnedToStopWorrying(s *State, player Aff) {
 	/* Set the DEFCON level to any level desired (1-5). The player adds 5 to its
 	   Military Operations Track. */
+	choice := s.Solicit(player, "Set DEFCON.", []string{"1", "2", "3", "4", "5"})
+    s.Defcon, _ = strconv.Atoi(choice)
+    s.MilOps[player] = 5
 }
 
 func PlayJunta(s *State, player Aff) {
