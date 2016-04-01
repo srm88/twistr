@@ -704,6 +704,20 @@ func PlayKitchenDebates(s *State, player Aff) {
 	/* If the US controls more Battleground countries than the USSR, the US
 	   player uses this Event to poke their opponent in the chest and receive 2 VP!
 	*/
+    usaBG := 0
+    sovBG := 0
+    for _, c := range Countries {
+        if c.Battleground {
+            if c.Controlled() == SOV {
+                sovBG++
+            } else if c.Controlled() == USA {
+                usaBG++
+            }
+        }
+    }
+    if usaBG > sovBG {
+        s.GainVP(USA, 2)
+    }
 }
 
 func PlayMissileEnvy(s *State, player Aff) {
