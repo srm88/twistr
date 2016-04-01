@@ -8,7 +8,11 @@ import (
 // Temp:
 func main() {
 	ui := twistr.MakeTerminalUI()
-	state := twistr.NewState(ui)
+	state, err := twistr.NewState(ui, "/tmp/twistr.aof")
+	if err != nil {
+		panic(fmt.Sprintf("Failed to start game: %s\n", err.Error()))
+	}
+	defer state.Close()
 	twistr.Start(state)
 	fmt.Println("Nice.")
 }

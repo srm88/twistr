@@ -37,6 +37,7 @@ func Start(s *State) {
 			InRegion(EastEurope))
 	})
 	PlaceInfluence(s, SOV, cs)
+    s.Txn.Flush()
 	ShowHand(s, USA, USA)
 	// US chooses 7 influence in W europe
 	csUSA := SelectInfluenceForce(s, USA, func() ([]*Country, error) {
@@ -45,6 +46,7 @@ func Start(s *State) {
 			InRegion(WestEurope))
 	})
 	PlaceInfluence(s, USA, csUSA)
+    s.Txn.Flush()
 	// Temporary
 	Turn(s)
 }
@@ -83,13 +85,13 @@ func SelectCard(s *State, player Aff, filters ...cardFilter) (c Card) {
 		if !passesFilters(c, filters) {
 			continue
 		}
-		choices = append(choices, c.Name)
+		choices = append(choices, c.Ref())
 	}
 
 	if canPlayChina && passesFilters(Cards[TheChinaCard], filters) {
-		choices = append(choices, Cards[TheChinaCard].Name)
+		choices = append(choices, Cards[TheChinaCard].Ref())
 	}
-	GetInput(s, player, &c, "Choose a card", choices...)
+	GetOrLog(s, player, &c, "Choose a card", choices...)
 	return
 }
 
@@ -99,10 +101,23 @@ func SelectDiscarded(s *State, player Aff, filters ...cardFilter) (c Card) {
 		if !passesFilters(c, filters) {
 			continue
 		}
-		choices = append(choices, c.Name)
+		choices = append(choices, c.Ref())
 	}
-	GetInput(s, player, &c, "Choose a discarded card", choices...)
+	GetOrLog(s, player, &c, "Choose a discarded card", choices...)
 	return
+}
+
+func SelectChoice(s *State, player Aff, message string, choices ...string) (choice string) {
+	GetOrLog(s, player, &choice, message, choices...)
+	return
+}
+
+func GetOrLog(s *State, player Aff, thing interface{}, message string, choices ...string) {
+	if s.Aof.ReadInto(thing) {
+		return
+	}
+	GetInput(s, player, thing, message, choices...)
+	s.Aof.Log(thing)
 }
 
 func SelectRandomCard(s *State, player Aff) Card {
@@ -136,6 +151,7 @@ func Action(s *State) {
 	if card.Id == TheChinaCard {
 		s.ChinaCardPlayed()
 	}
+    s.Txn.Flush()
 }
 
 func PlaySpace(s *State, player Aff, card Card) {
@@ -243,15 +259,15 @@ func SelectPlay(s *State, player Aff, card Card) (pk PlayKind) {
 	}
 	choices := []string{}
 	if canOps {
-		choices = append(choices, OPS.String())
+		choices = append(choices, OPS.Ref())
 	}
 	if canEvent {
-		choices = append(choices, EVENT.String())
+		choices = append(choices, EVENT.Ref())
 	}
 	if canSpace {
-		choices = append(choices, SPACE.String())
+		choices = append(choices, SPACE.Ref())
 	}
-	GetInput(s, player, &pk, fmt.Sprintf("Playing %s", card.Name), choices...)
+	GetOrLog(s, player, &pk, fmt.Sprintf("Playing %s", card.Name), choices...)
 	return
 }
 
@@ -267,21 +283,21 @@ func SelectOps(s *State, player Aff, card Card, exclude ...OpsKind) (o OpsKind) 
 	var choices []string
 	switch {
 	case len(exclude) == 0:
-		choices = []string{COUP.String(), REALIGN.String(), INFLUENCE.String()}
+		choices = []string{COUP.Ref(), REALIGN.Ref(), INFLUENCE.Ref()}
 	case exclude[0] == COUP:
-		choices = []string{REALIGN.String(), INFLUENCE.String()}
+		choices = []string{REALIGN.Ref(), INFLUENCE.Ref()}
 	case exclude[0] == REALIGN:
-		choices = []string{COUP.String(), INFLUENCE.String()}
+		choices = []string{COUP.Ref(), INFLUENCE.Ref()}
 	case exclude[0] == INFLUENCE:
-		choices = []string{COUP.String(), REALIGN.String()}
+		choices = []string{COUP.Ref(), REALIGN.Ref()}
 	}
-	GetInput(s, player, &o, message, choices...)
+	GetOrLog(s, player, &o, message, choices...)
 	return
 }
 
 func SelectFirst(s *State, player Aff) (first Aff) {
-	GetInput(s, player, &first, "Who will play first",
-		USA.String(), SOV.String())
+	GetOrLog(s, player, &first, "Who will play first",
+		USA.Ref(), SOV.Ref())
 	return
 }
 
@@ -393,16 +409,16 @@ func SelectInfluenceForce(s *State, player Aff, selectFn func() ([]*Country, err
 }
 
 func SelectInfluence(s *State, player Aff, message string) (cs []*Country) {
-	GetInput(s, player, &cs, message)
+	GetOrLog(s, player, &cs, message)
 	return
 }
 
 func SelectCountry(s *State, player Aff, message string, countries ...CountryId) (c *Country) {
 	choices := make([]string, len(countries))
 	for i, cn := range countries {
-		choices[i] = s.Countries[cn].Name
+		choices[i] = s.Countries[cn].Ref()
 	}
-	GetInput(s, player, &c, message, choices...)
+	GetOrLog(s, player, &c, message, choices...)
 	return
 }
 

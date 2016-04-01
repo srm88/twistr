@@ -38,14 +38,8 @@ func marshalLog(v reflect.Value, buf *bytes.Buffer) error {
 	n := v.NumField()
 	for i := 0; i < n; i++ {
 		field = v.Field(i)
-		if field.Type().Kind() == reflect.Slice {
-			if err := marshalSlice(field, buf); err != nil {
-				return err
-			}
-		} else {
-			if err := marshalValue(field, buf); err != nil {
-				return err
-			}
+		if err := marshalValue(field, buf); err != nil {
+			return err
 		}
 		if i < (n - 1) {
 			buf.WriteString(" ")
@@ -58,10 +52,8 @@ func marshalSlice(field reflect.Value, buf *bytes.Buffer) error {
 	// Writes "[ el1 el2 el3 ]". No leading or trailing spaces.
 	var marshalFn func(field reflect.Value) string
 	switch valueKind(field.Type().Elem()) {
-	case "country":
-		marshalFn = marshalCountryPtr
-	case "card":
-		marshalFn = marshalCard
+	case "country", "card":
+		marshalFn = valueRef
 	default:
 		return fmt.Errorf("Unsupported field '%s'", field.Type().Elem().Name())
 	}
@@ -76,30 +68,23 @@ func marshalSlice(field reflect.Value, buf *bytes.Buffer) error {
 	return nil
 }
 
-func marshalCountryPtr(field reflect.Value) string {
-	country := reflect.Indirect(field)
-	return strings.ToLower(country.FieldByName("Name").String())
-}
-
-func marshalCard(field reflect.Value) string {
-	card := reflect.Indirect(field)
-	return strings.ToLower(card.FieldByName("Name").String())
+func valueRef(v reflect.Value) string {
+	v = reflect.Indirect(v)
+	fn := v.MethodByName("Ref")
+	return fn.Call(nil)[0].String()
 }
 
 func marshalValue(field reflect.Value, buf *bytes.Buffer) error {
+	if field.Type().Kind() == reflect.Slice {
+		return marshalSlice(field, buf)
+	}
 	switch valueKind(field.Type()) {
+	case "string":
+		buf.WriteString(field.String())
 	case "int":
 		buf.WriteString(strconv.Itoa(int(field.Int())))
-	case "country":
-		buf.WriteString(marshalCountryPtr(field))
-	case "card":
-		buf.WriteString(marshalCard(field))
-	case "aff":
-		buf.WriteString(strings.ToLower(Aff(field.Int()).String()))
-	case "playkind":
-		buf.WriteString(strconv.Itoa(int(field.Int())))
-	case "opskind":
-		buf.WriteString(strconv.Itoa(int(field.Int())))
+	case "country", "card", "region", "aff", "playkind", "opskind":
+		buf.WriteString(valueRef(field))
 	default:
 		return fmt.Errorf("Unknown field '%s'", field.Type().Name())
 	}
@@ -185,11 +170,12 @@ func unmarshalValue(scanner *bufio.Scanner, v reflect.Value) (err error) {
 		}
 	}
 	return
-
 }
 
 func unmarshalWord(word string, v reflect.Value) (err error) {
 	switch valueKind(v.Type()) {
+	case "string":
+		v.SetString(word)
 	case "int":
 		var num int
 		if num, err = strconv.Atoi(word); err != nil {
@@ -208,6 +194,12 @@ func unmarshalWord(word string, v reflect.Value) (err error) {
 			return err
 		}
 		v.Set(reflect.ValueOf(card))
+	case "region":
+		var r Region
+		if r, err = lookupRegion(word); err != nil {
+			return err
+		}
+		v.Set(reflect.ValueOf(r))
 	case "aff":
 		var aff Aff
 		if aff, err = lookupAff(word); err != nil {
@@ -251,6 +243,8 @@ func valueKind(vtype reflect.Type) string {
 		return "country"
 	case "Card":
 		return "card"
+	case "Region":
+		return "region"
 	case "Aff":
 		return "aff"
 	case "PlayKind":
