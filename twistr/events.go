@@ -704,20 +704,20 @@ func PlayKitchenDebates(s *State, player Aff) {
 	/* If the US controls more Battleground countries than the USSR, the US
 	   player uses this Event to poke their opponent in the chest and receive 2 VP!
 	*/
-    usaBG := 0
-    sovBG := 0
-    for _, c := range Countries {
-        if c.Battleground {
-            if c.Controlled() == SOV {
-                sovBG++
-            } else if c.Controlled() == USA {
-                usaBG++
-            }
-        }
-    }
-    if usaBG > sovBG {
-        s.GainVP(USA, 2)
-    }
+	usaBG := 0
+	sovBG := 0
+	for _, c := range Countries {
+		if c.Battleground {
+			if c.Controlled() == SOV {
+				sovBG++
+			} else if c.Controlled() == USA {
+				usaBG++
+			}
+		}
+	}
+	if usaBG > sovBG {
+		s.GainVP(USA, 2)
+	}
 }
 
 func PlayMissileEnvy(s *State, player Aff) {
@@ -727,6 +727,22 @@ func PlayMissileEnvy(s *State, player Aff) {
 	   immediately. If it contains an opponent’s Event, use the Operations value
 	   (no Event). The opponent must use this card for Operations during their next
 	   action round. */
+	s.TurnEvents[MissileEnvy] = player
+	maxOps := 0
+	for _, c := range s.Hands[player.Opp()].Cards {
+		if c.Ops > maxOps {
+			maxOps = c.Ops
+		}
+	}
+
+	selected := SelectCard(s, player.Opp(), ExceedsOps(maxOps-1))
+	if selected.Aff == player || selected.Aff == NEU {
+		PlayEvent(s, player, selected)
+	} else {
+		PlayOps(s, player, selected)
+	}
+
+	s.Hands[player.Opp()].Push(Cards[MissileEnvy])
 }
 
 func PlayWeWillBuryYou(s *State, player Aff) {
