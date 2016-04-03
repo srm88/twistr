@@ -16,7 +16,7 @@ func VPAward(level ScoreLevel, r Region) int {
 		return 0
 	}
 	switch r.Name {
-	case "CentralAmerica":
+	case CentralAmerica.Name:
 		switch level {
 		case Presence:
 			return 1
@@ -25,7 +25,7 @@ func VPAward(level ScoreLevel, r Region) int {
 		case Control:
 			return 5
 		}
-	case "SouthAmerica":
+	case SouthAmerica.Name:
 		switch level {
 		case Presence:
 			return 2
@@ -34,7 +34,7 @@ func VPAward(level ScoreLevel, r Region) int {
 		case Control:
 			return 6
 		}
-	case "Europe":
+	case Europe.Name:
 		switch level {
 		case Presence:
 			return 3
@@ -43,7 +43,7 @@ func VPAward(level ScoreLevel, r Region) int {
 		case Control:
 			return WIN
 		}
-	case "MiddleEast":
+	case MiddleEast.Name:
 		switch level {
 		case Presence:
 			return 3
@@ -52,7 +52,7 @@ func VPAward(level ScoreLevel, r Region) int {
 		case Control:
 			return 7
 		}
-	case "Africa":
+	case Africa.Name:
 		switch level {
 		case Presence:
 			return 1
@@ -61,7 +61,7 @@ func VPAward(level ScoreLevel, r Region) int {
 		case Control:
 			return 6
 		}
-	case "Asia":
+	case Asia.Name:
 		switch level {
 		case Presence:
 			return 3
