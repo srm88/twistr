@@ -430,7 +430,7 @@ func PlaceInfluence(s *State, player Aff, cs []*Country) {
 
 func RemoveInfluence(s *State, player Aff, cs []*Country) {
 	for _, c := range cs {
-		c.Inf[player] -= 1
+		c.Inf[player] = Max(0, c.Inf[player]-1)
 	}
 }
 
