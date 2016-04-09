@@ -560,15 +560,12 @@ func PlayArmsRace(s *State, player Aff) {
 	playerMilOps := s.MilOps[player]
 	oppMilOps := s.MilOps[player.Opp()]
 	// mil ops has to be greater than or equal to defcon to meet "required" amount
-	if playerMilOps > oppMilOps {
-		if playerMilOps >= s.Defcon {
-			s.GainVP(player, 3)
-			return
-		}
+	switch {
+	case playerMilOps > oppMilOps && playerMilOps >= s.Defcon:
+		s.GainVP(player, 3)
+	case playerMilOps > oppMilOps:
 		s.GainVP(player, 1)
-		return
 	}
-	return
 }
 
 func PlayCubanMissileCrisis(s *State, player Aff) {
@@ -578,8 +575,6 @@ func PlayCubanMissileCrisis(s *State, player Aff) {
 	   if the USSR removes 2 Influence from Cuba or the US removes 2 Influence from
 	   West Germany or Turkey. */
 	s.Defcon = 2
-	// XXX: Shit, does player get this, or opposition? Also, implement thermonuclear war
-	// in the coup code
 	s.TurnEvents[CubanMissileCrisis] = player
 }
 
@@ -599,9 +594,7 @@ func PlayQuagmire(s *State, player Aff) {
 	   scoring cards and then skip each action round for the rest of the turn. This
 	   Event cancels the effect(s) of the “#106 – NORAD” Event (if applicable). */
 	s.TurnEvents[Quagmire] = player
-	if s.Effect(NORAD) {
-		s.Cancel(NORAD)
-	}
+    s.Cancel(NORAD)
 }
 
 func PlaySALTNegotiations(s *State, player Aff) {
@@ -610,21 +603,16 @@ func PlaySALTNegotiations(s *State, player Aff) {
 	   Event may look through the discard pile, pick any 1 non-scoring card, reveal
 	   it to their opponent and then place the drawn card into their hand. */
 	s.ImproveDefcon(2)
-	// Should this have both players involved? Or, again, is this just the player who
-	// Originally invoked the event?
 	s.TurnEvents[SALTNegotiations] = player
-	ShowDiscard(s, player)
 	choice := s.Solicit(player, "Choose a card to show to your opponent and add to your hand?", []string{"yes", "no"})
 	notScoring := func(c Card) bool {
-		return c.Ops != 0
+        return !c.Scoring()
 	}
 	switch choice {
 	case "yes":
 		selected := SelectDiscarded(s, player, notScoring)
 		ShowCard(s, selected, player.Opp())
 		s.Hands[player].Push(selected)
-	case "no":
-		return
 	}
 }
 
