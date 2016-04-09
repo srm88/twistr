@@ -539,7 +539,16 @@ func PlaySoutheastAsiaScoring(s *State, player Aff) {
 	/* 1 VP each for Control of Burma, Cambodia/Laos, Vietnam, Malaysia,
 	   Indonesia and the Philippines. 2 VP for Control of Thailand; MAY NOT BE
 	   HELD! */
-	score(s, player, SoutheastAsia)
+	vp := 0
+	for _, c := range []CountryId{Burma, LaosCambodia, Vietnam, Malaysia, Indonesia, Philippines} {
+		if s.Countries[c].Controlled() == player {
+			vp++
+		}
+		if s.Countries[Thailand].Controlled() == player {
+			vp += 2
+		}
+	}
+	s.GainVP(player, vp)
 }
 
 func PlayArmsRace(s *State, player Aff) {
@@ -748,7 +757,7 @@ func PlayMissileEnvy(s *State, player Aff) {
 func PlayWeWillBuryYou(s *State, player Aff) {
 	/* Degrade the DEFCON level by 1. Unless the #32 UN Intervention card is
 	   played as an Event on the US’s next action round, the USSR receives 3 VP.  */
-    s.DegradeDefcon(1)
+	s.DegradeDefcon(1)
 	s.Events[WeWillBuryYou] = player
 }
 
@@ -756,46 +765,46 @@ func PlayBrezhnevDoctrine(s *State, player Aff) {
 	/* All Operations cards played by the USSR, for the remainder of this turn,
 	   receive +1 to their Operations value (to a maximum of 4 Operations per
 	   card). */
-    s.TurnEvents[BrezhnevDoctrine] = player
+	s.TurnEvents[BrezhnevDoctrine] = player
 }
 
 func PlayPortugueseEmpireCrumbles(s *State, player Aff) {
 	/* Add 2 USSR Influence to Angola and the SE African States. */
-    Countries[Angola].Inf[SOV] += 2
-    Countries[SEAfricanStates].Inf[SOV] += 2
+	Countries[Angola].Inf[SOV] += 2
+	Countries[SEAfricanStates].Inf[SOV] += 2
 }
 
 func PlaySouthAfricanUnrest(s *State, player Aff) {
 	/* The USSR either adds 2 Influence to South Africa or adds 1 Influence to
 	   South Africa and 2 Influence to a single country adjacent to South Africa. */
 	choice := s.Solicit(player, "Soviets add 2 influence to South Africa, or 1 to South Africa and two to an Adjacent country?", []string{"option 1", "option 2"})
-    switch choice {
-    case "option 1":
-        Countries[SouthAfrica].Inf[SOV] += 2
-    case "option 2":
-        Countries[SouthAfrica].Inf[SOV] += 1
-        adjIds := []CountryId{}
-        adj := Countries[SouthAfrica].AdjCountries
-        for _, c := range adj {
-            adjIds = append(adjIds, c.Id)
-        }
-        selected := SelectCountry(s, SOV, "Which country would you like to add to?", adjIds...)
-        selected.Inf[SOV] += 2
-    }
+	switch choice {
+	case "option 1":
+		Countries[SouthAfrica].Inf[SOV] += 2
+	case "option 2":
+		Countries[SouthAfrica].Inf[SOV] += 1
+		adjIds := []CountryId{}
+		adj := Countries[SouthAfrica].AdjCountries
+		for _, c := range adj {
+			adjIds = append(adjIds, c.Id)
+		}
+		selected := SelectCountry(s, SOV, "Which country would you like to add to?", adjIds...)
+		selected.Inf[SOV] += 2
+	}
 }
 
 func PlayAllende(s *State, player Aff) {
 	/* Add 2 USSR Influence to Chile. */
-    Countries[Chile].Inf[SOV] += 2
+	Countries[Chile].Inf[SOV] += 2
 }
 
 func PlayWillyBrandt(s *State, player Aff) {
 	/* The USSR receives 1 VP and adds 1 Influence to West Germany. This Event
 	   cancels the effect(s) of the “#21 – NATO” Event for West Germany only. This
 	   Event is prevented / canceled by the “#96 – Tear Down this Wall” Event. */
-    s.GainVP(SOV, 1)
-    s.Events[WillyBrandt] = player
-    Countries[WGermany].Inf[SOV] += 1
+	s.GainVP(SOV, 1)
+	s.Events[WillyBrandt] = player
+	Countries[WGermany].Inf[SOV] += 1
 }
 
 func PlayMuslimRevolution(s *State, player Aff) {
@@ -807,20 +816,20 @@ func PlayMuslimRevolution(s *State, player Aff) {
 func PlayABMTreaty(s *State, player Aff) {
 	/* Improve the DEFCON level by 1 and then conduct Operations using the
 	   Operations value of this card. */
-    s.ImproveDefcon(1)
-    ConductOps(s, player, PseudoCard(Cards[ABMTreaty].Ops))
+	s.ImproveDefcon(1)
+	ConductOps(s, player, PseudoCard(Cards[ABMTreaty].Ops))
 }
 
 func PlayCulturalRevolution(s *State, player Aff) {
 	/* If the US has the “#6 – The China Card” card, the US must give the card
 	   to the USSR (face up and available to be played). If the USSR already has
 	   “#6 – The China Card” card, the USSR receives 1 VP. */
-    if s.ChinaCardPlayer == USA {
-        s.ChinaCardPlayer = SOV
-        s.ChinaCardFaceUp = true
-    } else {
-        s.GainVP(SOV, 1)
-    }
+	if s.ChinaCardPlayer == USA {
+		s.ChinaCardPlayer = SOV
+		s.ChinaCardFaceUp = true
+	} else {
+		s.GainVP(SOV, 1)
+	}
 }
 
 func PlayFlowerPower(s *State, player Aff) {
@@ -828,33 +837,33 @@ func PlayFlowerPower(s *State, player Aff) {
 	   Korean War, Brush War, Indo-Pakistani War, Iran-Iraq War), used for
 	   Operations or an Event, after this card is played. This Event is prevented /
 	   canceled by the “#97 – ‘An Evil Empire’” Event. */
-       s.Events[FlowerPower] = player
+	s.Events[FlowerPower] = player
 }
 
 func PlayU2Incident(s *State, player Aff) {
 	/* The USSR receives 1 VP. If the “#32 – UN Intervention” Event is played
 	   later this turn, either by the US or the USSR, the USSR receives an
 	   additional 1 VP. */
-       s.GainVP(SOV, 1)
-       s.TurnEvents[U2Incident] = player
+	s.GainVP(SOV, 1)
+	s.TurnEvents[U2Incident] = player
 }
 
 func PlayOPEC(s *State, player Aff) {
 	/* The USSR receives 1 VP for Control of each of the following countries:
 	   Egypt, Iran, Libya, Saudi Arabia, Iraq, Gulf States, Venezuela. This Event
 	   cannot be used after the “#86 – North Sea Oil” Event has been played. */
-       for _, cid := range []CountryId{Egypt, Iran, Libya, SaudiArabia, GulfStates, Venezuela} {
-           if Countries[cid].Controlled() == SOV {
-               s.GainVP(SOV, 1)
-           }
-       }
+	for _, cid := range []CountryId{Egypt, Iran, Libya, SaudiArabia, GulfStates, Venezuela} {
+		if Countries[cid].Controlled() == SOV {
+			s.GainVP(SOV, 1)
+		}
+	}
 }
 
 func PlayLoneGunman(s *State, player Aff) {
 	/* The US reveals their hand of cards. The USSR may use the Operations value
 	   of this card to conduct Operations. */
 	ShowHand(s, USA, SOV)
-    ConductOps(s, player, PseudoCard(Cards[LoneGunman].Ops))
+	ConductOps(s, player, PseudoCard(Cards[LoneGunman].Ops))
 }
 
 func PlayColonialRearGuards(s *State, player Aff) {
