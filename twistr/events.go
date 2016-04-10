@@ -708,7 +708,7 @@ func PlayKitchenDebates(s *State, player Aff) {
 	*/
 	usaBG := 0
 	sovBG := 0
-	for _, c := range Countries {
+	for _, c := range s.Countries {
 		if c.Battleground {
 			if c.Controlled() == SOV {
 				sovBG++
@@ -729,7 +729,7 @@ func PlayMissileEnvy(s *State, player Aff) {
 	   immediately. If it contains an opponent’s Event, use the Operations value
 	   (no Event). The opponent must use this card for Operations during their next
 	   action round. */
-	s.TurnEvents[MissileEnvy] = player
+	s.Events[MissileEnvy] = player
 	maxOps := 0
 	for _, c := range s.Hands[player.Opp()].Cards {
 		if c.Ops > maxOps {
@@ -972,8 +972,7 @@ func PlayChe(s *State, player Aff) {
 	   non-Battleground country in Central America, South America or Africa, if the
 	   first Coup Attempt removed any US Influence from the target country. */
 	// Free coup
-	targets := []CountryId{}
-	targets = append(targets, SouthAmerica.Countries...)
+    targets := SouthAmerica.Countries
 	targets = append(targets, CentralAmerica.Countries...)
 	targets = append(targets, Africa.Countries...)
 	couped := DoFreeCoup(s, player, Cards[Che], targets)
