@@ -670,38 +670,35 @@ func PlayHowILearnedToStopWorrying(s *State, player Aff) {
 	/* Set the DEFCON level to any level desired (1-5). The player adds 5 to its
 	   Military Operations Track. */
 	choice := s.Solicit(player, "Set DEFCON.", []string{"1", "2", "3", "4", "5"})
-    newDefcon, _ := strconv.Atoi(choice)
+	newDefcon, _ := strconv.Atoi(choice)
 	s.MilOps[player] = 5
-    switch {
-    case newDefcon == s.Defcon:
-        return
-    case newDefcon > s.Defcon:
-        s.ImproveDefcon(newDefcon - s.Defcon)
-    case newDefcon < s.Defcon:
-        s.DegradeDefcon(s.Defcon - newDefcon)
-    }
+	switch {
+	case newDefcon == s.Defcon:
+		return
+	case newDefcon > s.Defcon:
+		s.ImproveDefcon(newDefcon - s.Defcon)
+	case newDefcon < s.Defcon:
+		s.DegradeDefcon(s.Defcon - newDefcon)
+	}
 }
 
 func PlayJunta(s *State, player Aff) {
 	/* Add 2 Influence to a single country in Central or South America. The
 	   player may make free Coup Attempts or Realignment rolls in either Central or
 	   South America using the Operations value of this card. */
+	centralOrSouth := append(SouthAmerica.Countries, CentralAmerica.Countries...)
 	c := SelectCountry(s, player, "Choose a country in Central or South America",
-		append(SouthAmerica.Countries, CentralAmerica.Countries...)...)
-	PlaceInfluence(s, player, []*Country{c})
+		centralOrSouth...)
+	c.Inf[player] += 2
 	choice := s.Solicit(player, "Do you want to coup, realign or do nothing in Central/South America?", []string{"coup, realign, nothing"})
 	switch choice {
 	case "nothing":
 		return
 	case "coup":
-		couped := DoFreeCoup(s, player, Cards[Che], append(SouthAmerica.Countries, CentralAmerica.Countries...))
+		couped := DoFreeCoup(s, player, Cards[Junta], centralOrSouth)
 		fmt.Println("coup isn't implemented, but like, ya did it. ya couped %s", couped)
 	case "realign":
-		c := SelectCountry(s, player, "Choose a country in Central or South America to realign",
-			append(SouthAmerica.Countries, CentralAmerica.Countries...)...)
-		rollUSA := SelectRoll(s)
-		rollSOV := SelectRoll(s)
-		realign(s, c, rollUSA, rollSOV)
+        fmt.Println("This will be realign")
 	}
 }
 
