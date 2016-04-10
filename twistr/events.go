@@ -594,7 +594,7 @@ func PlayQuagmire(s *State, player Aff) {
 	   scoring cards and then skip each action round for the rest of the turn. This
 	   Event cancels the effect(s) of the “#106 – NORAD” Event (if applicable). */
 	s.TurnEvents[Quagmire] = player
-    s.Cancel(NORAD)
+	s.Cancel(NORAD)
 }
 
 func PlaySALTNegotiations(s *State, player Aff) {
@@ -606,7 +606,7 @@ func PlaySALTNegotiations(s *State, player Aff) {
 	s.TurnEvents[SALTNegotiations] = player
 	choice := s.Solicit(player, "Choose a card to show to your opponent and add to your hand?", []string{"yes", "no"})
 	notScoring := func(c Card) bool {
-        return !c.Scoring()
+		return !c.Scoring()
 	}
 	switch choice {
 	case "yes":
@@ -636,10 +636,10 @@ func PlaySummit(s *State, player Aff) {
 	oppRoll := SelectRoll(s)
 	for _, region := range regions {
 		sr := ScoreRegion(s, region)
-		if sr.Levels[player] == Domination || sr.Levels[player] == Control {
+		switch {
+		case sr.Levels[player] == Domination || sr.Levels[player] == Control:
 			playerRoll++
-		}
-		if sr.Levels[player.Opp()] == Domination || sr.Levels[player.Opp()] == Control {
+		case sr.Levels[player.Opp()] == Domination || sr.Levels[player.Opp()] == Control:
 			oppRoll++
 		}
 	}
@@ -655,7 +655,7 @@ func PlaySummit(s *State, player Aff) {
 	}
 
 	s.GainVP(winner, 2)
-	choice := s.Solicit(winner, "Degrade or improve DEFCON by one level?", []string{"improve", "degrade", "leave it"})
+	choice := s.Solicit(winner, "Degrade or improve DEFCON by one level?", []string{"improve", "degrade", "neither"})
 	switch choice {
 	case "leave it":
 		return
@@ -670,8 +670,16 @@ func PlayHowILearnedToStopWorrying(s *State, player Aff) {
 	/* Set the DEFCON level to any level desired (1-5). The player adds 5 to its
 	   Military Operations Track. */
 	choice := s.Solicit(player, "Set DEFCON.", []string{"1", "2", "3", "4", "5"})
-	s.Defcon, _ = strconv.Atoi(choice)
+    newDefcon, _ := strconv.Atoi(choice)
 	s.MilOps[player] = 5
+    switch {
+    case newDefcon == s.Defcon:
+        return
+    case newDefcon > s.Defcon:
+        s.ImproveDefcon(newDefcon - s.Defcon)
+    case newDefcon < s.Defcon:
+        s.DegradeDefcon(s.Defcon - newDefcon)
+    }
 }
 
 func PlayJunta(s *State, player Aff) {
