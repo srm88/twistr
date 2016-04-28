@@ -37,7 +37,7 @@ func Start(s *State) {
 			InRegion(EastEurope))
 	})
 	PlaceInfluence(s, SOV, cs)
-    s.Txn.Flush()
+	s.Txn.Flush()
 	ShowHand(s, USA, USA)
 	// US chooses 7 influence in W europe
 	csUSA := SelectInfluenceForce(s, USA, func() ([]*Country, error) {
@@ -46,7 +46,7 @@ func Start(s *State) {
 			InRegion(WestEurope))
 	})
 	PlaceInfluence(s, USA, csUSA)
-    s.Txn.Flush()
+	s.Txn.Flush()
 	// Temporary
 	Turn(s)
 }
@@ -56,11 +56,11 @@ func ShowHand(s *State, whose, to Aff) {
 }
 
 func ShowDiscard(s *State, to Aff) {
-    s.Message(to, fmt.Sprintf("Discard pile: %s\n", strings.Join(s.Discard.Names(), ", ")))
+	s.Message(to, fmt.Sprintf("Discard pile: %s\n", strings.Join(s.Discard.Names(), ", ")))
 }
 
 func ShowCard(s *State, c Card, to Aff) {
-    s.Message(to, fmt.Sprintf("Card: %s\n", c.Name))
+	s.Message(to, fmt.Sprintf("Card: %s\n", c.Name))
 }
 
 func SelectShuffle(d *Deck) []Card {
@@ -159,7 +159,7 @@ func Action(s *State) {
 	if card.Id == TheChinaCard {
 		s.ChinaCardPlayed()
 	}
-    s.Txn.Flush()
+	s.Txn.Flush()
 }
 
 func PlaySpace(s *State, player Aff, card Card) {
@@ -325,6 +325,17 @@ func InRegion(regions ...Region) countryCheck {
 			rNames[i] = r.Name
 		}
 		return fmt.Errorf("%s not in %s", c.Name, strings.Join(rNames, " or "))
+	}
+}
+
+func InCountries(countries ...CountryId) countryCheck {
+	return func(c *Country) error {
+		for _, cid := range countries {
+			if cid == c.Id {
+				return nil
+			}
+		}
+		return fmt.Errorf("%s not a valid choice", c.Name)
 	}
 }
 

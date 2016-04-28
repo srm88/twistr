@@ -698,7 +698,7 @@ func PlayJunta(s *State, player Aff) {
 		couped := DoFreeCoup(s, player, Cards[Junta], centralOrSouth)
 		fmt.Println("coup isn't implemented, but like, ya did it. ya couped %s", couped)
 	case "realign":
-        fmt.Println("This will be realign")
+		fmt.Println("This will be realign")
 	}
 }
 
@@ -804,6 +804,16 @@ func PlayMuslimRevolution(s *State, player Aff) {
 	/* Remove all US Influence from 2 of the following countries: Sudan, Iran,
 	   Iraq, Egypt, Libya, Saudi Arabia, Syria, Jordan. This Event cannot be used
 	   after the “#110 – AWACS Sale to Saudis” Event has been played. */
+	cs := SelectInfluenceForce(s, player, func() ([]*Country, error) {
+		return SelectNInfluenceCheck(s, player,
+			"2 countries to lose all influence", 2,
+			InCountries(Sudan, Iran, Iraq, Egypt, Libya, SaudiArabia, Syria, Jordan),
+			MaxPerCountry(1))
+	})
+
+	for _, c := range cs {
+		c.Inf[USA] = 0
+	}
 }
 
 func PlayABMTreaty(s *State, player Aff) {
@@ -972,7 +982,7 @@ func PlayChe(s *State, player Aff) {
 	   non-Battleground country in Central America, South America or Africa, if the
 	   first Coup Attempt removed any US Influence from the target country. */
 	// Free coup
-    targets := SouthAmerica.Countries
+	targets := SouthAmerica.Countries
 	targets = append(targets, CentralAmerica.Countries...)
 	targets = append(targets, Africa.Countries...)
 	couped := DoFreeCoup(s, player, Cards[Che], targets)
