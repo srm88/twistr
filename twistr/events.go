@@ -911,6 +911,17 @@ func PlayGrainSalesToSoviets(s *State, player Aff) {
 	   US must either play the card or return it to the USSR. If the card is
 	   returned, or the USSR has no cards, the US may use the Operations value of
 	   this card to conduct Operations. */
+	if len(s.Hands[SOV].Cards) == 0 {
+		ConductOps(s, player, PseudoCard(Cards[GrainSalesToSoviets].Ops))
+	} else {
+		card := SelectRandomCard(s, SOV)
+		choice := s.Solicit(player, "Play this card or return it?", []string{"play", "return"})
+		switch choice {
+		case "play":
+			s.Hands[SOV].Remove(card)
+			PlayEvent(s, player, selected)
+		}
+	}
 }
 
 func PlayJohnPaulIIElectedPope(s *State, player Aff) {
@@ -954,22 +965,38 @@ func PlayNixonPlaysTheChinaCard(s *State, player Aff) {
 
 func PlaySadatExpelsSoviets(s *State, player Aff) {
 	/* Remove all USSR Influence from Egypt and add 1 US Influence to Egypt. */
+	c := s.Countries[Egypt]
+	c.Inf[SOV] = 0
+	c.Inf[USA] += 1
 }
 
 func PlayShuttleDiplomacy(s *State, player Aff) {
 	/* If this card’s Event is in effect, subtract (-1) a Battleground country
 	   from the USSR total and then discard this card during the next scoring of
 	   the Middle East or Asia (which ever comes first). */
+	s.Events[ShuttleDiplomacy] = player
 }
 
 func PlayTheVoiceOfAmerica(s *State, player Aff) {
 	/* Remove 4 USSR Influence from any countries NOT in Europe (removing no
 	   more than 2 Influence per country). */
+	cs := SelectInfluenceForce(s, player, func() ([]*Country, error) {
+		return SelectNInfluenceCheck(s, player,
+			"Add a total of 4 influence from countries not in Europe (no more than 2 per country)", 4,
+			InRegion(Asia, Africa, CentralAmerica, SouthAmerica, MiddleEast), MaxPerCountry(2))
+	})
+	RemoveInfluence(s, SOV, cs)
 }
 
 func PlayLiberationTheology(s *State, player Aff) {
 	/* Add a total of 3 USSR Influence to any countries in Central America
 	   (adding no more than 2 Influence per country). */
+	cs := SelectInfluenceForce(s, player, func() ([]*Country, error) {
+		return SelectNInfluenceCheck(s, player,
+			"Add a total of 3 influence (no more than 2 per country) to countries in Central America", 3,
+			InRegion(CentralAmerica), MaxPerCountry(2))
+	})
+	PlaceInfluence(s, SOV, cs)
 }
 
 func PlayUssuriRiverSkirmish(s *State, player Aff) {
