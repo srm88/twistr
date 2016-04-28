@@ -357,6 +357,15 @@ func NotControlledBy(aff Aff) countryCheck {
 	}
 }
 
+func NoInfluence(aff Aff) countryCheck {
+	return func(c *Country) error {
+		if c.Inf[aff] != 0 {
+			return fmt.Errorf("%s has influence in %s", aff, c.Name)
+		}
+		return nil
+	}
+}
+
 func MaxPerCountry(n int) countryCheck {
 	counts := make(map[CountryId]int)
 	return func(c *Country) error {

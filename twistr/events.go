@@ -872,21 +872,38 @@ func PlayLoneGunman(s *State, player Aff) {
 func PlayColonialRearGuards(s *State, player Aff) {
 	/* Add 1 US Influence to each of any 4 countries in Africa and/or Southeast
 	   Asia. */
+	cs := SelectInfluenceForce(s, player, func() ([]*Country, error) {
+		return SelectNInfluenceCheck(s, player,
+			"Choose 4 countries in Africa and/or Southeast Asia", 4,
+			MaxPerCountry(1), InRegion(Africa, SoutheastAsia))
+	})
+	PlaceInfluence(s, USA, cs)
 }
 
 func PlayPanamaCanalReturned(s *State, player Aff) {
 	/* Add 1 US Influence to Panama, Costa Rica and Venezuela.  */
+	// TODO: Gag myself vvv
+	PlaceInfluence(s, USA, []*Country{s.Countries[Panama], s.Countries[CostaRica], s.Countries[Venezuela]})
 }
 
 func PlayCampDavidAccords(s *State, player Aff) {
 	/* The US receives 1 VP and adds 1 Influence to Israel, Jordan and Egypt.
 	   This Event prevents the “#13 – Arab-Israeli War” card from being played as
 	   an Event. */
+	PlaceInfluence(s, USA, []*Country{s.Countries[Israel], s.Countries[Jordan], s.Countries[Egypt]})
+	s.GainVP(SOV, 1)
+	s.Events[CampDavidAccords] = player
 }
 
 func PlayPuppetGovernments(s *State, player Aff) {
 	/* The US may add 1 Influence to 3 countries that do not contain Influence
 	   from either the US or USSR. */
+	cs := SelectInfluenceForce(s, player, func() ([]*Country, error) {
+		return SelectNInfluenceCheck(s, player,
+			"Choose 3 countries with no influence from either power", 3,
+			MaxPerCountry(1), NoInfluence(USA), NoInfluence(SOV))
+	})
+	PlaceInfluence(s, USA, cs)
 }
 
 func PlayGrainSalesToSoviets(s *State, player Aff) {
@@ -900,6 +917,9 @@ func PlayJohnPaulIIElectedPope(s *State, player Aff) {
 	/* Remove 2 USSR Influence from Poland and add 1 US Influence to Poland.
 	   This Event allows the “#101 – Solidarity” card to be played as an Event.
 	*/
+	c := s.Countries[Poland]
+	c.Inf[SOV] = Max(0, c.Inf[SOV]-2)
+	c.Inf[USA] += 2
 }
 
 func PlayLatinAmericanDeathSquads(s *State, player Aff) {
@@ -907,16 +927,29 @@ func PlayLatinAmericanDeathSquads(s *State, player Aff) {
 	   for the remainder of this turn, receive +1 to their die roll. All of the
 	   opponent’s Coup Attempts in Central and South America, for the remainder of
 	   this turn, receive -1 to their die roll. */
+	s.Events[LatinAmericanDeathSquads] = player
 }
 
 func PlayOASFounded(s *State, player Aff) {
 	/* Add a total of 2 US Influence to any countries in Central or South America. */
+	cs := SelectInfluenceForce(s, player, func() ([]*Country, error) {
+		return SelectNInfluenceCheck(s, player,
+			"Add a total of 2 influence to countries in Central or South America", 2,
+			InRegion(CentralAmerica, SouthAmerica))
+	})
+	PlaceInfluence(s, USA, cs)
 }
 
 func PlayNixonPlaysTheChinaCard(s *State, player Aff) {
 	/* If the USSR has the “#6 – The China Card” card, the USSR must give the
 	   card to the US (face down and unavailable for immediate play). If the US
 	   already has the “#6 – The China Card” card, the US receives 2 VP. */
+	if s.ChinaCardPlayer == SOV {
+		s.ChinaCardPlayer = USA
+		s.ChinaCardFaceUp = false
+	} else {
+		s.GainVP(USA, 2)
+	}
 }
 
 func PlaySadatExpelsSoviets(s *State, player Aff) {
@@ -944,6 +977,16 @@ func PlayUssuriRiverSkirmish(s *State, player Aff) {
 	   card to the US (face up and available for play). If the US already has the
 	   “#6 – The China Card” card, add a total of 4 US Influence to any countries
 	   in Asia (adding no more than 2 Influence per country). */
+	if s.ChinaCardPlayer == SOV {
+		s.ChinaCardPlayer = USA
+	} else {
+		cs := SelectInfluenceForce(s, player, func() ([]*Country, error) {
+			return SelectNInfluenceCheck(s, player,
+				"Add a total of 4 influence to countries in Central or South America", 4,
+				InRegion(Asia), MaxPerCountry(2))
+		})
+		PlaceInfluence(s, USA, cs)
+	}
 }
 
 func PlayAskNotWhatYourCountry(s *State, player Aff) {
@@ -956,17 +999,35 @@ func PlayAskNotWhatYourCountry(s *State, player Aff) {
 func PlayAllianceForProgress(s *State, player Aff) {
 	/* The US receives 1 VP for each US controlled Battleground country in
 	   Central and South America. */
+	countries := append(CentralAmerica.Countries, SouthAmerica.Countries...)
+	for _, c := range countries {
+		if s.Countries[c].Battleground && s.Countries[c].Controlled() == USA {
+			s.GainVP(USA, 1)
+		}
+	}
 }
 
 func PlayAfricaScoring(s *State, player Aff) {
 	/* Presence: 1; Domination: 4; Control: 6; +1 VP per controlled Battleground
 	   country in Region; MAY NOT BE HELD! */
+	score(s, player, Africa)
 }
 
 func PlayOneSmallStep(s *State, player Aff) {
 	/* If you are behind on the Space Race Track, the player uses this Event to
 	   move their marker 2 spaces forward on the Space Race Track. The player
 	   receives VP only from the final space moved into. */
+	srb, _ := nextSRBox(s, player)
+
+	if _, ok := s.SREvents[srb.SideEffect]; ok {
+		delete(s.SREvents, srb.SideEffect)
+	} else {
+		s.SREvents[srb.SideEffect] = player
+	}
+
+	s.SpaceRace[player]++
+	srb, _ = nextSRBox(s, player)
+	srb.Enter(s, player)
 }
 
 func PlaySouthAmericaScoring(s *State, player Aff) {
