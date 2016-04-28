@@ -115,6 +115,26 @@ func SelectDiscarded(s *State, player Aff, filters ...cardFilter) (c Card) {
 	return
 }
 
+func SelectSomeCards(s *State, player Aff, cards []Card) (selected []Card) {
+	cardnames := []string{}
+	cardSet := make(map[CardId]bool)
+	for _, c := range cards {
+		cardnames = append(cardnames, c.Ref())
+		cardSet[c.Id] = true
+	}
+	message := fmt.Sprintf("Choose cards: %s", strings.Join(cardnames, ", "))
+	prefix := ""
+retry:
+	GetOrLog(s, player, &selected, prefix+message)
+	for _, c := range selected {
+		if !cardSet[c.Id] {
+			prefix = "Invalid choice. "
+			goto retry
+		}
+	}
+	return
+}
+
 func SelectChoice(s *State, player Aff, message string, choices ...string) (choice string) {
 	GetOrLog(s, player, &choice, message, choices...)
 	return

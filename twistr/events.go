@@ -919,7 +919,7 @@ func PlayGrainSalesToSoviets(s *State, player Aff) {
 		switch choice {
 		case "play":
 			s.Hands[SOV].Remove(card)
-			PlayEvent(s, player, selected)
+			PlayEvent(s, player, card)
 		}
 	}
 }
@@ -1021,6 +1021,7 @@ func PlayAskNotWhatYourCountry(s *State, player Aff) {
 	   cards) to the discard pile and draw replacements from the draw pile. The
 	   number of cards to be discarded must be decided before drawing any
 	   replacement cards from the draw pile. */
+
 }
 
 func PlayAllianceForProgress(s *State, player Aff) {
@@ -1083,6 +1084,41 @@ func PlayOurManInTehran(s *State, player Aff) {
 	   any or all of the drawn cards, after revealing the discarded card(s) to the
 	   USSR player, without triggering the Event(s). Any remaining drawn cards are
 	   returned to the draw pile and the draw pile is reshuffled. */
+	controlled := false
+	for _, c := range MiddleEast.Countries {
+		if s.Countries[c].Controlled() == USA {
+			controlled = true
+			break
+		}
+	}
+	if !controlled {
+		return
+	}
+	cards := s.Deck.Draw(5)
+	// Solicit US player to discard each card
+	toDiscard := SelectSomeCards(s, USA, cards)
+	discardedSet := make(map[CardId]bool)
+	discarded := []string{}
+	for _, c := range toDiscard {
+		discarded = append(discarded, c.Name)
+		discardedSet[c.Id] = true
+	}
+	backToDraw := []Card{}
+	for _, c := range cards {
+		if !discardedSet[c.Id] {
+			backToDraw = append(backToDraw, c)
+		}
+	}
+	if len(toDiscard) > 0 {
+		s.Message(SOV, fmt.Sprintf("The following cards to discard: %s\n", strings.Join(discarded, ", ")))
+	} else {
+		s.Message(SOV, "No cards were discarded.\n")
+	}
+	s.Discard.Push(toDiscard...)
+	// Return other cards to draw pile and reshuffle
+	s.Deck.Push(backToDraw...)
+	cards = SelectShuffle(s.Deck)
+	s.Deck.Reorder(cards)
 }
 
 /*
