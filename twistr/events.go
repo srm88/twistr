@@ -1021,7 +1021,18 @@ func PlayAskNotWhatYourCountry(s *State, player Aff) {
 	   cards) to the discard pile and draw replacements from the draw pile. The
 	   number of cards to be discarded must be decided before drawing any
 	   replacement cards from the draw pile. */
-
+	toDiscard := SelectSomeCards(s, USA, s.Hands[USA].Cards)
+	toDraw := len(toDiscard)
+	if toDraw == 0 {
+		return
+	}
+	for _, c := range toDiscard {
+		s.Hands[USA].Remove(c)
+	}
+	s.Discard.Push(toDiscard...)
+	drawn := s.Deck.Draw(toDraw)
+	s.Hands[USA].Push(drawn...)
+	ShowHand(s, USA, USA)
 }
 
 func PlayAllianceForProgress(s *State, player Aff) {
