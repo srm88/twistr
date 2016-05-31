@@ -233,13 +233,15 @@ func ConductOps(s *State, player Aff, card Card, kinds ...OpsKind) {
 }
 
 func OpRealign(s *State, player Aff, card Card) {
-	target := SelectCountry(s, player, "Realign where?")
-	for !canRealign(s, player, target, false) {
-		target = SelectCountry(s, player, "Oh no you goofed. Realign where?")
+	for i := 0; i < card.Ops; i++ {
+		target := SelectCountry(s, player, "Realign where?")
+		for !canRealign(s, player, target, false) {
+			target = SelectCountry(s, player, "Oh no you goofed. Realign where?")
+		}
+		rollUSA := SelectRoll(s)
+		rollSOV := SelectRoll(s)
+		realign(s, target, rollUSA, rollSOV)
 	}
-	rollUSA := SelectRoll(s)
-	rollSOV := SelectRoll(s)
-	realign(s, target, rollUSA, rollSOV)
 }
 
 func OpCoup(s *State, player Aff, ops int) {
