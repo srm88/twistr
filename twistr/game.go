@@ -226,7 +226,7 @@ func ConductOps(s *State, player Aff, card Card, kinds ...OpsKind) {
 	case COUP:
 		OpCoup(s, player, card.Ops)
 	case REALIGN:
-		MessageBoth(s, "realign not implemented")
+		OpRealign(s, player, card)
 	case INFLUENCE:
 		MessageBoth(s, "influence not implemented")
 	}
