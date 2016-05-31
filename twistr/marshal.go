@@ -74,11 +74,6 @@ func valueRef(v reflect.Value) string {
 	return fn.Call(nil)[0].String()
 }
 
-func marshalRegion(field reflect.Value) string {
-	region := reflect.Indirect(field)
-	return strings.ToLower(region.FieldByName("Name").String())
-}
-
 func marshalValue(field reflect.Value, buf *bytes.Buffer) error {
 	if field.Type().Kind() == reflect.Slice {
 		return marshalSlice(field, buf)
