@@ -1224,7 +1224,7 @@ func PlaySovietsShootDownKAL007(s *State, player Aff) {
 	s.DegradeDefcon(1)
 	s.GainVP(USA, 2)
 	if s.Countries[SKorea].Controlled() == USA {
-		ConductOps(s, player, Cards[SovietsShootDownKAL007], COUP)
+		ConductOps(s, player, Cards[SovietsShootDownKAL007], INFLUENCE, REALIGN)
 	}
 }
 
@@ -1235,7 +1235,7 @@ func PlayGlasnost(s *State, player Aff) {
 	s.ImproveDefcon(1)
 	s.GainVP(SOV, 2)
 	if s.Effect(TheReformer) {
-		ConductOps(s, player, Cards[Glasnost], COUP)
+		ConductOps(s, player, Cards[Glasnost], REALIGN, INFLUENCE)
 	}
 }
 
@@ -1312,7 +1312,7 @@ func PlayTearDownThisWall(s *State, player Aff) {
 	   Realignment rolls in Europe using the Operations value of this card. This
 	   Event prevents / cancels the effect(s) of the “#55 – Willy Brandt” Event. */
 	s.Countries[EGermany].Inf[USA] += 3
-	ConductOps(s, player, Cards[TearDownThisWall], INFLUENCE)
+	ConductOps(s, player, Cards[TearDownThisWall], COUP, REALIGN)
 	s.Events[TearDownThisWall] = player
 	if s.Effect(WillyBrandt) {
 		s.Cancel(WillyBrandt)
