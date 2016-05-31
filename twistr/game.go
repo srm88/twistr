@@ -224,12 +224,23 @@ func PlayOps(s *State, player Aff, card Card) {
 func ConductOps(s *State, player Aff, card Card, exclude ...OpsKind) {
 	switch SelectOps(s, player, card, exclude...) {
 	case COUP:
-		MessageBoth(s, "coup not implemented")
+		OpCoup(s, player, card.Ops)
 	case REALIGN:
 		MessageBoth(s, "realign not implemented")
 	case INFLUENCE:
 		MessageBoth(s, "influence not implemented")
 	}
+}
+
+func OpCoup(s *State, player Aff, ops int) {
+	target := SelectCountry(s, player, "Coup where?")
+	for !canCoup(s, player, target) {
+		target := SelectCountry(s, player, "Oh no you goofed. Coup where?")
+	}
+
+	roll := SelectRoll(s)
+	ops := card.Ops + opsMod(s, player, card, []*Country{target})
+	return coup(s, player, ops, roll, target, false)
 }
 
 func DoFreeCoup(s *State, player Aff, card Card, allowedTargets []CountryId) bool {
