@@ -258,6 +258,7 @@ func Action(s *State) {
 		PlayEvent(s, p, card)
 	}
 	if card.Id == TheChinaCard {
+		MessageBoth(s, fmt.Sprintf("%s receives the China Card, face down.", p.Opp()))
 		s.ChinaCardPlayed()
 	}
 	s.Txn.Flush()
