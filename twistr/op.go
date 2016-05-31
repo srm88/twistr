@@ -94,6 +94,21 @@ func canCoup(s *State, player Aff, t *Country, free bool) bool {
 	}
 }
 
+func canRealign(s *State, player Aff, t *Country, free bool) bool {
+	switch {
+	case natoProtected(s, player, t):
+		return false
+	case s.Effect(USJapanMutualDefensePact) && t.Id == Japan && player == SOV:
+		return false
+	case t.Inf[player.Opp()] < 1:
+		return false
+	case defconProtected(s, t) && !free:
+		return false
+	default:
+		return true
+	}
+}
+
 func defconProtected(s *State, t *Country) bool {
 	// asia 3, defcon 5, not protected
 	// europe 4, defcon 3, protected
