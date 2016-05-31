@@ -44,7 +44,7 @@ func coupBonus(s *State, player Aff, target *Country) (bonus int) {
 	return
 }
 
-func opsMod(s *State, player Aff, card Card, countries []*Country) (mod int) {
+func opsMod(s *State, player Aff, countries []*Country) (mod int) {
 	if player == SOV && s.Effect(VietnamRevolts) {
 		if AllIn(countries, SoutheastAsia) {
 			mod += 1
@@ -77,7 +77,7 @@ func coup(s *State, player Aff, ops int, roll int, target *Country, free bool) b
 
 // A country cannot be coup'd if it lacks any of the opponent's influence.
 // Some permanent events also impose coup restrictions, e.g. NATO with Europe.
-func canCoup(s *State, player Aff, t *Country) bool {
+func canCoup(s *State, player Aff, t *Country, free bool) bool {
 	switch {
 	case t.Inf[player.Opp()] < 1:
 		return false
@@ -87,9 +87,18 @@ func canCoup(s *State, player Aff, t *Country) bool {
 		return false
 	case s.Effect(TheReformer) && player == SOV && t.In(Europe):
 		return false
+	case defconProtected(s, t) && !free:
+		return false
 	default:
 		return true
 	}
+}
+
+func defconProtected(s *State, t *Country) bool {
+	// asia 3, defcon 5, not protected
+	// europe 4, defcon 3, protected
+	// middle east 2, defcon 2, protected
+	return t.Region.Volatility >= s.Defcon
 }
 
 func natoProtected(s *State, player Aff, t *Country) bool {

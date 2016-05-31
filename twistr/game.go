@@ -234,19 +234,19 @@ func ConductOps(s *State, player Aff, card Card, exclude ...OpsKind) {
 
 func OpCoup(s *State, player Aff, ops int) {
 	target := SelectCountry(s, player, "Coup where?")
-	for !canCoup(s, player, target) {
-		target := SelectCountry(s, player, "Oh no you goofed. Coup where?")
+	for !canCoup(s, player, target, false) {
+		target = SelectCountry(s, player, "Oh no you goofed. Coup where?")
 	}
 
 	roll := SelectRoll(s)
-	ops := card.Ops + opsMod(s, player, card, []*Country{target})
-	return coup(s, player, ops, roll, target, false)
+	ops += opsMod(s, player, []*Country{target})
+	coup(s, player, ops, roll, target, false)
 }
 
 func DoFreeCoup(s *State, player Aff, card Card, allowedTargets []CountryId) bool {
 	targets := []CountryId{}
 	for _, t := range allowedTargets {
-		if canCoup(s, player, s.Countries[t]) {
+		if canCoup(s, player, s.Countries[t], true) {
 			targets = append(targets, t)
 		}
 	}
@@ -256,7 +256,7 @@ func DoFreeCoup(s *State, player Aff, card Card, allowedTargets []CountryId) boo
 	}
 	target := SelectCountry(s, player, "Free coup where?", targets...)
 	roll := SelectRoll(s)
-	ops := card.Ops + opsMod(s, player, card, []*Country{target})
+	ops := card.Ops + opsMod(s, player, []*Country{target})
 	return coup(s, player, ops, roll, target, true)
 }
 
@@ -292,7 +292,7 @@ func SelectPlay(s *State, player Aff, card Card) (pk PlayKind) {
 	case card.Prevented(s):
 		canEvent = false
 	}
-	ops := card.Ops + opsMod(s, player, card, nil)
+	ops := card.Ops + opsMod(s, player, nil)
 	if !CanAdvance(s, player, ops) {
 		canSpace = false
 	}
@@ -430,7 +430,7 @@ func SelectInfluenceOps(s *State, player Aff, card Card) (cs []*Country, err err
 	message := "Place influence"
 	cs = SelectInfluence(s, player, message)
 	// Compute ops
-	ops := card.Ops + opsMod(s, player, card, cs)
+	ops := card.Ops + opsMod(s, player, cs)
 	// Compute cost. Copy each country so that we can update its influence
 	// as we go. E.g. two ops are spent breaking control, then the next
 	// influence place costs one op.
