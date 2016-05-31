@@ -2,6 +2,7 @@ package twistr
 
 import (
 	"errors"
+	"strings"
 )
 
 // Affiliation
@@ -21,6 +22,10 @@ func (a Aff) String() string {
 	default:
 		return "neutral"
 	}
+}
+
+func (a Aff) Ref() string {
+	return strings.ToLower(a.String())
 }
 
 // lookupAff expects the incoming string to be lowercase.
@@ -472,6 +477,14 @@ var cardIdLookup = map[string]CardId{
 	"awacssaletosaudis":         AWACSSaleToSaudis,
 }
 
+var cardNameLookup = map[CardId]string{}
+
+func init() {
+	for k, v := range cardIdLookup {
+		cardNameLookup[v] = k
+	}
+}
+
 var regionIdLookup = map[string]RegionId{
 	"centralamerica": CAM,
 	"southamerica":   SAM,
@@ -489,8 +502,8 @@ const (
 	SPACE
 )
 
-func (a PlayKind) String() string {
-	switch a {
+func (p PlayKind) String() string {
+	switch p {
 	case OPS:
 		return "ops"
 	case EVENT:
@@ -500,6 +513,10 @@ func (a PlayKind) String() string {
 	default:
 		return "?"
 	}
+}
+
+func (p PlayKind) Ref() string {
+	return p.String()
 }
 
 // lookupPlayKind expects the incoming string to be lowercase.
@@ -535,6 +552,10 @@ func (o OpsKind) String() string {
 	default:
 		return "?"
 	}
+}
+
+func (o OpsKind) Ref() string {
+	return o.String()
 }
 
 // lookupOpsKind expects the incoming string to be lowercase.

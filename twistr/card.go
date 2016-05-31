@@ -72,6 +72,10 @@ func (c Card) Prevented(s *State) bool {
 	}
 }
 
+func (c Card) Ref() string {
+	return cardNameLookup[c.Id]
+}
+
 type Deck struct {
 	Cards []Card
 }

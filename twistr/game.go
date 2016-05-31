@@ -37,6 +37,7 @@ func Start(s *State) {
 			InRegion(EastEurope))
 	})
 	PlaceInfluence(s, SOV, cs)
+	s.Txn.Flush()
 	ShowHand(s, USA, USA)
 	// US chooses 7 influence in W europe
 	csUSA := SelectInfluenceForce(s, USA, func() ([]*Country, error) {
@@ -45,12 +46,21 @@ func Start(s *State) {
 			InRegion(WestEurope))
 	})
 	PlaceInfluence(s, USA, csUSA)
+	s.Txn.Flush()
 	// Temporary
 	Turn(s)
 }
 
 func ShowHand(s *State, whose, to Aff) {
 	s.Message(to, fmt.Sprintf("%s hand: %s\n", whose, strings.Join(s.Hands[whose].Names(), ", ")))
+}
+
+func ShowDiscard(s *State, to Aff) {
+	s.Message(to, fmt.Sprintf("Discard pile: %s\n", strings.Join(s.Discard.Names(), ", ")))
+}
+
+func ShowCard(s *State, c Card, to Aff) {
+	s.Message(to, fmt.Sprintf("Card: %s\n", c.Name))
 }
 
 func SelectShuffle(d *Deck) []Card {
@@ -91,13 +101,46 @@ func selectCardFrom(s *State, player Aff, from []Card, includeChina bool, filter
 		if !passesFilters(c, filters) {
 			continue
 		}
-		choices = append(choices, c.Name)
+		choices = append(choices, c.Ref())
 	}
 	if includeChina && passesFilters(Cards[TheChinaCard], filters) {
 		choices = append(choices, Cards[TheChinaCard].Name)
 	}
 	GetInput(s, player, &c, "Choose a card", choices...)
 	return
+}
+
+func SelectSomeCards(s *State, player Aff, cards []Card) (selected []Card) {
+	cardnames := []string{}
+	cardSet := make(map[CardId]bool)
+	for _, c := range cards {
+		cardnames = append(cardnames, c.Ref())
+		cardSet[c.Id] = true
+	}
+	message := fmt.Sprintf("Choose cards: %s", strings.Join(cardnames, ", "))
+	prefix := ""
+retry:
+	GetOrLog(s, player, &selected, prefix+message)
+	for _, c := range selected {
+		if !cardSet[c.Id] {
+			prefix = "Invalid choice. "
+			goto retry
+		}
+	}
+	return
+}
+
+func SelectChoice(s *State, player Aff, message string, choices ...string) (choice string) {
+	GetOrLog(s, player, &choice, message, choices...)
+	return
+}
+
+func GetOrLog(s *State, player Aff, thing interface{}, message string, choices ...string) {
+	if s.Aof.ReadInto(thing) {
+		return
+	}
+	GetInput(s, player, thing, message, choices...)
+	s.Aof.Log(thing)
 }
 
 func SelectRandomCard(s *State, player Aff) Card {
@@ -131,6 +174,7 @@ func Action(s *State) {
 	if card.Id == TheChinaCard {
 		s.ChinaCardPlayed()
 	}
+	s.Txn.Flush()
 }
 
 func PlaySpace(s *State, player Aff, card Card) {
@@ -238,15 +282,15 @@ func SelectPlay(s *State, player Aff, card Card) (pk PlayKind) {
 	}
 	choices := []string{}
 	if canOps {
-		choices = append(choices, OPS.String())
+		choices = append(choices, OPS.Ref())
 	}
 	if canEvent {
-		choices = append(choices, EVENT.String())
+		choices = append(choices, EVENT.Ref())
 	}
 	if canSpace {
-		choices = append(choices, SPACE.String())
+		choices = append(choices, SPACE.Ref())
 	}
-	GetInput(s, player, &pk, fmt.Sprintf("Playing %s", card.Name), choices...)
+	GetOrLog(s, player, &pk, fmt.Sprintf("Playing %s", card.Name), choices...)
 	return
 }
 
@@ -262,21 +306,21 @@ func SelectOps(s *State, player Aff, card Card, exclude ...OpsKind) (o OpsKind) 
 	var choices []string
 	switch {
 	case len(exclude) == 0:
-		choices = []string{COUP.String(), REALIGN.String(), INFLUENCE.String()}
+		choices = []string{COUP.Ref(), REALIGN.Ref(), INFLUENCE.Ref()}
 	case exclude[0] == COUP:
-		choices = []string{REALIGN.String(), INFLUENCE.String()}
+		choices = []string{REALIGN.Ref(), INFLUENCE.Ref()}
 	case exclude[0] == REALIGN:
-		choices = []string{COUP.String(), INFLUENCE.String()}
+		choices = []string{COUP.Ref(), INFLUENCE.Ref()}
 	case exclude[0] == INFLUENCE:
-		choices = []string{COUP.String(), REALIGN.String()}
+		choices = []string{COUP.Ref(), REALIGN.Ref()}
 	}
-	GetInput(s, player, &o, message, choices...)
+	GetOrLog(s, player, &o, message, choices...)
 	return
 }
 
 func SelectFirst(s *State, player Aff) (first Aff) {
-	GetInput(s, player, &first, "Who will play first",
-		USA.String(), SOV.String())
+	GetOrLog(s, player, &first, "Who will play first",
+		USA.Ref(), SOV.Ref())
 	return
 }
 
@@ -299,6 +343,17 @@ func InRegion(regions ...Region) countryCheck {
 	}
 }
 
+func InCountries(countries ...CountryId) countryCheck {
+	return func(c *Country) error {
+		for _, cid := range countries {
+			if cid == c.Id {
+				return nil
+			}
+		}
+		return fmt.Errorf("%s not a valid choice", c.Name)
+	}
+}
+
 func ControlledBy(aff Aff) countryCheck {
 	return func(c *Country) error {
 		if c.Controlled() != aff {
@@ -317,12 +372,21 @@ func NotControlledBy(aff Aff) countryCheck {
 	}
 }
 
+func NoInfluence(aff Aff) countryCheck {
+	return func(c *Country) error {
+		if c.Inf[aff] != 0 {
+			return fmt.Errorf("%s has influence in %s", aff, c.Name)
+		}
+		return nil
+	}
+}
+
 func MaxPerCountry(n int) countryCheck {
 	counts := make(map[CountryId]int)
 	return func(c *Country) error {
 		counts[c.Id] += 1
 		if counts[c.Id] > n {
-			return fmt.Errorf("Too much in %s", n, c.Name)
+			return fmt.Errorf("Too much in %s", c.Name)
 		}
 		return nil
 	}
@@ -397,16 +461,16 @@ func SelectInfluenceForce(s *State, player Aff, selectFn func() ([]*Country, err
 }
 
 func SelectInfluence(s *State, player Aff, message string) (cs []*Country) {
-	GetInput(s, player, &cs, message)
+	GetOrLog(s, player, &cs, message)
 	return
 }
 
 func SelectCountry(s *State, player Aff, message string, countries ...CountryId) (c *Country) {
 	choices := make([]string, len(countries))
 	for i, cn := range countries {
-		choices[i] = s.Countries[cn].Name
+		choices[i] = s.Countries[cn].Ref()
 	}
-	GetInput(s, player, c, message, choices...)
+	GetOrLog(s, player, &c, message, choices...)
 	return
 }
 
@@ -429,7 +493,7 @@ func PlaceInfluence(s *State, player Aff, cs []*Country) {
 
 func RemoveInfluence(s *State, player Aff, cs []*Country) {
 	for _, c := range cs {
-		c.Inf[player] -= 1
+		c.Inf[player] = Max(0, c.Inf[player]-1)
 	}
 }
 
