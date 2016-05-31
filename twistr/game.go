@@ -221,8 +221,8 @@ func PlayOps(s *State, player Aff, card Card) {
 	}
 }
 
-func ConductOps(s *State, player Aff, card Card, exclude ...OpsKind) {
-	switch SelectOps(s, player, card, exclude...) {
+func ConductOps(s *State, player Aff, card Card, kinds ...OpsKind) {
+	switch SelectOps(s, player, card, kinds...) {
 	case COUP:
 		MessageBoth(s, "coup not implemented")
 	case REALIGN:
@@ -299,9 +299,8 @@ func SelectPlay(s *State, player Aff, card Card) (pk PlayKind) {
 	return
 }
 
-// We only support excluding 0 or 1 opskind. Excluding more than one means
-// there is only one remaining kind, so there isn't a choice.
-func SelectOps(s *State, player Aff, card Card, exclude ...OpsKind) (o OpsKind) {
+// Caller can pass in an optional whitelist of acceptable kinds.
+func SelectOps(s *State, player Aff, card Card, kinds ...OpsKind) (o OpsKind) {
 	var message string
 	if card.Id == FreeOps {
 		message = fmt.Sprintf("Playing a %d ops card", card.Ops)
@@ -309,15 +308,12 @@ func SelectOps(s *State, player Aff, card Card, exclude ...OpsKind) (o OpsKind) 
 		message = fmt.Sprintf("Playing %s for ops", card.Name)
 	}
 	var choices []string
-	switch {
-	case len(exclude) == 0:
+	if len(kinds) == 0 {
 		choices = []string{COUP.Ref(), REALIGN.Ref(), INFLUENCE.Ref()}
-	case exclude[0] == COUP:
-		choices = []string{REALIGN.Ref(), INFLUENCE.Ref()}
-	case exclude[0] == REALIGN:
-		choices = []string{COUP.Ref(), INFLUENCE.Ref()}
-	case exclude[0] == INFLUENCE:
-		choices = []string{COUP.Ref(), REALIGN.Ref()}
+	} else {
+		for _, k := range kinds {
+			choices = append(choices, k.Ref())
+		}
 	}
 	GetOrLog(s, player, &o, message, choices...)
 	return
