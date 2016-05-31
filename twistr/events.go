@@ -89,13 +89,16 @@ func PlayVietnamRevolts(s *State, player Aff) {
 func PlayBlockade(s *State, player Aff) {
 	/* Unless the US immediately discards a card with an Operations value of 3 or
 	   more, remove all US Influence from West Germany.  */
-	choice := SelectChoice(s, USA, "Discard a card with >=3 Ops, or remove all influence from West Germany?", "discard", "remove")
-	switch choice {
-	case "discard":
+	willDiscard := false
+	if hasInHand(s, USA, ExceedsOps(2)) {
+		choice := SelectChoice(s, USA, "Discard a card with >=3 Ops, or remove all influence from West Germany?", "discard", "remove")
+		willDiscard = choice == "discard"
+	}
+	if willDiscard {
 		card := SelectCard(s, USA, CardBlacklist(TheChinaCard), ExceedsOps(2))
 		s.Hands[USA].Remove(card)
 		s.Discard.Push(card)
-	case "remove":
+	} else {
 		s.Countries[WGermany].Inf[USA] = 0
 	}
 }
@@ -110,7 +113,8 @@ func PlayKoreanWar(s *State, player Aff) {
 	roll := SelectRoll(s)
 	skorea := s.Countries[SKorea]
 	mod := skorea.NumControlledNeighbors(USA)
-	if (roll - mod) > 3 {
+	switch roll - mod {
+	case 4, 5, 6:
 		s.GainVP(SOV, 2)
 		skorea.Inf[SOV] += skorea.Inf[USA]
 		skorea.Inf[USA] = 0
@@ -139,7 +143,8 @@ func PlayArabIsraeliWar(s *State, player Aff) {
 	if israel.Controlled() == USA {
 		mod += 1
 	}
-	if (roll - mod) > 3 {
+	switch roll - mod {
+	case 4, 5, 6:
 		s.GainVP(SOV, 2)
 		israel.Inf[SOV] += israel.Inf[USA]
 		israel.Inf[USA] = 0
@@ -289,7 +294,8 @@ func PlayIndoPakistaniWar(s *State, player Aff) {
 	s.MilOps[SOV] += 2
 	roll := SelectRoll(s)
 	mod := c.NumControlledNeighbors(player.Opp())
-	if (roll - mod) > 3 {
+	switch roll - mod {
+	case 4, 5, 6:
 		s.GainVP(player, 2)
 		c.Inf[player] += c.Inf[player.Opp()]
 		c.Inf[player.Opp()] = 0
@@ -525,7 +531,8 @@ func PlayBrushWar(s *State, player Aff) {
 	s.MilOps[player] += 3
 	roll := SelectRoll(s)
 	mod := c.NumControlledNeighbors(player.Opp())
-	if (roll - mod) > 2 {
+	switch roll - mod {
+	case 3, 4, 5, 6:
 		s.GainVP(player, 1)
 		c.Inf[player] += c.Inf[player.Opp()]
 		c.Inf[player.Opp()] = 0
@@ -1261,6 +1268,7 @@ func PlayTerrorism(s *State, player Aff) {
 		return
 	}
 	card := SelectRandomCard(s, opp)
+	// XXX messaging
 	s.Hands[opp].Remove(card)
 	if opp == USA && s.Effect(IranianHostageCrisis) {
 		if len(s.Hands[opp].Cards) == 0 {
@@ -1290,12 +1298,16 @@ func PlayLatinAmericanDebtCrisis(s *State, player Aff) {
 	/* The US must immediately discard a card with an Operations value of 3 or
 	   more or the USSR may double the amount of USSR Influence in 2 countries in
 	   South America. */
-	choice := s.Solicit(USA, "Discard a card with >=3 Ops, or double USSR influence in two SAM countries?", []string{"discard", "double"})
-	switch choice {
-	case "discard":
+	willDiscard := false
+	if hasInHand(s, USA, ExceedsOps(2)) {
+		choice := s.Solicit(USA, "Discard a card with >=3 Ops, or double USSR influence in two SAM countries?", []string{"discard", "whatever"})
+		willDiscard = choice == "discard"
+	}
+
+	if willDiscard {
 		card := SelectCard(s, USA, CardBlacklist(TheChinaCard), ExceedsOps(2))
 		s.Discard.Push(card)
-	case "double":
+	} else {
 		cs := SelectInfluenceForce(s, player, func() ([]*Country, error) {
 			return SelectNInfluenceCheck(s, player,
 				"Double USSR influence in 2 countries in South America", 2,
@@ -1373,11 +1385,12 @@ func PlayIranIraqWar(s *State, player Aff) {
 	   the player receives 2 VP and replaces all the opponent’s Influence in the
 	   target country with their Influence. The player adds 2 to its Military
 	   Operations Track. */
-	c := SelectCountry(s, player, "Choose who gets invaded", s.Countries[Iraq], s.Countries[Iran])
+	c := SelectCountry(s, player, "Choose who gets invaded", Iraq, Iran)
 	s.MilOps[player] += 2
 	roll := SelectRoll(s)
 	mod := c.NumControlledNeighbors(player.Opp())
-	if (roll - mod) > 3 {
+	switch roll - mod {
+	case 4, 5, 6:
 		s.GainVP(player, 2)
 		c.Inf[player] += c.Inf[player.Opp()]
 		c.Inf[player.Opp()] = 0
