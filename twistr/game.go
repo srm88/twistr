@@ -240,7 +240,6 @@ func EndTurn(s *State) {
 		s.ChinaCardFaceUp = true
 	}
 	s.AR = 1
-	s.Phasing = SOV
 	s.TurnEvents = make(map[CardId]Aff)
 }
 
