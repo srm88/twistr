@@ -160,7 +160,17 @@ func Turn(s *State) {
 	Action(s)
 	s.Phasing = USA
 	Action(s)
+	// XXX
+	hasExtra, ok := s.SREvents[ExtraAR]
+
+	// End turn
+	discarder, ok := s.SREvents[DiscardHeld]
 	s.Turn++
+}
+
+func Headline(s *State) {
+	secondPlayer, ok := s.SREvents[OppHeadlineFirst]
+	// XXX #16
 }
 
 func Action(s *State) {
