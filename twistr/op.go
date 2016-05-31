@@ -83,7 +83,7 @@ func canCoup(s *State, player Aff, t *Country, free bool) bool {
 		return false
 	case natoProtected(s, player, t):
 		return false
-	case s.Effect(USJapanMutualDefensePact) && t.Id == Japan && player == SOV:
+	case japanProtected(s, player, t):
 		return false
 	case s.Effect(TheReformer) && player == SOV && t.In(Europe):
 		return false
@@ -98,7 +98,7 @@ func canRealign(s *State, player Aff, t *Country, free bool) bool {
 	switch {
 	case natoProtected(s, player, t):
 		return false
-	case s.Effect(USJapanMutualDefensePact) && t.Id == Japan && player == SOV:
+	case japanProtected(s, player, t):
 		return false
 	case t.Inf[player.Opp()] < 1:
 		return false
@@ -118,6 +118,10 @@ func defconProtected(s *State, t *Country) bool {
 
 func natoProtected(s *State, player Aff, t *Country) bool {
 	return s.Effect(NATO) && player == SOV && t.In(Europe) && t.Controlled() == USA
+}
+
+func japanProtected(s *State, player Aff, t *Country) bool {
+	return s.Effect(USJapanMutualDefensePact) && t.Id == Japan && player == SOV
 }
 
 func influenceCost(player Aff, target Country) int {
