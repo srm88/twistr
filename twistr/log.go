@@ -2,10 +2,10 @@ package twistr
 
 import (
 	"bufio"
+	"bytes"
 	"io"
 	"log"
 	"os"
-    "bytes"
 )
 
 type CoupLog struct {
@@ -27,33 +27,33 @@ type Aof struct {
 }
 
 type TxnLog struct {
-    *bytes.Buffer
-    wc io.WriteCloser
+	*bytes.Buffer
+	wc io.WriteCloser
 }
 
-func NewTxnLog(wc io.WriteCloser) *TxnLog{
-    return &TxnLog{
-        Buffer: new(bytes.Buffer),
-        wc: wc,
-    }
+func NewTxnLog(wc io.WriteCloser) *TxnLog {
+	return &TxnLog{
+		Buffer: new(bytes.Buffer),
+		wc:     wc,
+	}
 }
 
 func (log TxnLog) Close() error {
-    return log.wc.Close()
+	return log.wc.Close()
 }
 
 func (log *TxnLog) Flush() {
-    // Writes the contents of its internal buffer into the
-    // WriteCloser
-    log.WriteTo(log.wc)
+	// Writes the contents of its internal buffer into the
+	// WriteCloser
+	log.WriteTo(log.wc)
 }
 
 func OpenTxnLog(path string) (*TxnLog, error) {
 	out, err := os.OpenFile(path, os.O_WRONLY|os.O_APPEND, 0666)
-    if err != nil {
-        return nil, err
-    }
-    return NewTxnLog(out), nil
+	if err != nil {
+		return nil, err
+	}
+	return NewTxnLog(out), nil
 }
 
 func NewAof(r io.ReadCloser, w io.WriteCloser) *Aof {
