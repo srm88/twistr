@@ -223,12 +223,6 @@ func unmarshalWord(word string, v reflect.Value) (err error) {
 			return err
 		}
 		v.SetInt(int64(ok))
-	case "region":
-		var r Region
-		if r, err = lookupRegion(word); err != nil {
-			return err
-		}
-		v.Set(reflect.ValueOf(r))
 	}
 	return
 }
@@ -254,8 +248,6 @@ func valueKind(vtype reflect.Type) string {
 		return "country"
 	case "Card":
 		return "card"
-	case "Region":
-		return "region"
 	case "Aff":
 		return "aff"
 	case "PlayKind":
