@@ -91,6 +91,15 @@ func SelectCard(s *State, player Aff, filters ...cardFilter) (c Card) {
 	return selectCardFrom(s, player, s.Hands[player].Cards, canPlayChina, filters...)
 }
 
+func hasInHand(s *State, player Aff, filters ...cardFilter) bool {
+	for _, c := range s.Hands[player].Cards {
+		if passesFilters(c, filters) {
+			return true
+		}
+	}
+	return false
+}
+
 func SelectDiscarded(s *State, player Aff, filters ...cardFilter) (c Card) {
 	return selectCardFrom(s, player, s.Discard.Cards, false, filters...)
 }
@@ -445,6 +454,7 @@ func SelectInfluenceOps(s *State, player Aff, card Card) (cs []*Country, err err
 
 // Repeat selectFn until the user's input is acceptible.
 // This should be reconsidered once we support log-replay and log-writing.
+// XXX what if they don't have any influence?
 func SelectInfluenceForce(s *State, player Aff, selectFn func() ([]*Country, error)) []*Country {
 	var cs []*Country
 	var err error
