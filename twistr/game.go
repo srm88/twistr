@@ -192,7 +192,12 @@ func PlaySpace(s *State, player Aff, card Card) {
 	} else {
 		MessageBoth(s, fmt.Sprintf("%s rolls %d. Space race attempt fails!", player, roll))
 	}
-	s.Discard.Push(card)
+	s.SpaceAttempts[player] += 1
+	// China card can be spaced, but Action will take care of moving it to the
+	// opponent.
+	if card.Id != TheChinaCard {
+		s.Discard.Push(card)
+	}
 }
 
 func SelectRoll(s *State) int {
