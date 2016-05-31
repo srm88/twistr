@@ -248,14 +248,14 @@ func valueKind(vtype reflect.Type) string {
 		return "country"
 	case "Card":
 		return "card"
+	case "Region":
+		return "region"
 	case "Aff":
 		return "aff"
 	case "PlayKind":
 		return "playkind"
 	case "OpsKind":
 		return "opskind"
-	case "Region":
-		return "region"
 	default:
 		return "?"
 	}

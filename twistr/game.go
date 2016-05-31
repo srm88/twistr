@@ -455,6 +455,8 @@ func SelectInfluenceOps(s *State, player Aff, card Card) (cs []*Country, err err
 // Repeat selectFn until the user's input is acceptible.
 // This should be reconsidered once we support log-replay and log-writing.
 // XXX what if they don't have any influence?
+// XXX 2 situation where SOV chooses e.g. 2 influence to be removed from
+// country with only 1 US influence?
 func SelectInfluenceForce(s *State, player Aff, selectFn func() ([]*Country, error)) []*Country {
 	var cs []*Country
 	var err error

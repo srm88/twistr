@@ -98,9 +98,9 @@ func PlayBlockade(s *State, player Aff) {
 		card := SelectCard(s, USA, CardBlacklist(TheChinaCard), ExceedsOps(2))
 		s.Hands[USA].Remove(card)
 		s.Discard.Push(card)
-	} else {
-		s.Countries[WGermany].Inf[USA] = 0
+		return
 	}
+	s.Countries[WGermany].Inf[USA] = 0
 }
 
 func PlayKoreanWar(s *State, player Aff) {
@@ -1307,15 +1307,15 @@ func PlayLatinAmericanDebtCrisis(s *State, player Aff) {
 	if willDiscard {
 		card := SelectCard(s, USA, CardBlacklist(TheChinaCard), ExceedsOps(2))
 		s.Discard.Push(card)
-	} else {
-		cs := SelectInfluenceForce(s, player, func() ([]*Country, error) {
-			return SelectNInfluenceCheck(s, player,
-				"Double USSR influence in 2 countries in South America", 2,
-				InRegion(SouthAmerica), HasInfluence(SOV))
-		})
-		for _, c := range cs {
-			c.Inf[SOV] *= 2
-		}
+		return
+	}
+	cs := SelectInfluenceForce(s, player, func() ([]*Country, error) {
+		return SelectNInfluenceCheck(s, player,
+			"Double USSR influence in 2 countries in South America", 2,
+			InRegion(SouthAmerica), HasInfluence(SOV))
+	})
+	for _, c := range cs {
+		c.Inf[SOV] *= 2
 	}
 }
 
