@@ -226,14 +226,14 @@ func ConductOps(s *State, player Aff, card Card, kinds ...OpsKind) {
 	case COUP:
 		OpCoup(s, player, card.Ops)
 	case REALIGN:
-		OpRealign(s, player, card)
+		OpRealign(s, player, card.Ops)
 	case INFLUENCE:
 		MessageBoth(s, "influence not implemented")
 	}
 }
 
-func OpRealign(s *State, player Aff, card Card) {
-	for i := 0; i < card.Ops; i++ {
+func OpRealign(s *State, player Aff, ops int) {
+	for i := 0; i < ops; i++ {
 		target := SelectCountry(s, player, "Realign where?")
 		for !canRealign(s, player, target, false) {
 			target = SelectCountry(s, player, "Oh no you goofed. Realign where?")
