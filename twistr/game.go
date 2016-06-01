@@ -15,11 +15,14 @@ import (
 // AskNotWhatYourCountry: discard up to hand, draw replacements
 // OurManInTehran: draw top 5, return or discard, reshuffle
 func Deal(s *State) {
-	hs := s.HandSize()
-	usDraw := s.Deck.Draw(hs - len(s.Hands[USA].Cards))
+	// XXX: handle running out of cards and shuffling in discards mid-deal
+	handSize := s.ActionsPerTurn() + 2
+	usDraw := s.Deck.Draw(handSize - len(s.Hands[USA].Cards))
 	s.Hands[USA].Push(usDraw...)
-	sovDraw := s.Deck.Draw(hs - len(s.Hands[SOV].Cards))
+	ShowHand(s, USA, USA)
+	sovDraw := s.Deck.Draw(handSize - len(s.Hands[SOV].Cards))
 	s.Hands[SOV].Push(sovDraw...)
+	ShowHand(s, SOV, SOV)
 }
 
 func Start(s *State) {
@@ -27,10 +30,8 @@ func Start(s *State) {
 	s.Deck.Push(EarlyWar...)
 	cards := SelectShuffle(s.Deck)
 	s.Deck.Reorder(cards)
-	// Deal out players' hands
 	Deal(s)
 	// SOV chooses 6 influence in E europe
-	ShowHand(s, SOV, SOV)
 	cs := SelectInfluenceForce(s, SOV, func() ([]*Country, error) {
 		return SelectNInfluenceCheck(s, SOV,
 			"6 influence in East Europe", 6,
@@ -38,7 +39,6 @@ func Start(s *State) {
 	})
 	PlaceInfluence(s, SOV, cs)
 	s.Txn.Flush()
-	ShowHand(s, USA, USA)
 	// US chooses 7 influence in W europe
 	csUSA := SelectInfluenceForce(s, USA, func() ([]*Country, error) {
 		return SelectNInfluenceCheck(s, USA,
@@ -48,7 +48,10 @@ func Start(s *State) {
 	PlaceInfluence(s, USA, csUSA)
 	s.Txn.Flush()
 	// Temporary
-	Turn(s)
+	for s.Turn = 1; s.Turn <= 10; s.Turn++ {
+		Turn(s)
+		EndTurn(s)
+	}
 }
 
 func ShowHand(s *State, whose, to Aff) {
@@ -153,14 +156,91 @@ func SelectRandomCard(s *State, player Aff) Card {
 	return s.Hands[player].Cards[n]
 }
 
+func actionsThisTurn(s *State, player Aff) int {
+	_, active := s.TurnEvents[NorthSeaOil]
+	switch {
+	case player == USA && active:
+		return 8
+	case s.SREvents[ExtraAR] == player:
+		return 8
+	default:
+		return s.ActionsPerTurn()
+	}
+}
+
+func outOfCards(s *State, player Aff) bool {
+	switch {
+	case s.ChinaCardPlayer == player && s.ChinaCardFaceUp:
+		return false
+	case len(s.Hands[player].Cards) > 0:
+		return false
+	default:
+		return true
+	}
+}
+
 func Turn(s *State) {
-	// Stub: awaiting implementation in issue#13
-	MessageBoth(s, fmt.Sprintf("TURN %d", s.Turn))
-	s.Phasing = SOV
-	Action(s)
-	s.Phasing = USA
-	Action(s)
-	s.Turn++
+	MessageBoth(s, fmt.Sprintf("== Turn %d", s.Turn))
+	if s.Turn > 1 {
+		Deal(s)
+	}
+	MessageBoth(s, "= Headline Phase")
+	Headline(s)
+	usaCap := actionsThisTurn(s, USA)
+	sovCap := actionsThisTurn(s, SOV)
+	usaDone, sovDone := false, false
+	for {
+		sovDone = s.AR > sovCap || outOfCards(s, SOV)
+		usaDone = s.AR > usaCap || outOfCards(s, USA)
+		if sovDone && usaDone {
+			return
+		}
+		if !sovDone {
+			MessageBoth(s, fmt.Sprintf("= %s AR %d.", SOV, s.AR))
+			s.Phasing = SOV
+			Action(s)
+		}
+		if !usaDone {
+			MessageBoth(s, fmt.Sprintf("= %s AR %d.", USA, s.AR))
+			s.Phasing = USA
+			Action(s)
+		}
+		s.AR++
+	}
+}
+
+func awardMilOpsVPs(s *State) {
+	// Examples:
+	// defcon 5, usa 3, sov 2 => usa scores 1
+	// defcon 2, usa 0, sov 2 => sov scores 2
+	// defcon 3, usa 5, sov 4 => nobody scores
+	// defcon 3, usa 5, sov 0 => usa scores 3
+	usaShy := Max(s.Defcon-s.MilOps[USA], 0)
+	sovShy := Max(s.Defcon-s.MilOps[SOV], 0)
+	switch {
+	case usaShy == 0 && sovShy == 0:
+		return
+	case usaShy > sovShy:
+		MessageBoth(s, fmt.Sprintf("%s loses %d VP for not meeting required military operations.", USA, usaShy-sovShy))
+		s.GainVP(SOV, usaShy-sovShy)
+	case sovShy > usaShy:
+		MessageBoth(s, fmt.Sprintf("%s loses %d VP for not meeting required military operations.", SOV, sovShy-usaShy))
+		s.GainVP(USA, sovShy-usaShy)
+	}
+}
+
+func EndTurn(s *State) {
+	// End turn: milops, defcon, china card, AR reset
+	awardMilOpsVPs(s)
+	s.MilOps[USA] = 0
+	s.MilOps[SOV] = 0
+	s.ImproveDefcon(1)
+	if !s.ChinaCardFaceUp {
+		MessageBoth(s, fmt.Sprintf("The china card is now face up for %s.", s.ChinaCardPlayer))
+		s.ChinaCardFaceUp = true
+	}
+	s.AR = 1
+	s.TurnEvents = make(map[CardId]Aff)
 }
 
 func Action(s *State) {
@@ -177,6 +257,7 @@ func Action(s *State) {
 		PlayEvent(s, p, card)
 	}
 	if card.Id == TheChinaCard {
+		MessageBoth(s, fmt.Sprintf("%s receives the China Card, face down.", p.Opp()))
 		s.ChinaCardPlayed()
 	}
 	s.Txn.Flush()
