@@ -243,7 +243,6 @@ func EndTurn(s *State) {
 	}
 	s.AR = 1
 	s.TurnEvents = make(map[CardId]Aff)
->>>>>>> master
 }
 
 func Headline(s *State) {
