@@ -89,18 +89,16 @@ func PlayVietnamRevolts(s *State, player Aff) {
 func PlayBlockade(s *State, player Aff) {
 	/* Unless the US immediately discards a card with an Operations value of 3 or
 	   more, remove all US Influence from West Germany.  */
-	willDiscard := false
-	if hasInHand(s, USA, ExceedsOps(2)) {
-		choice := SelectChoice(s, USA, "Discard a card with >=3 Ops, or remove all influence from West Germany?", "discard", "remove")
-		willDiscard = choice == "discard"
-	}
-	if willDiscard {
+	if hasInHand(s, USA, ExceedsOps(2)) &&
+		"discard" == SelectChoice(s, USA,
+			"Discard a card with >=3 Ops, or remove all influence from West Germany?",
+			"discard", "remove") {
 		card := SelectCard(s, USA, CardBlacklist(TheChinaCard), ExceedsOps(2))
 		s.Hands[USA].Remove(card)
 		s.Discard.Push(card)
-		return
+	} else {
+		s.Countries[WGermany].Inf[USA] = 0
 	}
-	s.Countries[WGermany].Inf[USA] = 0
 }
 
 func PlayKoreanWar(s *State, player Aff) {
@@ -1298,24 +1296,21 @@ func PlayLatinAmericanDebtCrisis(s *State, player Aff) {
 	/* The US must immediately discard a card with an Operations value of 3 or
 	   more or the USSR may double the amount of USSR Influence in 2 countries in
 	   South America. */
-	willDiscard := false
-	if hasInHand(s, USA, ExceedsOps(2)) {
-		choice := s.Solicit(USA, "Discard a card with >=3 Ops, or double USSR influence in two SAM countries?", []string{"discard", "whatever"})
-		willDiscard = choice == "discard"
-	}
-
-	if willDiscard {
+	if hasInHand(s, USA, ExceedsOps(2)) &&
+		"discard" == SelectChoice(s, USA,
+			"Discard a card with >=3 Ops, or double USSR influence in two SAM countries?",
+			"discard", "whatever") {
 		card := SelectCard(s, USA, CardBlacklist(TheChinaCard), ExceedsOps(2))
 		s.Discard.Push(card)
-		return
-	}
-	cs := SelectInfluenceForce(s, player, func() ([]*Country, error) {
-		return SelectNInfluenceCheck(s, player,
-			"Double USSR influence in 2 countries in South America", 2,
-			InRegion(SouthAmerica), HasInfluence(SOV))
-	})
-	for _, c := range cs {
-		c.Inf[SOV] *= 2
+	} else {
+		cs := SelectInfluenceForce(s, player, func() ([]*Country, error) {
+			return SelectNInfluenceCheck(s, player,
+				"Double USSR influence in 2 countries in South America", 2,
+				InRegion(SouthAmerica), HasInfluence(SOV))
+		})
+		for _, c := range cs {
+			c.Inf[SOV] *= 2
+		}
 	}
 }
 
