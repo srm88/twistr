@@ -1178,9 +1178,15 @@ func PlayStarWars(s *State, player Aff) {
 	if s.SpaceRace[USA] <= s.SpaceRace[SOV] {
 		return
 	}
-	card := SelectDiscarded(s, player, CardBlacklist(AsiaScoring, EuropeScoring,
-		MiddleEastScoring, CentralAmericaScoring, SouthAmericaScoring,
-		SoutheastAsiaScoring, AfricaScoring))
+	// Limit choice to playable events
+	canPlayEvent := func(c Card) bool {
+		return !c.Prevented(s)
+	}
+	card := SelectDiscarded(s, player,
+		canPlayEvent,
+		CardBlacklist(AsiaScoring, EuropeScoring,
+			MiddleEastScoring, CentralAmericaScoring, SouthAmericaScoring,
+			SoutheastAsiaScoring, AfricaScoring))
 	PlayEvent(s, player, card)
 }
 
