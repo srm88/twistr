@@ -79,7 +79,7 @@ func (aof *Aof) ReadInto(thing interface{}) bool {
 	}
 	line := aof.Text()
 	if err := Unmarshal(line, thing); err != nil {
-		log.Printf("Corrupt log! Tried to parse '%s' into %v\n", line, thing)
+		log.Printf("Corrupt log! Tried to parse '%s' into %s\n", line, thing)
 		return false
 	}
 	return true

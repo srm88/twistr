@@ -20,6 +20,11 @@ func init() {
 			Star: c.Name[len(c.Name)-1] == '*',
 			Impl: c.Impl,
 		}
+		Cards[c.Id] = card
+		// China card is never in a deck
+		if c.Id == TheChinaCard {
+			continue
+		}
 		switch c.Era {
 		case Early:
 			EarlyWar = append(EarlyWar, card)
@@ -28,7 +33,6 @@ func init() {
 		case Late:
 			LateWar = append(LateWar, card)
 		}
-		Cards[c.Id] = card
 	}
 }
 
