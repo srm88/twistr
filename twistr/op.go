@@ -1,5 +1,7 @@
 package twistr
 
+import "fmt"
+
 // All WIP. Maybe obliterate it.
 
 // Realignment
@@ -23,11 +25,39 @@ func realign(s *State, target *Country, rollUSA, rollSOV int) {
 	mods := realignMods(*target)
 	rollUSA += mods[USA]
 	rollSOV += mods[SOV]
+	initUSA := target.Inf[USA]
+	initSOV := target.Inf[SOV]
 	switch {
 	case rollUSA > rollSOV:
 		target.Inf[SOV] -= Min((rollUSA - rollSOV), target.Inf[SOV])
+
 	case rollSOV > rollUSA:
 		target.Inf[USA] -= Min((rollSOV - rollUSA), target.Inf[USA])
+	}
+	if initUSA > target.Inf[USA] {
+		MessageBoth(s, fmt.Sprintf("Removed %d influence from USA", initUSA-target.Inf[USA]))
+	} else if initSOV > target.Inf[SOV] {
+		MessageBoth(s, fmt.Sprintf("Removed %d influence from USSR", initSOV-target.Inf[SOV]))
+	} else {
+		MessageBoth(s, "No influence removed")
+	}
+}
+
+func realignScott(s *State, target *Country, rollUSA, rollSOV int) {
+	mods := realignMods(*target)
+	rollUSA += mods[USA]
+	rollSOV += mods[SOV]
+	sovLoss := Min((rollUSA - rollSOV), target.Inf[SOV])
+	usaLoss := Min((rollSOV - rollUSA), target.Inf[USA])
+	switch {
+	case sovLoss > 0:
+		target.Inf[SOV] -= sovLoss
+		MessageBoth(s, fmt.Sprintf("Removed %d soviet influence ", sovLoss))
+	case usaLoss > 0:
+		target.Inf[USA] -= usaLoss
+		MessageBoth(s, fmt.Sprintf("Removed %d US influence", usaLoss))
+	default:
+		MessageBoth(s, "No influence removed")
 	}
 }
 
@@ -83,9 +113,24 @@ func canCoup(s *State, player Aff, t *Country, free bool) bool {
 		return false
 	case natoProtected(s, player, t):
 		return false
-	case s.Effect(USJapanMutualDefensePact) && t.Id == Japan && player == SOV:
+	case japanProtected(s, player, t):
 		return false
 	case s.Effect(TheReformer) && player == SOV && t.In(Europe):
+		return false
+	case defconProtected(s, t) && !free:
+		return false
+	default:
+		return true
+	}
+}
+
+func canRealign(s *State, player Aff, t *Country, free bool) bool {
+	switch {
+	case natoProtected(s, player, t):
+		return false
+	case japanProtected(s, player, t):
+		return false
+	case t.Inf[player.Opp()] < 1:
 		return false
 	case defconProtected(s, t) && !free:
 		return false
@@ -103,6 +148,10 @@ func defconProtected(s *State, t *Country) bool {
 
 func natoProtected(s *State, player Aff, t *Country) bool {
 	return s.Effect(NATO) && player == SOV && t.In(Europe) && t.Controlled() == USA
+}
+
+func japanProtected(s *State, player Aff, t *Country) bool {
+	return s.Effect(USJapanMutualDefensePact) && t.Id == Japan && player == SOV
 }
 
 func influenceCost(player Aff, target Country) int {

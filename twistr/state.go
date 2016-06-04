@@ -99,11 +99,11 @@ func (s *State) Era() Era {
 	}
 }
 
-func (s *State) HandSize() int {
+func (s *State) ActionsPerTurn() int {
 	if s.Era() == Early {
-		return 8
+		return 6
 	}
-	return 9
+	return 7
 }
 
 func (s *State) Effect(which CardId, player ...Aff) bool {
