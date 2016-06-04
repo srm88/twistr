@@ -209,6 +209,7 @@ func Turn(s *State) {
 	}
 	// End turn
 	discarder, ok := s.SREvents[DiscardHeld]
+	// XXX write me
 }
 
 func awardMilOpsVPs(s *State) {
@@ -243,11 +244,6 @@ func EndTurn(s *State) {
 	}
 	s.AR = 1
 	s.TurnEvents = make(map[CardId]Aff)
-}
-
-func Headline(s *State) {
-	secondPlayer, ok := s.SREvents[OppHeadlineFirst]
-	// XXX #16
 }
 
 func Action(s *State) {
