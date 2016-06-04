@@ -245,7 +245,7 @@ func EndTurn(s *State) {
 	}
 	s.AR = 1
 	s.TurnEvents = make(map[CardId]Aff)
-	s.ChernobylRegion = nil
+	s.ChernobylRegion = Region{}
 }
 
 func Action(s *State) {
