@@ -33,7 +33,7 @@ func Start(s *State) {
 	Deal(s)
 	// SOV chooses 6 influence in E europe
 	cs := SelectInfluenceForce(s, SOV, func() ([]*Country, error) {
-		return SelectNInfluenceCheck(s, SOV,
+		return SelectExactlyNInfluence(s, SOV,
 			"6 influence in East Europe", 6,
 			InRegion(EastEurope))
 	})
@@ -41,7 +41,7 @@ func Start(s *State) {
 	s.Txn.Flush()
 	// US chooses 7 influence in W europe
 	csUSA := SelectInfluenceForce(s, USA, func() ([]*Country, error) {
-		return SelectNInfluenceCheck(s, USA,
+		return SelectExactlyNInfluence(s, USA,
 			"7 influence in West Europe", 7,
 			InRegion(WestEurope))
 	})
@@ -513,18 +513,41 @@ func MaxPerCountry(n int) countryCheck {
 func HasInfluence(aff Aff) countryCheck {
 	return func(c *Country) error {
 		if c.Inf[aff] == 0 {
-			return fmt.Errorf("%s has no %s influence", c.Name, aff)
+			return fmt.Error("No %s influence in %s", aff, c.Name)
 		}
 		return nil
 	}
 }
 
-// SelectNInfluenceCheck asks the player to choose a number of countries to
-// receive influence, and optional checks to perform on the chosen countries.
-func SelectNInfluenceCheck(s *State, player Aff, message string, n int, checks ...countryCheck) (cs []*Country, err error) {
+func CanRemove(s State, aff Aff) countryCheck {
+	removed := make(map[CountryId]int)
+	return func(c *Country) error {
+		removed[c.Id] += 1
+		if c.Inf[aff]-removed[c.Id] < 0 {
+			return fmt.Errorf("Not enough %s influence in %s", aff, c.Name)
+		}
+		return nil
+	}
+}
+
+// SelectNInfluence asks the player to choose a number of countries to receive
+// or lose influence, and optional checks to perform on the chosen countries.
+func SelectNInfluence(s *State, player Aff, message string, n int, checks ...countryCheck) ([]*Country, error) {
+	return selectNInfluence(s, player, message, n, false, checks...)
+}
+
+func SelectExactlyNInfluence(s *State, player Aff, message string, n int, checks ...countryCheck) ([]*Country, error) {
+	return selectNInfluence(s, player, message, n, true, checks...)
+}
+
+func selectNInfluence(s *State, player Aff, message string, n int, exactly bool, checks ...countryCheck) (cs []*Country, err error) {
 	cs = SelectInfluence(s, player, message)
-	if len(cs) != n {
-		err = fmt.Errorf("Select %d influence", n)
+	switch {
+	case exactly && len(cs) != n:
+		err = fmt.Errorf("Select exactly %d", n)
+		return
+	case !exactly && len(cs) > n:
+		err = fmt.Errorf("Too much. Select %d", n)
 		return
 	}
 	for _, placement := range cs {
@@ -567,9 +590,6 @@ func SelectInfluenceOps(s *State, player Aff, card Card) (cs []*Country, err err
 
 // Repeat selectFn until the user's input is acceptible.
 // This should be reconsidered once we support log-replay and log-writing.
-// XXX what if they don't have any influence?
-// XXX 2 situation where SOV chooses e.g. 2 influence to be removed from
-// country with only 1 US influence?
 func SelectInfluenceForce(s *State, player Aff, selectFn func() ([]*Country, error)) []*Country {
 	var cs []*Country
 	var err error
