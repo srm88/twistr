@@ -116,9 +116,9 @@ func selectCardFrom(s *State, player Aff, from []Card, includeChina bool, filter
 		choices = append(choices, c.Ref())
 	}
 	if includeChina && passesFilters(Cards[TheChinaCard], filters) {
-		choices = append(choices, Cards[TheChinaCard].Name)
+		choices = append(choices, Cards[TheChinaCard].Ref())
 	}
-	GetInput(s, player, &c, "Choose a card", choices...)
+	GetOrLog(s, player, &c, "Choose a card", choices...)
 	return
 }
 
@@ -513,7 +513,7 @@ func MaxPerCountry(n int) countryCheck {
 func HasInfluence(aff Aff) countryCheck {
 	return func(c *Country) error {
 		if c.Inf[aff] == 0 {
-			return fmt.Error("No %s influence in %s", aff, c.Name)
+			return fmt.Errorf("No %s influence in %s", aff, c.Name)
 		}
 		return nil
 	}
