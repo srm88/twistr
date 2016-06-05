@@ -505,7 +505,7 @@ func MaxPerCountry(n int) countryCheck {
 func HasInfluence(aff Aff) countryCheck {
 	return func(c *Country) error {
 		if c.Inf[aff] == 0 {
-			return fmt.Error("No %s influence in %s", aff, c.Name)
+			return fmt.Errorf("No %s influence in %s", aff, c.Name)
 		}
 		return nil
 	}
