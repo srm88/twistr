@@ -65,6 +65,8 @@ func (c Card) Prevented(s *State) bool {
 		return true
 	case c.Id == TheCambridgeFive && s.Era() == Late:
 		return true
+	case c.Id == Wargames && s.Defcon != 2:
+		return true
 	default:
 		return false
 	}
