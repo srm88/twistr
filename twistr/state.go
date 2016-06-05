@@ -25,6 +25,7 @@ type State struct {
 	Hands           [2]*Deck
 	ChinaCardPlayer Aff
 	ChinaCardFaceUp bool
+	ChernobylRegion Region
 }
 
 func NewState(ui UI, aofPath string) (*State, error) {

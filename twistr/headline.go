@@ -15,10 +15,10 @@ func Headline(s *State) {
 	if usaHl.Ops >= sovHl.Ops {
 		s.Phasing = USA
 		PlayEvent(s, USA, usaHl)
-		s.Phasing = Sov
+		s.Phasing = SOV
 		PlayEvent(s, SOV, sovHl)
 	} else {
-		s.Phasing = Sov
+		s.Phasing = SOV
 		PlayEvent(s, SOV, sovHl)
 		s.Phasing = USA
 		PlayEvent(s, USA, usaHl)
