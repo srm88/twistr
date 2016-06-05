@@ -1366,8 +1366,7 @@ func PlayPershingIIDeployed(s *State, player Aff) {
 func PlayWargames(s *State, player Aff) {
 	/* If the DEFCON level is 2, the player may immediately end the game after
 	   giving their opponent 6 VP. How about a nice game of chess? */
-	choice := s.Solicit(player, "Give opponent 6 VP and end the game?", []string{"yes", "no"})
-	if choice == "yes" {
+	if "yes" == SelectChoice(s, player, "Give opponent 6 VP and end the game?", "yes", "no") {
 		s.GainVP(player.Opp(), 6)
 		// XXX: game end, writeme
 	}
