@@ -118,7 +118,7 @@ func selectCardFrom(s *State, player Aff, from []Card, includeChina bool, filter
 	if includeChina && passesFilters(Cards[TheChinaCard], filters) {
 		choices = append(choices, Cards[TheChinaCard].Name)
 	}
-	GetInput(s, player, &c, "Choose a card", choices...)
+	GetOrLog(s, player, &c, "Choose a card", choices...)
 	return
 }
 
