@@ -351,7 +351,9 @@ func ConductOps(s *State, player Aff, card Card, kinds ...OpsKind) {
 	case REALIGN:
 		OpRealign(s, player, card.Ops)
 	case INFLUENCE:
-		MessageBoth(s, "influence not implemented")
+		SelectInfluenceForce(s, player, func() ([]*Country, error) {
+			return SelectInfluenceOps(s, player, card)
+		})
 	}
 }
 
@@ -592,6 +594,11 @@ func selectNInfluence(s *State, player Aff, message string, n int, exactly bool,
 func SelectInfluenceOps(s *State, player Aff, card Card) (cs []*Country, err error) {
 	message := "Place influence"
 	cs = SelectInfluence(s, player, message)
+	for _, c := range cs {
+		if !validAdjacent(c, player) && c.Inf[player] == 0 {
+			return nil, fmt.Errorf("%s has no existing %s influence in or adjacent to it", c.Name, player.String())
+		}
+	}
 	// Compute ops
 	ops := card.Ops + opsMod(s, player, cs)
 	// Compute cost. Copy each country so that we can update its influence
@@ -615,6 +622,15 @@ func SelectInfluenceOps(s *State, player Aff, card Card) (cs []*Country, err err
 		err = fmt.Errorf("Underspent ops by %d", (ops - cost))
 	}
 	return
+}
+
+func validAdjacent(c *Country, player Aff) bool {
+	for _, ad := range c.AdjCountries {
+		if ad.Inf[player] > 0 {
+			return true
+		}
+	}
+	return false
 }
 
 // Repeat selectFn until the user's input is acceptible.
