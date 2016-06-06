@@ -212,7 +212,7 @@ func Turn(s *State) {
 		s.AR++
 	}
 	// End turn
-	discarder, ok := s.SREvents[DiscardHeld]
+	//discarder, ok := s.SREvents[DiscardHeld]
 	// XXX write me
 }
 
