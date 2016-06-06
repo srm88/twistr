@@ -43,24 +43,6 @@ func realign(s *State, target *Country, rollUSA, rollSOV int) {
 	}
 }
 
-func realignScott(s *State, target *Country, rollUSA, rollSOV int) {
-	mods := realignMods(*target)
-	rollUSA += mods[USA]
-	rollSOV += mods[SOV]
-	sovLoss := Min((rollUSA - rollSOV), target.Inf[SOV])
-	usaLoss := Min((rollSOV - rollUSA), target.Inf[USA])
-	switch {
-	case sovLoss > 0:
-		target.Inf[SOV] -= sovLoss
-		MessageBoth(s, fmt.Sprintf("Removed %d soviet influence ", sovLoss))
-	case usaLoss > 0:
-		target.Inf[USA] -= usaLoss
-		MessageBoth(s, fmt.Sprintf("Removed %d US influence", usaLoss))
-	default:
-		MessageBoth(s, "No influence removed")
-	}
-}
-
 func coupBonus(s *State, player Aff, target *Country) (bonus int) {
 	if s.Effect(SALTNegotiations) {
 		bonus -= 1
