@@ -449,6 +449,7 @@ func PlayTheCambridgeFive(s *State, player Aff) {
 			regions = append(regions, c.ScoringRegion())
 		}
 	}
+	// XXX should message both
 	s.Message(player, fmt.Sprintf("%s scoring cards: %s\n", USA, strings.Join(scoringCards, ", ")))
 	if len(scoringCards) == 0 {
 		return
@@ -717,12 +718,14 @@ func PlayKitchenDebates(s *State, player Aff) {
 	usaBG := 0
 	sovBG := 0
 	for _, c := range s.Countries {
-		if c.Battleground {
-			if c.Controlled() == SOV {
-				sovBG++
-			} else if c.Controlled() == USA {
-				usaBG++
-			}
+		if !c.Battleground {
+			continue
+		}
+		switch c.Controlled() {
+		case SOV:
+			sovBG++
+		case USA:
+			usaBG++
 		}
 	}
 	if usaBG > sovBG {
@@ -890,16 +893,19 @@ func PlayColonialRearGuards(s *State, player Aff) {
 
 func PlayPanamaCanalReturned(s *State, player Aff) {
 	/* Add 1 US Influence to Panama, Costa Rica and Venezuela.  */
-	// TODO: Gag myself vvv
-	PlaceInfluence(s, USA, []*Country{s.Countries[Panama], s.Countries[CostaRica], s.Countries[Venezuela]})
+	s.Countries[Panama].Inf[USA] += 1
+	s.Countries[CostaRica].Inf[USA] += 1
+	s.Countries[Venezuela].Inf[USA] += 1
 }
 
 func PlayCampDavidAccords(s *State, player Aff) {
 	/* The US receives 1 VP and adds 1 Influence to Israel, Jordan and Egypt.
 	   This Event prevents the “#13 – Arab-Israeli War” card from being played as
 	   an Event. */
-	PlaceInfluence(s, USA, []*Country{s.Countries[Israel], s.Countries[Jordan], s.Countries[Egypt]})
-	s.GainVP(SOV, 1)
+	s.Countries[Israel].Inf[USA] += 1
+	s.Countries[Jordan].Inf[USA] += 1
+	s.Countries[Egypt].Inf[USA] += 1
+	s.GainVP(USA, 1)
 	s.Events[CampDavidAccords] = player
 }
 
@@ -928,6 +934,8 @@ func PlayGrainSalesToSoviets(s *State, player Aff) {
 		case "play":
 			s.Hands[SOV].Remove(card)
 			PlayEvent(s, player, card)
+		default:
+			ConductOps(s, player, PseudoCard(Cards[GrainSalesToSoviets].Ops))
 		}
 	}
 }
@@ -938,7 +946,7 @@ func PlayJohnPaulIIElectedPope(s *State, player Aff) {
 	*/
 	c := s.Countries[Poland]
 	c.Inf[SOV] = Max(0, c.Inf[SOV]-2)
-	c.Inf[USA] += 2
+	c.Inf[USA] += 1
 }
 
 func PlayLatinAmericanDeathSquads(s *State, player Aff) {
