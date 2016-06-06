@@ -396,10 +396,18 @@ func DoFreeCoup(s *State, player Aff, card Card, allowedTargets []CountryId) boo
 }
 
 func PlayEvent(s *State, player Aff, card Card) {
-	MessageBoth(s, fmt.Sprintf("%s implements %s", player, card))
 	prevented := card.Prevented(s)
 	if !prevented {
-		card.Impl(s, player)
+		// A soviet or US event is *always* played by that player, no matter
+		// who causes the event to be played.
+		switch card.Aff {
+		case USA, SOV:
+			MessageBoth(s, fmt.Sprintf("%s implements %s", card.Aff, card))
+			card.Impl(s, card.Aff)
+		default:
+			MessageBoth(s, fmt.Sprintf("%s implements %s", player, card))
+			card.Impl(s, player)
+		}
 	}
 	switch {
 	case !prevented && card.Star:
