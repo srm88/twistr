@@ -37,3 +37,10 @@ func (t *TerminalUI) Message(player Aff, message string) {
 	fmt.Fprintf(t, "[%s] %s\n", player, strings.TrimRight(message, "\n"))
 	io.Copy(os.Stdout, t)
 }
+
+func (t *TerminalUI) Redraw(s *State) {
+}
+
+func (t *TerminalUI) Close() error {
+	return nil
+}

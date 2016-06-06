@@ -72,6 +72,7 @@ func NewState(ui UI, aofPath string) (*State, error) {
 }
 
 func (s *State) Close() error {
+	s.UI.Close()
 	return s.Aof.Close()
 }
 

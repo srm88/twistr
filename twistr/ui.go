@@ -7,9 +7,9 @@ import (
 func GetInput(ui UI, player Aff, inp interface{}, message string, choices ...string) {
 	var err error
 	validChoice := func(in string) bool {
-        if len(choices) == 0 {
-            return true
-        }
+		if len(choices) == 0 {
+			return true
+		}
 		for _, choice := range choices {
 			if choice == in {
 				return true
@@ -25,7 +25,7 @@ retry:
 		err = Unmarshal(inputStr, inp)
 	}
 	if err != nil {
-		message = err.Error() + "\nTry again?"
+		message = err.Error() + ". Try again?"
 		goto retry
 	}
 }
@@ -33,4 +33,6 @@ retry:
 type UI interface {
 	Solicit(player Aff, message string, choices []string) (reply string)
 	Message(player Aff, message string)
+	Redraw(*State)
+	Close() error
 }
