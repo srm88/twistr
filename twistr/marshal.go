@@ -15,31 +15,11 @@ func Marshal(c interface{}) ([]byte, error) {
 	// returns the value.
 	cv := reflect.Indirect(reflect.ValueOf(c))
 	buf := new(bytes.Buffer)
-	var err error
-	if isLog(cv.Type()) {
-		err = marshalLog(cv, buf)
-	} else {
-		err = marshalValue(cv, buf)
-	}
+	err := marshalValue(cv, buf)
 	if err != nil {
 		return nil, err
 	}
 	return buf.Bytes(), nil
-}
-
-func marshalLog(v reflect.Value, buf *bytes.Buffer) error {
-	var field reflect.Value
-	n := v.NumField()
-	for i := 0; i < n; i++ {
-		field = v.Field(i)
-		if err := marshalValue(field, buf); err != nil {
-			return err
-		}
-		if i < (n - 1) {
-			buf.WriteString(" ")
-		}
-	}
-	return nil
 }
 
 func marshalSlice(field reflect.Value, buf *bytes.Buffer) error {
@@ -90,20 +70,7 @@ func Unmarshal(line string, c interface{}) (err error) {
 	scanner.Split(bufio.ScanWords)
 	// Value of c, dereferencing one pointer if necessary
 	cv := reflect.Indirect(reflect.ValueOf(c))
-	if isLog(cv.Type()) {
-		err = unmarshalLog(scanner, cv)
-	} else {
-		err = unmarshalValue(scanner, cv)
-	}
-	return
-}
-
-func unmarshalLog(scanner *bufio.Scanner, cv reflect.Value) (err error) {
-	for i := 0; i < cv.NumField(); i++ {
-		if err = unmarshalValue(scanner, cv.Field(i)); err != nil {
-			return
-		}
-	}
+	err = unmarshalValue(scanner, cv)
 	return
 }
 
@@ -214,14 +181,6 @@ func unmarshalWord(word string, v reflect.Value) (err error) {
 		v.SetInt(int64(ok))
 	}
 	return
-}
-
-func isLog(t reflect.Type) bool {
-	kind := t.Kind()
-	if kind == reflect.Ptr {
-		return isLog(t.Elem())
-	}
-	return kind == reflect.Struct
 }
 
 func valueKind(vtype reflect.Type) string {

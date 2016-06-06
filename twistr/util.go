@@ -1,7 +1,9 @@
 package twistr
 
 import (
+	"fmt"
 	"math/rand"
+	"os"
 	"time"
 )
 
@@ -30,4 +32,8 @@ func Roll() int {
 func MessageBoth(ui UI, message string) {
 	ui.Message(USA, message)
 	ui.Message(SOV, message)
+}
+
+func Debug(message string, a ...interface{}) {
+	fmt.Fprintf(os.Stderr, message, a...)
 }
