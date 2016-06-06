@@ -3,14 +3,33 @@ package twistr
 import "fmt"
 
 func Headline(s *State) {
-	usaHl := SelectCard(s, USA, CardBlacklist(TheChinaCard))
-	s.Txn.Flush()
-	sovHl := SelectCard(s, SOV, CardBlacklist(TheChinaCard))
-	s.Txn.Flush()
+	var usaHl, sovHl Card
+	switch s.SREvents[OppHeadlineFirst] {
+	case USA:
+		MessageBoth(s, "USSR must choose the headline first")
+		sovHl = SelectCard(s, SOV, CardBlacklist(TheChinaCard))
+		MessageBoth(s, fmt.Sprintf("USSR selects %s", sovHl.Name))
+		s.Txn.Flush()
+		usaHl = SelectCard(s, USA, CardBlacklist(TheChinaCard))
+		MessageBoth(s, fmt.Sprintf("USA selects %s", sovHl.Name))
+		s.Txn.Flush()
+	case SOV:
+		MessageBoth(s, "US must choose the headline first")
+		usaHl = SelectCard(s, USA, CardBlacklist(TheChinaCard))
+		MessageBoth(s, fmt.Sprintf("USA selects %s", sovHl.Name))
+		s.Txn.Flush()
+		sovHl = SelectCard(s, SOV, CardBlacklist(TheChinaCard))
+		MessageBoth(s, fmt.Sprintf("USSR selects %s", sovHl.Name))
+		s.Txn.Flush()
+	default:
+		sovHl = SelectCard(s, SOV, CardBlacklist(TheChinaCard))
+		s.Txn.Flush()
+		usaHl = SelectCard(s, USA, CardBlacklist(TheChinaCard))
+		s.Txn.Flush()
+		MessageBoth(s, fmt.Sprintf("USA selects %s, and USSR selects %s", usaHl.Name, sovHl.Name))
+	}
 	s.Hands[USA].Remove(usaHl)
 	s.Hands[SOV].Remove(sovHl)
-	// XXX: If space race show headline is in play, deal with that yo
-	MessageBoth(s, fmt.Sprintf("USA selects %s, and USSR selects %s", usaHl.Name, sovHl.Name))
 	// Check ops
 	if usaHl.Ops >= sovHl.Ops {
 		s.Phasing = USA
@@ -23,5 +42,7 @@ func Headline(s *State) {
 		s.Phasing = USA
 		PlayEvent(s, USA, usaHl)
 	}
+	// XXX: should probably flush in PlayEvent. Need a more consistent
+	// convention for when to flush.
 	s.Txn.Flush()
 }

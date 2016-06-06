@@ -238,6 +238,24 @@ func awardMilOpsVPs(s *State) {
 	}
 }
 
+// func discardHeldCard performs the space-race ability to discard 1 held card
+// if either player has earned this ability.
+func discardHeldCard(s *State, player Aff) {
+	player, ok := s.SREvents[DiscardHeld]
+	if !ok {
+		return
+	}
+	if len(s.Hands[player].Cards) == 0 {
+		return
+	}
+	if SelectChoice(s, player, "Discard one held card?", "yes", "no") != "yes" {
+		return
+	}
+	card := SelectCard(s, player, CardBlacklist(TheChinaCard))
+	s.Hands[player].Remove(card)
+	s.Discard.Push(card)
+}
+
 func EndTurn(s *State) {
 	// End turn: milops, defcon, china card, AR reset
 	awardMilOpsVPs(s)
@@ -284,7 +302,12 @@ func PlaySpace(s *State, player Aff, card Card) {
 	} else {
 		MessageBoth(s, fmt.Sprintf("%s rolls %d. Space race attempt fails!", player, roll))
 	}
-	s.Discard.Push(card)
+	s.SpaceAttempts[player] += 1
+	// China card can be spaced, but Action will take care of moving it to the
+	// opponent.
+	if card.Id != TheChinaCard {
+		s.Discard.Push(card)
+	}
 }
 
 func SelectRoll(s *State) int {

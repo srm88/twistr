@@ -18,6 +18,7 @@ type State struct {
 	Countries       map[CountryId]*Country
 	Events          map[CardId]Aff
 	TurnEvents      map[CardId]Aff
+	SpaceAttempts   [2]int
 	SREvents        map[SpaceId]Aff
 	Removed         *Deck
 	Discard         *Deck
@@ -60,6 +61,7 @@ func NewState(ui UI, aofPath string) (*State, error) {
 		Countries:       Countries,
 		Events:          make(map[CardId]Aff),
 		TurnEvents:      make(map[CardId]Aff),
+		SpaceAttempts:   [2]int{0, 0},
 		SREvents:        make(map[SpaceId]Aff),
 		Removed:         NewDeck(),
 		Discard:         NewDeck(),
