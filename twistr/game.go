@@ -211,9 +211,6 @@ func Turn(s *State) {
 		}
 		s.AR++
 	}
-	// End turn
-	//discarder, ok := s.SREvents[DiscardHeld]
-	// XXX write me
 }
 
 func awardMilOpsVPs(s *State) {
@@ -234,6 +231,24 @@ func awardMilOpsVPs(s *State) {
 		MessageBoth(s, fmt.Sprintf("%s loses %d VP for not meeting required military operations.", SOV, sovShy-usaShy))
 		s.GainVP(USA, sovShy-usaShy)
 	}
+}
+
+// func discardHeldCard performs the space-race ability to discard 1 held card
+// if either player has earned this ability.
+func discardHeldCard(s *State, player Aff) {
+	player, ok := s.SREvents[DiscardHeld]
+	if !ok {
+		return
+	}
+	if len(s.Hands[player].Cards) == 0 {
+		return
+	}
+	if SelectChoice(s, player, "Discard one held card?", "yes", "no") != "yes" {
+		return
+	}
+	card := SelectCard(s, player, CardBlacklist(TheChinaCard))
+	s.Hands[player].Remove(card)
+	s.Discard.Push(card)
 }
 
 func EndTurn(s *State) {
