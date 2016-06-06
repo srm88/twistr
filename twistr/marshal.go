@@ -10,12 +10,6 @@ import (
 	"strings"
 )
 
-// Logs must be referenced in this set, or we will not marshal them correctly.
-var logTypes map[string]bool = map[string]bool{
-	"CoupLog":    true,
-	"RealignLog": true,
-}
-
 func Marshal(c interface{}) ([]byte, error) {
 	// Indirect can always be used; if the value is not a pointer, it just
 	// returns the value.
@@ -227,7 +221,7 @@ func isLog(t reflect.Type) bool {
 	if kind == reflect.Ptr {
 		return isLog(t.Elem())
 	}
-	return kind == reflect.Struct && logTypes[t.Name()]
+	return kind == reflect.Struct
 }
 
 func valueKind(vtype reflect.Type) string {

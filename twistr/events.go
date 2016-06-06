@@ -1031,7 +1031,9 @@ func PlayAskNotWhatYourCountry(s *State, player Aff) {
 	   cards) to the discard pile and draw replacements from the draw pile. The
 	   number of cards to be discarded must be decided before drawing any
 	   replacement cards from the draw pile. */
-	toDiscard := SelectSomeCards(s, USA, s.Hands[USA].Cards)
+	toDiscard := SelectSomeCards(s, USA,
+		"Discard up to entire hand of cards",
+		s.Hands[USA].Cards)
 	toDraw := len(toDiscard)
 	if toDraw == 0 {
 		return
@@ -1117,7 +1119,9 @@ func PlayOurManInTehran(s *State, player Aff) {
 	}
 	cards := s.Deck.Draw(5)
 	// Solicit US player to discard each card
-	toDiscard := SelectSomeCards(s, USA, cards)
+	toDiscard := SelectSomeCards(s, USA,
+		"Discard which",
+		cards)
 	discardedSet := make(map[CardId]bool)
 	discarded := []string{}
 	for _, c := range toDiscard {
@@ -1138,7 +1142,7 @@ func PlayOurManInTehran(s *State, player Aff) {
 	s.Discard.Push(toDiscard...)
 	// Return other cards to draw pile and reshuffle
 	s.Deck.Push(backToDraw...)
-	cards = SelectShuffle(s.Deck)
+	cards = SelectShuffle(s, s.Deck)
 	s.Deck.Reorder(cards)
 }
 

@@ -28,7 +28,7 @@ func Deal(s *State) {
 func Start(s *State) {
 	// Early war cards into the draw deck
 	s.Deck.Push(EarlyWar...)
-	cards := SelectShuffle(s.Deck)
+	cards := SelectShuffle(s, s.Deck)
 	s.Deck.Reorder(cards)
 	s.Redraw(s)
 	Deal(s)
@@ -71,12 +71,18 @@ func ShowCard(s *State, c Card, to Aff) {
 	s.Message(to, fmt.Sprintf("Card: %s\n", c.Name))
 }
 
-func SelectShuffle(d *Deck) []Card {
-	// XXX: replay-log
-	return d.Shuffle()
+func SelectShuffle(s *State, d *Deck) (cardOrder []Card) {
+	// Duplicates what GetOrLog does. It doesn't make sense to reuse GetOrLog
+	// because this will never ask for user input.
+	if s.Aof.ReadInto(&cardOrder) {
+		return
+	}
+	cardOrder = d.Shuffle()
+	s.Aof.Log(&cardOrder)
+	return
 }
 
-// Return whether the card is an acceptible choice.
+// Return whether the card is an acceptable choice.
 type cardFilter func(Card) bool
 
 func ExceedsOps(minOps int) cardFilter {
@@ -127,14 +133,14 @@ func selectCardFrom(s *State, player Aff, from []Card, includeChina bool, filter
 	return
 }
 
-func SelectSomeCards(s *State, player Aff, cards []Card) (selected []Card) {
+func SelectSomeCards(s *State, player Aff, message string, cards []Card) (selected []Card) {
 	cardnames := []string{}
 	cardSet := make(map[CardId]bool)
 	for _, c := range cards {
 		cardnames = append(cardnames, c.Ref())
 		cardSet[c.Id] = true
 	}
-	message := fmt.Sprintf("Choose cards: %s", strings.Join(cardnames, ", "))
+	message = fmt.Sprintf("%s: %s", message, strings.Join(cardnames, ", "))
 	prefix := ""
 retry:
 	GetOrLog(s, player, &selected, prefix+message)
