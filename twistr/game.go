@@ -30,14 +30,18 @@ func Start(s *State) {
 	s.Deck.Push(EarlyWar...)
 	cards := SelectShuffle(s.Deck)
 	s.Deck.Reorder(cards)
+	s.Redraw(s)
 	Deal(s)
+	s.Redraw(s)
 	// SOV chooses 6 influence in E europe
+	s.Redraw(s)
 	cs := SelectInfluenceForce(s, SOV, func() ([]*Country, error) {
 		return SelectExactlyNInfluence(s, SOV,
 			"6 influence in East Europe", 6,
 			InRegion(EastEurope))
 	})
 	PlaceInfluence(s, SOV, cs)
+	s.Redraw(s)
 	s.Txn.Flush()
 	// US chooses 7 influence in W europe
 	csUSA := SelectInfluenceForce(s, USA, func() ([]*Country, error) {
@@ -46,6 +50,7 @@ func Start(s *State) {
 			InRegion(WestEurope))
 	})
 	PlaceInfluence(s, USA, csUSA)
+	s.Redraw(s)
 	s.Txn.Flush()
 	// Temporary
 	for s.Turn = 1; s.Turn <= 10; s.Turn++ {
@@ -265,6 +270,7 @@ func Action(s *State) {
 		MessageBoth(s, fmt.Sprintf("%s receives the China Card, face down.", p.Opp()))
 		s.ChinaCardPlayed()
 	}
+	s.Redraw(s)
 	s.Txn.Flush()
 }
 
@@ -293,10 +299,12 @@ func PlayOps(s *State, player Aff, card Card) {
 		if player == SelectFirst(s, player) {
 			MessageBoth(s, fmt.Sprintf("%s will conduct operations first", player))
 			ConductOps(s, player, card)
+			s.Redraw(s)
 			PlayEvent(s, opp, card)
 		} else {
 			MessageBoth(s, fmt.Sprintf("%s will implement the event first", opp))
 			PlayEvent(s, opp, card)
+			s.Redraw(s)
 			ConductOps(s, player, card)
 		}
 	} else {
