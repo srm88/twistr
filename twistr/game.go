@@ -100,7 +100,7 @@ func passesFilters(c Card, filters []cardFilter) bool {
 	return true
 }
 
-func SelectCard(s *State, player Aff, filters ...cardFilter) (c Card) {
+func SelectCard(s *State, player Aff, filters ...cardFilter) Card {
 	canPlayChina := s.ChinaCardPlayer == player && s.ChinaCardFaceUp
 	return selectCardFrom(s, player, s.Hands[player].Cards, canPlayChina, filters...)
 }
@@ -114,11 +114,11 @@ func hasInHand(s *State, player Aff, filters ...cardFilter) bool {
 	return false
 }
 
-func SelectDiscarded(s *State, player Aff, filters ...cardFilter) (c Card) {
+func SelectDiscarded(s *State, player Aff, filters ...cardFilter) Card {
 	return selectCardFrom(s, player, s.Discard.Cards, false, filters...)
 }
 
-func selectCardFrom(s *State, player Aff, from []Card, includeChina bool, filters ...cardFilter) (c Card) {
+func selectCardFrom(s *State, player Aff, from []Card, includeChina bool, filters ...cardFilter) (card Card) {
 	choices := []string{}
 	for _, c := range from {
 		if !passesFilters(c, filters) {
@@ -129,7 +129,7 @@ func selectCardFrom(s *State, player Aff, from []Card, includeChina bool, filter
 	if includeChina && passesFilters(Cards[TheChinaCard], filters) {
 		choices = append(choices, Cards[TheChinaCard].Ref())
 	}
-	GetOrLog(s, player, &c, "Choose a card", choices...)
+	GetOrLog(s, player, &card, "Choose a card", choices...)
 	return
 }
 
