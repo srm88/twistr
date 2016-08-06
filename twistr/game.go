@@ -166,9 +166,14 @@ func GetOrLog(s *State, player Aff, thing interface{}, message string, choices .
 	s.Aof.Log(thing)
 }
 
-func SelectRandomCard(s *State, player Aff) Card {
+func SelectRandomCard(s *State, player Aff) (card Card) {
+	if s.Aof.ReadInto(&card) {
+		return
+	}
 	n := rng.Intn(len(s.Hands[player].Cards))
-	return s.Hands[player].Cards[n]
+	card = s.Hands[player].Cards[n]
+	s.Aof.Log(&card)
+	return
 }
 
 func actionsThisTurn(s *State, player Aff) int {
@@ -278,24 +283,27 @@ func EndTurn(s *State) {
 }
 
 func Action(s *State) {
-	p := s.Phasing
-	card := SelectCard(s, p)
-	// Safe to remove a card that isn't actually in the hand
-	s.Hands[p].Remove(card)
-	switch SelectPlay(s, p, card) {
-	case SPACE:
-		PlaySpace(s, p, card)
-	case OPS:
-		PlayOps(s, p, card)
-	case EVENT:
-		PlayEvent(s, p, card)
-	}
-	if card.Id == TheChinaCard {
-		MessageBoth(s, fmt.Sprintf("%s receives the China Card, face down.", p.Opp()))
-		s.ChinaCardPlayed()
-	}
+	card := SelectCard(s, s.Phasing)
+	PlayCard(s, s.Phasing, card)
 	s.Redraw(s)
 	s.Txn.Flush()
+}
+
+func PlayCard(s *State, player Aff, card Card) {
+	// Safe to remove a card that isn't actually in the hand
+	s.Hands[player].Remove(card)
+	switch SelectPlay(s, player, card) {
+	case SPACE:
+		PlaySpace(s, player, card)
+	case OPS:
+		PlayOps(s, player, card)
+	case EVENT:
+		PlayEvent(s, player, card)
+	}
+	if card.Id == TheChinaCard {
+		MessageBoth(s, fmt.Sprintf("%s receives the China Card, face down.", player.Opp()))
+		s.ChinaCardPlayed()
+	}
 }
 
 func PlaySpace(s *State, player Aff, card Card) {
@@ -351,11 +359,12 @@ func ConductOps(s *State, player Aff, card Card, kinds ...OpsKind) {
 	case REALIGN:
 		OpRealign(s, player, card.Ops)
 	case INFLUENCE:
-		MessageBoth(s, "influence not implemented")
+		OpInfluence(s, player, card.Ops)
 	}
 }
 
 func OpRealign(s *State, player Aff, ops int) {
+	// XXX; needs opsMod
 	for i := 0; i < ops; i++ {
 		target := SelectCountry(s, player, "Realign where?")
 		for !canRealign(s, player, target, false) {
@@ -395,6 +404,13 @@ func DoFreeCoup(s *State, player Aff, card Card, allowedTargets []CountryId) boo
 	return coup(s, player, ops, roll, target, true)
 }
 
+func OpInfluence(s *State, player Aff, ops int) {
+	cs := SelectInfluenceForce(s, player, func() ([]*Country, error) {
+		return SelectInfluenceOps(s, player, ops)
+	})
+	PlaceInfluence(s, player, cs)
+}
+
 func PlayEvent(s *State, player Aff, card Card) {
 	prevented := card.Prevented(s)
 	if !prevented {
@@ -410,6 +426,9 @@ func PlayEvent(s *State, player Aff, card Card) {
 		}
 	}
 	switch {
+	case card.Id == MissileEnvy:
+		s.Hands[player.Opp()].Push(Cards[MissileEnvy])
+		MessageBoth(s, fmt.Sprintf("%s to %s hand", card, player.Opp()))
 	case !prevented && card.Star:
 		s.Removed.Push(card)
 		MessageBoth(s, fmt.Sprintf("%s removed", card))
@@ -597,11 +616,16 @@ func selectNInfluence(s *State, player Aff, message string, n int, exactly bool,
 	return
 }
 
-func SelectInfluenceOps(s *State, player Aff, card Card) (cs []*Country, err error) {
-	message := "Place influence"
-	cs = SelectInfluence(s, player, message)
+func SelectInfluenceOps(s *State, player Aff, ops int) (cs []*Country, err error) {
 	// Compute ops
-	ops := card.Ops + opsMod(s, player, cs)
+	ops += opsMod(s, player, cs)
+	message := fmt.Sprintf("Place %d influence", ops)
+	cs = SelectInfluence(s, player, message)
+	for _, c := range cs {
+		if !canReach(c, player) {
+			return nil, fmt.Errorf("Cannot reach %s", c.Name)
+		}
+	}
 	// Compute cost. Copy each country so that we can update its influence
 	// as we go. E.g. two ops are spent breaking control, then the next
 	// influence place costs one op.
@@ -623,6 +647,21 @@ func SelectInfluenceOps(s *State, player Aff, card Card) (cs []*Country, err err
 		err = fmt.Errorf("Underspent ops by %d", (ops - cost))
 	}
 	return
+}
+
+func canReach(c *Country, player Aff) bool {
+	if c.Inf[player] > 0 {
+		return true
+	}
+	if c.AdjSuper == player {
+		return true
+	}
+	for _, ad := range c.AdjCountries {
+		if ad.Inf[player] > 0 {
+			return true
+		}
+	}
+	return false
 }
 
 // Repeat selectFn until the user's input is acceptible.
