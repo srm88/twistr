@@ -6,6 +6,8 @@ import (
 
 type State struct {
 	UI
+	Master          bool
+	Remote          Aff
 	Aof             *Aof
 	Txn             *TxnLog
 	VP              int
