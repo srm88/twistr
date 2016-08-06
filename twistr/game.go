@@ -359,7 +359,7 @@ func ConductOps(s *State, player Aff, card Card, kinds ...OpsKind) {
 	case REALIGN:
 		OpRealign(s, player, card.Ops)
 	case INFLUENCE:
-		MessageBoth(s, "influence not implemented")
+		OpInfluence(s, player, card.Ops)
 	}
 }
 
@@ -402,6 +402,13 @@ func DoFreeCoup(s *State, player Aff, card Card, allowedTargets []CountryId) boo
 	roll := SelectRoll(s)
 	ops := card.Ops + opsMod(s, player, []*Country{target})
 	return coup(s, player, ops, roll, target, true)
+}
+
+func OpInfluence(s *State, player Aff, ops int) {
+	cs := SelectInfluenceForce(s, player, func() ([]*Country, error) {
+		return SelectInfluenceOps(s, player, ops)
+	})
+	PlaceInfluence(s, player, cs)
 }
 
 func PlayEvent(s *State, player Aff, card Card) {
@@ -601,11 +608,16 @@ func selectNInfluence(s *State, player Aff, message string, n int, exactly bool,
 	return
 }
 
-func SelectInfluenceOps(s *State, player Aff, card Card) (cs []*Country, err error) {
-	message := "Place influence"
-	cs = SelectInfluence(s, player, message)
+func SelectInfluenceOps(s *State, player Aff, ops int) (cs []*Country, err error) {
 	// Compute ops
-	ops := card.Ops + opsMod(s, player, cs)
+	ops += opsMod(s, player, cs)
+	message := fmt.Sprintf("Place %d influence", ops)
+	cs = SelectInfluence(s, player, message)
+	for _, c := range cs {
+		if !canReach(c, player) {
+			return nil, fmt.Errorf("Cannot reach %s", c.Name)
+		}
+	}
 	// Compute cost. Copy each country so that we can update its influence
 	// as we go. E.g. two ops are spent breaking control, then the next
 	// influence place costs one op.
@@ -627,6 +639,21 @@ func SelectInfluenceOps(s *State, player Aff, card Card) (cs []*Country, err err
 		err = fmt.Errorf("Underspent ops by %d", (ops - cost))
 	}
 	return
+}
+
+func canReach(c *Country, player Aff) bool {
+	if c.Inf[player] > 0 {
+		return true
+	}
+	if c.AdjSuper == player {
+		return true
+	}
+	for _, ad := range c.AdjCountries {
+		if ad.Inf[player] > 0 {
+			return true
+		}
+	}
+	return false
 }
 
 // Repeat selectFn until the user's input is acceptible.

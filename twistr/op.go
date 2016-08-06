@@ -138,7 +138,7 @@ func japanProtected(s *State, player Aff, t *Country) bool {
 
 func influenceCost(player Aff, target Country) int {
 	controlled := target.Controlled()
-	if controlled != player {
+	if controlled == player.Opp() {
 		return 2
 	}
 	return 1
