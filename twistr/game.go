@@ -166,9 +166,14 @@ func GetOrLog(s *State, player Aff, thing interface{}, message string, choices .
 	s.Aof.Log(thing)
 }
 
-func SelectRandomCard(s *State, player Aff) Card {
+func SelectRandomCard(s *State, player Aff) (card Card) {
+	if s.Aof.ReadInto(&card) {
+		return
+	}
 	n := rng.Intn(len(s.Hands[player].Cards))
-	return s.Hands[player].Cards[n]
+	card = s.Hands[player].Cards[n]
+	s.Aof.Log(&card)
+	return
 }
 
 func actionsThisTurn(s *State, player Aff) int {
@@ -278,24 +283,27 @@ func EndTurn(s *State) {
 }
 
 func Action(s *State) {
-	p := s.Phasing
-	card := SelectCard(s, p)
-	// Safe to remove a card that isn't actually in the hand
-	s.Hands[p].Remove(card)
-	switch SelectPlay(s, p, card) {
-	case SPACE:
-		PlaySpace(s, p, card)
-	case OPS:
-		PlayOps(s, p, card)
-	case EVENT:
-		PlayEvent(s, p, card)
-	}
-	if card.Id == TheChinaCard {
-		MessageBoth(s, fmt.Sprintf("%s receives the China Card, face down.", p.Opp()))
-		s.ChinaCardPlayed()
-	}
+	card := SelectCard(s, s.Phasing)
+	PlayCard(s, s.Phasing, card)
 	s.Redraw(s)
 	s.Txn.Flush()
+}
+
+func PlayCard(s *State, player Aff, card Card) {
+	// Safe to remove a card that isn't actually in the hand
+	s.Hands[player].Remove(card)
+	switch SelectPlay(s, player, card) {
+	case SPACE:
+		PlaySpace(s, player, card)
+	case OPS:
+		PlayOps(s, player, card)
+	case EVENT:
+		PlayEvent(s, player, card)
+	}
+	if card.Id == TheChinaCard {
+		MessageBoth(s, fmt.Sprintf("%s receives the China Card, face down.", player.Opp()))
+		s.ChinaCardPlayed()
+	}
 }
 
 func PlaySpace(s *State, player Aff, card Card) {
@@ -356,6 +364,7 @@ func ConductOps(s *State, player Aff, card Card, kinds ...OpsKind) {
 }
 
 func OpRealign(s *State, player Aff, ops int) {
+	// XXX; needs opsMod
 	for i := 0; i < ops; i++ {
 		target := SelectCountry(s, player, "Realign where?")
 		for !canRealign(s, player, target, false) {
@@ -409,6 +418,9 @@ func PlayEvent(s *State, player Aff, card Card) {
 		card.Impl(s, player)
 	}
 	switch {
+	case card.Id == MissileEnvy:
+		s.Hands[player.Opp()].Push(Cards[MissileEnvy])
+		MessageBoth(s, fmt.Sprintf("%s to %s hand", card, player.Opp()))
 	case !prevented && card.Star:
 		s.Removed.Push(card)
 		MessageBoth(s, fmt.Sprintf("%s removed", card))
