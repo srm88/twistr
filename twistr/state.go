@@ -1,13 +1,12 @@
 package twistr
 
-import (
-	"os"
-)
+import "net"
 
 type State struct {
 	UI
 	Master          bool
 	LocalPlayer     Aff
+	Conn            net.Conn
 	Aof             *Aof
 	Txn             *TxnLog
 	VP              int
@@ -31,28 +30,8 @@ type State struct {
 	ChernobylRegion Region
 }
 
-func NewState(ui UI, aofPath string) (*State, error) {
-	in, err := os.Open(aofPath)
-	if err != nil {
-		if !os.IsNotExist(err) {
-			return nil, err
-		}
-		in, err = os.OpenFile(aofPath, os.O_CREATE|os.O_RDONLY, 0666)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	txn, err := OpenTxnLog(aofPath)
-	if err != nil {
-		return nil, err
-	}
-
-	aof := NewAof(in, txn)
-	s := &State{
-		UI:              ui,
-		Aof:             aof,
-		Txn:             txn,
+func NewState() *State {
+	return &State{
 		VP:              0,
 		Defcon:          5,
 		MilOps:          [2]int{0, 0},
@@ -72,7 +51,6 @@ func NewState(ui UI, aofPath string) (*State, error) {
 		ChinaCardPlayer: SOV,
 		ChinaCardFaceUp: true,
 	}
-	return s, nil
 }
 
 func (s *State) Close() error {
