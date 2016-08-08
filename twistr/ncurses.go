@@ -230,15 +230,10 @@ func MakeNCursesUI() *NCursesUI {
 	return &NCursesUI{scr}
 }
 
-func (nc *NCursesUI) Solicit(player Aff, message string, choices []string) string {
+func (nc *NCursesUI) GetInput(message string) string {
 	nc.Move(36, 0)
 	nc.ClearToEOL()
-	buf := new(bytes.Buffer)
-	fmt.Fprintf(buf, "[%s] %s", player, strings.TrimRight(message, "\n"))
-	if len(choices) > 0 {
-		fmt.Fprintf(buf, " [ %s ]", strings.Join(choices, " "))
-	}
-	nc.MovePrint(36, 0, buf.String())
+	nc.MovePrint(36, 0, message)
 	nc.Move(37, 0)
 	gc.Echo(true)
 	nc.Refresh()
@@ -250,6 +245,15 @@ func (nc *NCursesUI) Solicit(player Aff, message string, choices []string) strin
 	nc.Move(37, 0)
 	nc.ClearToEOL()
 	return strings.ToLower(strings.TrimSpace(text))
+}
+
+func (nc *NCursesUI) Solicit(player Aff, message string, choices []string) string {
+	buf := new(bytes.Buffer)
+	fmt.Fprintf(buf, "[%s] %s", player, strings.TrimRight(message, "\n"))
+	if len(choices) > 0 {
+		fmt.Fprintf(buf, " [ %s ]", strings.Join(choices, " "))
+	}
+	return nc.GetInput(buf.String())
 }
 
 func (nc *NCursesUI) Message(player Aff, message string) {
