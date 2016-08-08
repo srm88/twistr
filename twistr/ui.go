@@ -34,5 +34,4 @@ type UI interface {
 	Solicit(player Aff, message string, choices []string) (reply string)
 	Message(player Aff, message string)
 	Redraw(*State)
-	Close() error
 }

@@ -54,7 +54,6 @@ func NewState() *State {
 }
 
 func (s *State) Close() error {
-	s.UI.Close()
 	return s.Aof.Close()
 }
 

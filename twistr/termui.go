@@ -40,7 +40,3 @@ func (t *TerminalUI) Message(player Aff, message string) {
 
 func (t *TerminalUI) Redraw(s *State) {
 }
-
-func (t *TerminalUI) Close() error {
-	return nil
-}
