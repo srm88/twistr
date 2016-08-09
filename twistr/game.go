@@ -58,15 +58,15 @@ func Start(s *State) {
 }
 
 func ShowHand(s *State, whose, to Aff) {
-	s.Message(to, fmt.Sprintf("%s hand: %s\n", whose, strings.Join(s.Hands[whose].Names(), ", ")))
+	s.MessageOne(to, fmt.Sprintf("%s hand: %s\n", whose, strings.Join(s.Hands[whose].Names(), ", ")))
 }
 
 func ShowDiscard(s *State, to Aff) {
-	s.Message(to, fmt.Sprintf("Discard pile: %s\n", strings.Join(s.Discard.Names(), ", ")))
+	s.MessageOne(to, fmt.Sprintf("Discard pile: %s\n", strings.Join(s.Discard.Names(), ", ")))
 }
 
 func ShowCard(s *State, c Card, to Aff) {
-	s.Message(to, fmt.Sprintf("Card: %s\n", c.Name))
+	s.MessageOne(to, fmt.Sprintf("Card: %s\n", c.Name))
 }
 
 func SelectShuffle(s *State, d *Deck) (cardOrder []Card) {
@@ -166,7 +166,7 @@ func SelectChoice(s *State, player Aff, message string, choices ...string) (choi
 // Non-replayed local inputs are written to the peer.
 func getInput(s *State, player Aff, thing interface{}, message string, choices ...string) {
 	if s.Replay.ReadInto(thing) {
-		return true
+		return
 	}
 	if s.LocalPlayer != player {
 		s.LinkIn.ReadInto(thing)
@@ -197,6 +197,7 @@ func SelectRandomCard(s *State, player Aff) (card Card) {
 		n := rng.Intn(len(s.Hands[player].Cards))
 		card = s.Hands[player].Cards[n]
 	})
+	return
 }
 
 func actionsThisTurn(s *State, player Aff) int {
@@ -350,6 +351,7 @@ func SelectRoll(s *State, player Aff) (roll int) {
 	getRandom(s, player, &roll, func() {
 		roll = Roll()
 	})
+	return
 }
 
 func PlayOps(s *State, player Aff, card Card) {
@@ -694,7 +696,7 @@ func SelectInfluenceForce(s *State, player Aff, selectFn func() ([]*Country, err
 	var err error
 	cs, err = selectFn()
 	for err != nil {
-		s.Message(player, err.Error())
+		s.UI.Message(err.Error())
 		cs, err = selectFn()
 	}
 	return cs

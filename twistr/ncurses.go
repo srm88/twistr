@@ -247,7 +247,7 @@ func (nc *NCursesUI) Message(message string) error {
 	nc.Move(36, 0)
 	nc.ClearToEOL()
 	nc.MovePrint(36, 0, strings.TrimRight(message, "\n"))
-	nc.MoveTo(37, 0)
+	nc.Move(37, 0)
 	return nil
 }
 
@@ -256,7 +256,7 @@ func (nc *NCursesUI) Close() error {
 	return nil
 }
 
-func (nc *NCursesUI) Redraw(s *State) {
+func (nc *NCursesUI) Redraw(s *State) error {
 	var name, stab, infUsa, infSov int16
 	nc.MovePrint(0, 0, world)
 	for id, extra := range data {

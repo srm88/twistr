@@ -1,7 +1,5 @@
 package twistr
 
-import "net"
-
 type State struct {
 	UI
 	Master      bool
@@ -57,7 +55,7 @@ func NewState() *State {
 }
 
 // XXX messaging
-func (s *State) Message(player Aff, message string) error {
+func (s *State) MessageOne(player Aff, message string) error {
 	if player != s.LocalPlayer {
 		return nil
 	}

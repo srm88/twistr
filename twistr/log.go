@@ -3,6 +3,7 @@ package twistr
 import (
 	"bufio"
 	"bytes"
+	"fmt"
 	"io"
 	"log"
 )

@@ -29,9 +29,8 @@ func Roll() int {
 	return rng.Intn(6) + 1
 }
 
-func MessageBoth(sovUi, usaUi UI, message string) {
-	usaUi.Message(message)
-	sovUi.Message(message)
+func MessageBoth(ui UI, message string) {
+	ui.Message(message)
 }
 
 func Debug(message string, a ...interface{}) {

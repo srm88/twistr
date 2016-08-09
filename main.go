@@ -50,7 +50,7 @@ func setup(aofPath string) error {
 			return err
 		}
 	}
-	out, err := os.OpenFile(path, os.O_WRONLY|os.O_APPEND, 0666)
+	out, err := os.OpenFile(aofPath, os.O_WRONLY|os.O_APPEND, 0666)
 	if err != nil {
 		in.Close()
 		return err
@@ -61,9 +61,9 @@ func setup(aofPath string) error {
 	state.Master = serverMode
 	// XXX hardcode
 	if serverMode {
-		state.LocalPlayer = SOV
+		state.LocalPlayer = twistr.SOV
 	} else {
-		state.LocalPlayer = USA
+		state.LocalPlayer = twistr.USA
 	}
 	closers = append(closers, in, out)
 	return nil
@@ -105,9 +105,10 @@ func main() {
 
 	// XXX: revisit 'aof path' and 'is server' for multiple game support
 	serverMode = isServer(ui)
-	path := aofPath(serverMode)
+	path := aofPath()
 
-	if err := setup(path); err != nil {
+	var err error
+	if err = setup(path); err != nil {
 		panic(fmt.Sprintf("Failed to start game: %s\n", err.Error()))
 	}
 	state.UI = ui
@@ -133,7 +134,8 @@ func main() {
 		done <- 0
 	}()
 
-	if conn, err := connect(ui, serverMode); err != nil {
+	var conn net.Conn
+	if conn, err = connect(ui); err != nil {
 		panic(fmt.Sprintf("Couldn't connect %s\n", err.Error()))
 	}
 	closers = append(closers, conn)

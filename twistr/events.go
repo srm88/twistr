@@ -449,7 +449,7 @@ func PlayTheCambridgeFive(s *State, player Aff) {
 		}
 	}
 	// XXX should message both
-	s.Message(player, fmt.Sprintf("%s scoring cards: %s\n", USA, strings.Join(scoringCards, ", ")))
+	s.MessageOne(player, fmt.Sprintf("%s scoring cards: %s\n", USA, strings.Join(scoringCards, ", ")))
 	if len(scoringCards) == 0 {
 		return
 	}
@@ -1167,9 +1167,9 @@ func PlayOurManInTehran(s *State, player Aff) {
 		}
 	}
 	if len(toDiscard) > 0 {
-		s.Message(SOV, fmt.Sprintf("The following cards to discard: %s\n", strings.Join(discarded, ", ")))
+		s.MessageOne(SOV, fmt.Sprintf("The following cards to discard: %s\n", strings.Join(discarded, ", ")))
 	} else {
-		s.Message(SOV, "No cards were discarded.\n")
+		s.MessageOne(SOV, "No cards were discarded.\n")
 	}
 	s.Discard.Push(toDiscard...)
 	// Return other cards to draw pile and reshuffle

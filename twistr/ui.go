@@ -1,7 +1,9 @@
 package twistr
 
 import (
+	"bytes"
 	"fmt"
+	"strings"
 )
 
 func localInput(ui UI, inp interface{}, message string, choices ...string) {
@@ -36,7 +38,8 @@ func Solicit(ui UI, message string, choices []string) (reply string) {
 		fmt.Fprintf(buf, " [ %s ]", strings.Join(choices, " "))
 	}
 	ui.Message(buf.String())
-	return ui.Input()
+	reply, _ = ui.Input()
+	return
 }
 
 type UI interface {
