@@ -6,11 +6,12 @@ type State struct {
 	UI
 	Master      bool
 	LocalPlayer Aff
-	Aof         *Aof
-	Link        *Aof
-	// Need separate txns for aof and network, since network needs to only
+	Replay      *CmdIn
+	LinkIn      *CmdIn
+	// Need separate CmdOuts for aof and network, since network needs to only
 	// write local commands, but master needs to write *all* commands to aof.
-	Txn             *TxnLog
+	Aof             *CmdOut
+	LinkOut         *CmdOut
 	VP              int
 	Defcon          int
 	MilOps          [2]int
@@ -53,6 +54,12 @@ func NewState() *State {
 		ChinaCardPlayer: SOV,
 		ChinaCardFaceUp: true,
 	}
+}
+
+func (s *State) Commit() {
+	s.Aof.Flush()
+	s.LinkOut.Flush()
+	s.UI.Redraw(s)
 }
 
 func (s *State) ImproveDefcon(n int) {

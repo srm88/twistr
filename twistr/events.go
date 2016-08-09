@@ -106,7 +106,7 @@ func PlayKoreanWar(s *State, player Aff) {
 	   Influence in South Korea with USSR Influence. The USSR adds 2 to its
 	   Military Operations Track.  */
 	s.MilOps[SOV] += 2
-	roll := SelectRoll(s)
+	roll := SelectRoll(s, player)
 	skorea := s.Countries[SKorea]
 	mod := skorea.NumControlledNeighbors(USA)
 	switch roll - mod {
@@ -133,7 +133,7 @@ func PlayArabIsraeliWar(s *State, player Aff) {
 	   The USSR adds 2 to its Military Operations Track. This Event cannot be
 	   used after the “#65 – Camp David Accords” Event has been played.  */
 	s.MilOps[SOV] += 2
-	roll := SelectRoll(s)
+	roll := SelectRoll(s, player)
 	israel := s.Countries[Israel]
 	mod := israel.NumControlledNeighbors(USA)
 	if israel.Controlled() == USA {
@@ -233,8 +233,8 @@ func PlayOlympicGames(s *State, player Aff) {
 		rolls := [2]int{0, 0}
 		tied := true
 		for tied {
-			rolls[USA] = SelectRoll(s)
-			rolls[SOV] = SelectRoll(s)
+			rolls[USA] = SelectRoll(s, USA)
+			rolls[SOV] = SelectRoll(s, SOV)
 			rolls[player] += 2
 			tied = rolls[USA] == rolls[SOV]
 		}
@@ -290,7 +290,7 @@ func PlayIndoPakistaniWar(s *State, player Aff) {
 	   its Military Operations Track.  */
 	c := SelectCountry(s, player, "Choose who gets invaded", India, Pakistan)
 	s.MilOps[SOV] += 2
-	roll := SelectRoll(s)
+	roll := SelectRoll(s, player)
 	mod := c.NumControlledNeighbors(player.Opp())
 	switch roll - mod {
 	case 4, 5, 6:
@@ -525,7 +525,7 @@ func PlayBrushWar(s *State, player Aff) {
 	})
 	c := cs[0]
 	s.MilOps[player] += 3
-	roll := SelectRoll(s)
+	roll := SelectRoll(s, player)
 	mod := c.NumControlledNeighbors(player.Opp())
 	switch roll - mod {
 	case 3, 4, 5, 6:
@@ -654,8 +654,8 @@ func PlaySummit(s *State, player Aff) {
 	   Region (Europe, Asia, etc.) they Dominate or Control. The player with the
 	   highest modified die roll receives 2 VP and may degrade or improve the
 	   DEFCON level by 1 (do not reroll ties). */
-	playerRoll := SelectRoll(s)
-	oppRoll := SelectRoll(s)
+	playerRoll := SelectRoll(s, player)
+	oppRoll := SelectRoll(s, player.Opp())
 	for _, region := range Regions {
 		sr := ScoreRegion(s, region)
 		switch {
@@ -1424,7 +1424,7 @@ func PlayIranIraqWar(s *State, player Aff) {
 	   Operations Track. */
 	c := SelectCountry(s, player, "Choose who gets invaded", Iraq, Iran)
 	s.MilOps[player] += 2
-	roll := SelectRoll(s)
+	roll := SelectRoll(s, player)
 	mod := c.NumControlledNeighbors(player.Opp())
 	switch roll - mod {
 	case 4, 5, 6:

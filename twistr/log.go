@@ -8,56 +8,57 @@ import (
 	"os"
 )
 
-type TxnLog struct {
+type CmdOut struct {
 	*bytes.Buffer
 	w io.Writer
 }
 
-func NewTxnLog(w io.Writer) *TxnLog {
-	return &TxnLog{
+func NewCmdOut(w io.Writer) *CmdOut {
+	return &CmdOut{
 		Buffer: new(bytes.Buffer),
 		w:      w,
 	}
 }
 
-func (log *TxnLog) Flush() {
+func (co *CmdOut) Flush() {
+	// XXX errors
 	// Flush buffer to writer
-	log.WriteTo(log.w)
+	co.WriteTo(co.w)
 }
 
-func Log(thing interface{}, w io.Writer) (err error) {
+func (co *CmdOut) Buffer(thing interface{}) (err error) {
 	var b []byte
 	if b, err = Marshal(thing); err != nil {
 		log.Println(err)
 		return
 	}
-	if _, err = fmt.Fprintf(w, "%s\n", b); err != nil {
+	if _, err = fmt.Fprintf(co, "%s\n", b); err != nil {
 		log.Println(err)
 		return
 	}
 	return
 }
 
-type CommandStream struct {
+type CmdIn struct {
 	*bufio.Scanner
 	in   io.Reader
 	done bool
 }
 
-func NewCommandStream(r io.Reader) *CommandStream {
-	return &CommandStream{
+func NewCmdIn(r io.Reader) *CmdIn {
+	return &CmdIn{
 		Scanner: bufio.NewScanner(r),
 		in:      r,
 		done:    false,
 	}
 }
 
-func (cs *CommandStream) ReadInto(thing interface{}) bool {
-	if cs.done || !cs.Scan() {
-		cs.done = true
+func (ci *CmdIn) ReadInto(thing interface{}) bool {
+	if ci.done || !ci.Scan() {
+		ci.done = true
 		return false
 	}
-	line := cs.Text()
+	line := ci.Text()
 	if err := Unmarshal(line, thing); err != nil {
 		log.Printf("Corrupt log! Tried to parse '%s' into %s\n", line, thing)
 		return false

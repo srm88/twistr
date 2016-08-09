@@ -30,19 +30,18 @@ func Start(s *State) {
 	s.Deck.Push(EarlyWar...)
 	cards := SelectShuffle(s, s.Deck)
 	s.Deck.Reorder(cards)
-	s.Commit(s)
+	s.Commit()
 	Deal(s)
-	s.Commit(s)
+	s.Commit()
 	// SOV chooses 6 influence in E europe
-	s.Commit(s)
+	s.Commit()
 	cs := SelectInfluenceForce(s, SOV, func() ([]*Country, error) {
 		return SelectExactlyNInfluence(s, SOV,
 			"6 influence in East Europe", 6,
 			InRegion(EastEurope))
 	})
 	PlaceInfluence(s, SOV, cs)
-	s.Commit(s)
-	s.Txn.Flush()
+	s.Commit()
 	// US chooses 7 influence in W europe
 	csUSA := SelectInfluenceForce(s, USA, func() ([]*Country, error) {
 		return SelectExactlyNInfluence(s, USA,
@@ -50,8 +49,7 @@ func Start(s *State) {
 			InRegion(WestEurope))
 	})
 	PlaceInfluence(s, USA, csUSA)
-	s.Commit(s)
-	s.Txn.Flush()
+	s.Commit()
 	// Temporary
 	for s.Turn = 1; s.Turn <= 10; s.Turn++ {
 		Turn(s)
@@ -72,13 +70,18 @@ func ShowCard(s *State, c Card, to Aff) {
 }
 
 func SelectShuffle(s *State, d *Deck) (cardOrder []Card) {
-	// Duplicates what GetOrLog does. It doesn't make sense to reuse GetOrLog
+	// Duplicates what getInput does. It doesn't make sense to reuse getInput
 	// because this will never ask for user input.
-    if ReadInto(s, player, &cardOrder) {
-        return
-    }
-	cardOrder = d.Shuffle()
-	s.Txn.Log(&cardOrder)
+	if s.Replay.ReadInto(&cardOrder) {
+		return
+	}
+	if s.LocalPlayer != player {
+		s.LinkIn.ReadInto(&cardOrder)
+	} else {
+		cardOrder = d.Shuffle()
+		s.LinkOut.Buffer(&cardOrder)
+	}
+	s.Aof.Buffer(&cardOrder)
 	return
 }
 
@@ -129,7 +132,7 @@ func selectCardFrom(s *State, player Aff, from []Card, includeChina bool, filter
 	if includeChina && passesFilters(Cards[TheChinaCard], filters) {
 		choices = append(choices, Cards[TheChinaCard].Ref())
 	}
-	GetOrLog(s, player, &card, "Choose a card", choices...)
+	getInput(s, player, &card, "Choose a card", choices...)
 	return
 }
 
@@ -143,7 +146,7 @@ func SelectSomeCards(s *State, player Aff, message string, cards []Card) (select
 	message = fmt.Sprintf("%s: %s", message, strings.Join(cardnames, ", "))
 	prefix := ""
 retry:
-	GetOrLog(s, player, &selected, prefix+message)
+	getInput(s, player, &selected, prefix+message)
 	for _, c := range selected {
 		if !cardSet[c.Id] {
 			prefix = "Invalid choice. "
@@ -154,36 +157,46 @@ retry:
 }
 
 func SelectChoice(s *State, player Aff, message string, choices ...string) (choice string) {
-	GetOrLog(s, player, &choice, message, choices...)
+	getInput(s, player, &choice, message, choices...)
 	return
 }
 
-func GetOrLog(s *State, player Aff, thing interface{}, message string, choices ...string) {
-    if ReadInto(s, player, thing) {
-        return
-    }
-	GetInput(s, thing, message, choices...)
-	s.Txn.Log(thing)
-}
-
-func ReadInto(s *State player Aff, thing interface{}) bool {
-   	if s.Aof.ReadInto(thing) {
+// Get user input. Replay log is tried first. If that's exhausted, we ask the
+// local user or read from the peer. Non-replayed inputs are written to the AOF.
+// Non-replayed local inputs are written to the peer.
+func getInput(s *State, player Aff, thing interface{}, message string, choices ...string) {
+	if s.Replay.ReadInto(thing) {
 		return true
 	}
-    if player != s.LocalPlayer {
-        return s.Link.ReadInto(thing)
-    }
-    return false
+	if s.LocalPlayer != player {
+		s.LinkIn.ReadInto(thing)
+	} else {
+		localInput(s, thing, message, choices...)
+		s.LinkOut.Buffer(thing)
+	}
+	s.Aof.Buffer.(thing)
+}
+
+// Like getInput, but for computer-decided things.
+func getRandom(s *State, player Aff, thing interface{}, impl func()) {
+	if s.Replay.ReadInto(thing) {
+		return
+	}
+	if s.LocalPlayer != player {
+		s.LinkIn.ReadInto(thing)
+	} else {
+		impl()
+		s.LinkOut.Buffer(thing)
+	}
+	s.Aof.Buffer(thing)
+	return
 }
 
 func SelectRandomCard(s *State, player Aff) (card Card) {
-	if ReadInto(s, player, &card) {
-		return
-	}
-	n := rng.Intn(len(s.Hands[player].Cards))
-	card = s.Hands[player].Cards[n]
-	s.Txn.Log(&card)
-	return
+	getRandom(s, player, &card, func() {
+		n := rng.Intn(len(s.Hands[player].Cards))
+		card = s.Hands[player].Cards[n]
+	})
 }
 
 func actionsThisTurn(s *State, player Aff) int {
@@ -295,8 +308,7 @@ func EndTurn(s *State) {
 func Action(s *State) {
 	card := SelectCard(s, s.Phasing)
 	PlayCard(s, s.Phasing, card)
-	s.Commit(s)
-	s.Txn.Flush()
+	s.Commit()
 }
 
 func PlayCard(s *State, player Aff, card Card) {
@@ -318,7 +330,7 @@ func PlayCard(s *State, player Aff, card Card) {
 
 func PlaySpace(s *State, player Aff, card Card) {
 	box, _ := nextSRBox(s, player)
-	roll := SelectRoll(s)
+	roll := SelectRoll(s, player)
 	MessageBoth(s, fmt.Sprintf("%s plays %s for the space race.", player, card))
 	if roll <= box.MaxRoll {
 		box.Enter(s, player)
@@ -334,9 +346,10 @@ func PlaySpace(s *State, player Aff, card Card) {
 	}
 }
 
-func SelectRoll(s *State) int {
-	// XXX: replay-log
-	return Roll()
+func SelectRoll(s *State, player Aff) (roll int) {
+	getRandom(s, player, &roll, func() {
+		roll = Roll()
+	})
 }
 
 func PlayOps(s *State, player Aff, card Card) {
@@ -346,12 +359,12 @@ func PlayOps(s *State, player Aff, card Card) {
 		if player == SelectFirst(s, player) {
 			MessageBoth(s, fmt.Sprintf("%s will conduct operations first", player))
 			ConductOps(s, player, card)
-			s.Commit(s)
+			s.Commit()
 			PlayEvent(s, opp, card)
 		} else {
 			MessageBoth(s, fmt.Sprintf("%s will implement the event first", opp))
 			PlayEvent(s, opp, card)
-			s.Commit(s)
+			s.Commit()
 			ConductOps(s, player, card)
 		}
 	} else {
@@ -380,8 +393,8 @@ func OpRealign(s *State, player Aff, ops int) {
 		for !canRealign(s, player, target, false) {
 			target = SelectCountry(s, player, "Oh no you goofed. Realign where?")
 		}
-		rollUSA := SelectRoll(s)
-		rollSOV := SelectRoll(s)
+		rollUSA := SelectRoll(s, USA)
+		rollSOV := SelectRoll(s, SOV)
 		realign(s, target, rollUSA, rollSOV)
 	}
 }
@@ -392,7 +405,7 @@ func OpCoup(s *State, player Aff, ops int) {
 		target = SelectCountry(s, player, "Oh no you goofed. Coup where?")
 	}
 
-	roll := SelectRoll(s)
+	roll := SelectRoll(s, player)
 	ops += opsMod(s, player, []*Country{target})
 	coup(s, player, ops, roll, target, false)
 }
@@ -409,7 +422,7 @@ func DoFreeCoup(s *State, player Aff, card Card, allowedTargets []CountryId) boo
 		return false
 	}
 	target := SelectCountry(s, player, "Free coup where?", targets...)
-	roll := SelectRoll(s)
+	roll := SelectRoll(s, player)
 	ops := card.Ops + opsMod(s, player, []*Country{target})
 	return coup(s, player, ops, roll, target, true)
 }
@@ -478,7 +491,7 @@ func SelectPlay(s *State, player Aff, card Card) (pk PlayKind) {
 	if canSpace {
 		choices = append(choices, SPACE.Ref())
 	}
-	GetOrLog(s, player, &pk, fmt.Sprintf("Playing %s", card.Name), choices...)
+	getInput(s, player, &pk, fmt.Sprintf("Playing %s", card.Name), choices...)
 	return
 }
 
@@ -498,12 +511,12 @@ func SelectOps(s *State, player Aff, card Card, kinds ...OpsKind) (o OpsKind) {
 			choices = append(choices, k.Ref())
 		}
 	}
-	GetOrLog(s, player, &o, message, choices...)
+	getInput(s, player, &o, message, choices...)
 	return
 }
 
 func SelectFirst(s *State, player Aff) (first Aff) {
-	GetOrLog(s, player, &first, "Who will play first",
+	getInput(s, player, &first, "Who will play first",
 		USA.Ref(), SOV.Ref())
 	return
 }
@@ -688,7 +701,7 @@ func SelectInfluenceForce(s *State, player Aff, selectFn func() ([]*Country, err
 }
 
 func SelectInfluence(s *State, player Aff, message string) (cs []*Country) {
-	GetOrLog(s, player, &cs, message)
+	getInput(s, player, &cs, message)
 	return
 }
 
@@ -697,7 +710,7 @@ func SelectCountry(s *State, player Aff, message string, countries ...CountryId)
 	for i, cn := range countries {
 		choices[i] = s.Countries[cn].Ref()
 	}
-	GetOrLog(s, player, &c, message, choices...)
+	getInput(s, player, &c, message, choices...)
 	return
 }
 
@@ -708,7 +721,7 @@ func SelectRegion(s *State, player Aff, message string) (r Region) {
 		choices[i] = name
 		i++
 	}
-	GetOrLog(s, player, &r, message, choices...)
+	getInput(s, player, &r, message, choices...)
 	return
 }
 

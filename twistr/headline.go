@@ -11,23 +11,23 @@ func Headline(s *State) {
 		MessageBoth(s, "USSR must choose the headline first")
 		sovHl = SelectCard(s, SOV, CardBlacklist(TheChinaCard))
 		MessageBoth(s, fmt.Sprintf("USSR selects %s", sovHl.Name))
-		s.Txn.Flush()
+		s.Commit()
 		usaHl = SelectCard(s, USA, CardBlacklist(TheChinaCard))
 		MessageBoth(s, fmt.Sprintf("USA selects %s", sovHl.Name))
-		s.Txn.Flush()
+		s.Commit()
 	case ok && headlineSecond == SOV:
 		MessageBoth(s, "US must choose the headline first")
 		usaHl = SelectCard(s, USA, CardBlacklist(TheChinaCard))
 		MessageBoth(s, fmt.Sprintf("USA selects %s", sovHl.Name))
-		s.Txn.Flush()
+		s.Commit()
 		sovHl = SelectCard(s, SOV, CardBlacklist(TheChinaCard))
 		MessageBoth(s, fmt.Sprintf("USSR selects %s", sovHl.Name))
-		s.Txn.Flush()
+		s.Commit()
 	default:
 		sovHl = SelectCard(s, SOV, CardBlacklist(TheChinaCard))
-		s.Txn.Flush()
+		s.Commit()
 		usaHl = SelectCard(s, USA, CardBlacklist(TheChinaCard))
-		s.Txn.Flush()
+		s.Commit()
 		MessageBoth(s, fmt.Sprintf("USA selects %s, and USSR selects %s", usaHl.Name, sovHl.Name))
 	}
 	s.Hands[USA].Remove(usaHl)
@@ -44,7 +44,7 @@ func Headline(s *State) {
 		s.Phasing = USA
 		PlayEvent(s, USA, usaHl)
 	}
-	// XXX: should probably flush in PlayEvent. Need a more consistent
-	// convention for when to flush.
-	s.Txn.Flush()
+	// XXX: should probably commit in PlayEvent. Need a more consistent
+	// convention for when to commit.
+	s.Commit()
 }

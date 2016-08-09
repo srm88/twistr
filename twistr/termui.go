@@ -28,6 +28,6 @@ func (t *TerminalUI) Message(message string) error {
 	return err
 }
 
-func (t *TerminalUI) Commit(s *State) error {
+func (t *TerminalUI) Redraw(s *State) error {
 	return nil
 }
