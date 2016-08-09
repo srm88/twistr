@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"io"
 	"log"
-	"os"
 )
 
 type CmdOut struct {
@@ -26,7 +25,7 @@ func (co *CmdOut) Flush() {
 	co.WriteTo(co.w)
 }
 
-func (co *CmdOut) Buffer(thing interface{}) (err error) {
+func (co *CmdOut) Log(thing interface{}) (err error) {
 	var b []byte
 	if b, err = Marshal(thing); err != nil {
 		log.Println(err)

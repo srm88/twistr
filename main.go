@@ -50,15 +50,21 @@ func setup(aofPath string) error {
 			return err
 		}
 	}
-	aof := twistr.NewCommandStream(in)
 	out, err := os.OpenFile(path, os.O_WRONLY|os.O_APPEND, 0666)
 	if err != nil {
 		in.Close()
 		return err
 	}
 	state = twistr.NewState()
-	state.Aof = aof
-	state.Txn = twistr.NewTxnLog(out)
+	state.Replay = twistr.NewCmdIn(in)
+	state.Aof = twistr.NewCmdOut(out)
+	state.Master = serverMode
+	// XXX hardcode
+	if serverMode {
+		state.LocalPlayer = SOV
+	} else {
+		state.LocalPlayer = USA
+	}
 	closers = append(closers, in, out)
 	return nil
 }
@@ -131,7 +137,8 @@ func main() {
 		panic(fmt.Sprintf("Couldn't connect %s\n", err.Error()))
 	}
 	closers = append(closers, conn)
-	state.Link = twistr.NewCommandStream(conn)
+	state.LinkIn = twistr.NewCmdIn(conn)
+	state.LinkOut = twistr.NewCmdOut(conn)
 
 	twistr.Start(state)
 }

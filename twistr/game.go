@@ -75,13 +75,13 @@ func SelectShuffle(s *State, d *Deck) (cardOrder []Card) {
 	if s.Replay.ReadInto(&cardOrder) {
 		return
 	}
-	if s.LocalPlayer != player {
+	if !s.Master {
 		s.LinkIn.ReadInto(&cardOrder)
 	} else {
 		cardOrder = d.Shuffle()
-		s.LinkOut.Buffer(&cardOrder)
+		s.LinkOut.Log(&cardOrder)
 	}
-	s.Aof.Buffer(&cardOrder)
+	s.Aof.Log(&cardOrder)
 	return
 }
 
@@ -172,9 +172,9 @@ func getInput(s *State, player Aff, thing interface{}, message string, choices .
 		s.LinkIn.ReadInto(thing)
 	} else {
 		localInput(s, thing, message, choices...)
-		s.LinkOut.Buffer(thing)
+		s.LinkOut.Log(thing)
 	}
-	s.Aof.Buffer.(thing)
+	s.Aof.Log(thing)
 }
 
 // Like getInput, but for computer-decided things.
@@ -186,9 +186,9 @@ func getRandom(s *State, player Aff, thing interface{}, impl func()) {
 		s.LinkIn.ReadInto(thing)
 	} else {
 		impl()
-		s.LinkOut.Buffer(thing)
+		s.LinkOut.Log(thing)
 	}
-	s.Aof.Buffer(thing)
+	s.Aof.Log(thing)
 	return
 }
 

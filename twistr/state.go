@@ -56,6 +56,14 @@ func NewState() *State {
 	}
 }
 
+// XXX messaging
+func (s *State) Message(player Aff, message string) error {
+	if player != s.LocalPlayer {
+		return nil
+	}
+	return s.UI.Message(message)
+}
+
 func (s *State) Commit() {
 	s.Aof.Flush()
 	s.LinkOut.Flush()
