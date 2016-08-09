@@ -16,10 +16,10 @@ const (
 )
 
 var (
-	port    int
-	server  bool
-	state   *twistr.State
-	closers []io.Closer
+	port       int
+	serverMode bool
+	state      *twistr.State
+	closers    []io.Closer
 )
 
 func init() {
@@ -31,7 +31,7 @@ func init() {
 func aofPath() string {
 	var fname string
 	switch {
-	case server:
+	case serverMode:
 		fname = "server.aof"
 	default:
 		fname = "client.aof"
@@ -83,7 +83,7 @@ func isServer(nc *twistr.NCursesUI) bool {
 }
 func connect(nc *twistr.NCursesUI) (net.Conn, error) {
 	switch {
-	case server:
+	case serverMode:
 		return twistr.Server(port)
 	default:
 		return twistr.Client(fmt.Sprintf("%s:%d", connectHost(nc), port))
@@ -98,8 +98,8 @@ func main() {
 	closers = append(closers, ui)
 
 	// XXX: revisit 'aof path' and 'is server' for multiple game support
-	server = isServer(ui)
-	path := aofPath(server)
+	serverMode = isServer(ui)
+	path := aofPath(serverMode)
 
 	if err := setup(path); err != nil {
 		panic(fmt.Sprintf("Failed to start game: %s\n", err.Error()))
@@ -127,7 +127,7 @@ func main() {
 		done <- 0
 	}()
 
-	if conn, err := connect(ui, server); err != nil {
+	if conn, err := connect(ui, serverMode); err != nil {
 		panic(fmt.Sprintf("Couldn't connect %s\n", err.Error()))
 	}
 	closers = append(closers, conn)
