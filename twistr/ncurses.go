@@ -1,7 +1,6 @@
 package twistr
 
 import (
-	"bytes"
 	"fmt"
 	gc "github.com/rthornton128/goncurses"
 	"log"
@@ -230,38 +229,26 @@ func MakeNCursesUI() *NCursesUI {
 	return &NCursesUI{scr}
 }
 
-func (nc *NCursesUI) GetInput(message string) string {
-	nc.Move(36, 0)
-	nc.ClearToEOL()
-	nc.MovePrint(36, 0, message)
+func (nc *NCursesUI) Input() (string, error) {
 	nc.Move(37, 0)
 	gc.Echo(true)
 	nc.Refresh()
 	text, err := nc.GetString(100)
 	if err != nil {
-		panic(err.Error())
+		return "", err
 	}
 	gc.Echo(false)
 	nc.Move(37, 0)
 	nc.ClearToEOL()
-	return strings.ToLower(strings.TrimSpace(text))
+	return strings.ToLower(strings.TrimSpace(text)), nil
 }
 
-func (nc *NCursesUI) Solicit(player Aff, message string, choices []string) string {
-	buf := new(bytes.Buffer)
-	fmt.Fprintf(buf, "[%s] %s", player, strings.TrimRight(message, "\n"))
-	if len(choices) > 0 {
-		fmt.Fprintf(buf, " [ %s ]", strings.Join(choices, " "))
-	}
-	return nc.GetInput(buf.String())
-}
-
-func (nc *NCursesUI) Message(player Aff, message string) {
+func (nc *NCursesUI) Message(message string) error {
 	nc.Move(36, 0)
 	nc.ClearToEOL()
-	nc.MovePrint(36, 0, fmt.Sprintf("[%s] %s", player, strings.TrimRight(message, "\n")))
-	nc.Move(37, 0)
-	nc.GetChar()
+	nc.MovePrint(36, 0, strings.TrimRight(message, "\n"))
+	nc.MoveTo(37, 0)
+	return nil
 }
 
 func (nc *NCursesUI) Close() error {
@@ -269,7 +256,7 @@ func (nc *NCursesUI) Close() error {
 	return nil
 }
 
-func (nc *NCursesUI) Redraw(s *State) {
+func (nc *NCursesUI) Commit(s *State) {
 	var name, stab, infUsa, infSov int16
 	nc.MovePrint(0, 0, world)
 	for id, extra := range data {
@@ -329,6 +316,7 @@ func (nc *NCursesUI) Redraw(s *State) {
 	nc.ColorOff(phasingColor)
 	nc.Refresh()
 	nc.Move(37, 0)
+	return nil
 }
 
 // countryColors returns the default coloring for a country, notwithstanding

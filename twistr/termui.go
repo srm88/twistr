@@ -2,41 +2,32 @@ package twistr
 
 import (
 	"bufio"
-	"bytes"
 	"fmt"
-	"io"
 	"os"
 	"strings"
 )
 
 type TerminalUI struct {
 	in *bufio.Reader
-	bytes.Buffer
 }
 
 func MakeTerminalUI() *TerminalUI {
 	return &TerminalUI{in: bufio.NewReader(os.Stdin)}
 }
 
-func (t *TerminalUI) Solicit(player Aff, message string, choices []string) string {
-	fmt.Fprintf(t, "[%s] %s", player, strings.TrimRight(message, "\n"))
-	if len(choices) > 0 {
-		fmt.Fprintf(t, " [ %s ]", strings.Join(choices, " "))
-	}
-	t.WriteString("\n")
-	io.Copy(os.Stdout, t)
-	t.Reset()
+func (t *TerminalUI) Input() (string, error) {
 	text, err := t.in.ReadString('\n')
 	if err != nil {
-		panic(err.Error())
+		return "", err
 	}
-	return strings.ToLower(strings.TrimSpace(text))
+	return strings.ToLower(strings.TrimSpace(text)), nil
 }
 
-func (t *TerminalUI) Message(player Aff, message string) {
-	fmt.Fprintf(t, "[%s] %s\n", player, strings.TrimRight(message, "\n"))
-	io.Copy(os.Stdout, t)
+func (t *TerminalUI) Message(message string) error {
+	_, err := fmt.Fprintf(os.Stdout, "%s\n", strings.TrimRight(message, "\n"))
+	return err
 }
 
-func (t *TerminalUI) Redraw(s *State) {
+func (t *TerminalUI) Commit(s *State) error {
+	return nil
 }

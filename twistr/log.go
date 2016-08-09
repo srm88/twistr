@@ -8,86 +8,59 @@ import (
 	"os"
 )
 
-type Aof struct {
-	*bufio.Scanner
-	in io.ReadCloser
-	io.WriteCloser
-	done bool
-}
-
 type TxnLog struct {
 	*bytes.Buffer
-	wc io.WriteCloser
+	w io.Writer
 }
 
-func NewTxnLog(wc io.WriteCloser) *TxnLog {
+func NewTxnLog(w io.Writer) *TxnLog {
 	return &TxnLog{
 		Buffer: new(bytes.Buffer),
-		wc:     wc,
+		w:      w,
 	}
-}
-
-func (log TxnLog) Close() error {
-	return log.wc.Close()
 }
 
 func (log *TxnLog) Flush() {
-	// Writes the contents of its internal buffer into the
-	// WriteCloser
-	log.WriteTo(log.wc)
+	// Flush buffer to writer
+	log.WriteTo(log.w)
 }
 
-func OpenTxnLog(path string) (*TxnLog, error) {
-	out, err := os.OpenFile(path, os.O_WRONLY|os.O_APPEND, 0666)
-	if err != nil {
-		return nil, err
-	}
-	return NewTxnLog(out), nil
-}
-
-func NewAof(r io.ReadCloser, w io.WriteCloser) *Aof {
-	return &Aof{
-		Scanner:     bufio.NewScanner(r),
-		in:          r,
-		WriteCloser: w,
-		done:        false,
-	}
-}
-
-func (aof *Aof) Close() error {
-	if err := aof.in.Close(); err != nil {
-		return err
-	}
-	return aof.Close()
-}
-
-func (aof *Aof) ReadInto(thing interface{}) bool {
-	if aof.done || !aof.Scan() {
-		aof.done = true
-		return false
-	}
-	line := aof.Text()
-	if err := Unmarshal(line, thing); err != nil {
-		log.Printf("Corrupt log! Tried to parse '%s' into %s\n", line, thing)
-		return false
-	}
-	return true
-}
-
-func (aof *Aof) Log(thing interface{}) (err error) {
+func Log(thing interface{}, w io.Writer) (err error) {
 	var b []byte
 	if b, err = Marshal(thing); err != nil {
 		log.Println(err)
 		return
 	}
-	if _, err = aof.Write(b); err != nil {
-		log.Println(err)
-		return
-	}
-	b = []byte{'\n'}
-	if _, err = aof.Write(b); err != nil {
+	if _, err = fmt.Fprintf(w, "%s\n", b); err != nil {
 		log.Println(err)
 		return
 	}
 	return
+}
+
+type CommandStream struct {
+	*bufio.Scanner
+	in   io.Reader
+	done bool
+}
+
+func NewCommandStream(r io.Reader) *CommandStream {
+	return &CommandStream{
+		Scanner: bufio.NewScanner(r),
+		in:      r,
+		done:    false,
+	}
+}
+
+func (cs *CommandStream) ReadInto(thing interface{}) bool {
+	if cs.done || !cs.Scan() {
+		cs.done = true
+		return false
+	}
+	line := cs.Text()
+	if err := Unmarshal(line, thing); err != nil {
+		log.Printf("Corrupt log! Tried to parse '%s' into %s\n", line, thing)
+		return false
+	}
+	return true
 }

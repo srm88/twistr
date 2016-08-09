@@ -4,10 +4,12 @@ import "net"
 
 type State struct {
 	UI
-	Master          bool
-	LocalPlayer     Aff
-	Conn            net.Conn
-	Aof             *Aof
+	Master      bool
+	LocalPlayer Aff
+	Aof         *Aof
+	Link        *Aof
+	// Need separate txns for aof and network, since network needs to only
+	// write local commands, but master needs to write *all* commands to aof.
 	Txn             *TxnLog
 	VP              int
 	Defcon          int
@@ -51,10 +53,6 @@ func NewState() *State {
 		ChinaCardPlayer: SOV,
 		ChinaCardFaceUp: true,
 	}
-}
-
-func (s *State) Close() error {
-	return s.Aof.Close()
 }
 
 func (s *State) ImproveDefcon(n int) {

@@ -30,18 +30,18 @@ func Start(s *State) {
 	s.Deck.Push(EarlyWar...)
 	cards := SelectShuffle(s, s.Deck)
 	s.Deck.Reorder(cards)
-	s.Redraw(s)
+	s.Commit(s)
 	Deal(s)
-	s.Redraw(s)
+	s.Commit(s)
 	// SOV chooses 6 influence in E europe
-	s.Redraw(s)
+	s.Commit(s)
 	cs := SelectInfluenceForce(s, SOV, func() ([]*Country, error) {
 		return SelectExactlyNInfluence(s, SOV,
 			"6 influence in East Europe", 6,
 			InRegion(EastEurope))
 	})
 	PlaceInfluence(s, SOV, cs)
-	s.Redraw(s)
+	s.Commit(s)
 	s.Txn.Flush()
 	// US chooses 7 influence in W europe
 	csUSA := SelectInfluenceForce(s, USA, func() ([]*Country, error) {
@@ -50,7 +50,7 @@ func Start(s *State) {
 			InRegion(WestEurope))
 	})
 	PlaceInfluence(s, USA, csUSA)
-	s.Redraw(s)
+	s.Commit(s)
 	s.Txn.Flush()
 	// Temporary
 	for s.Turn = 1; s.Turn <= 10; s.Turn++ {
@@ -74,9 +74,9 @@ func ShowCard(s *State, c Card, to Aff) {
 func SelectShuffle(s *State, d *Deck) (cardOrder []Card) {
 	// Duplicates what GetOrLog does. It doesn't make sense to reuse GetOrLog
 	// because this will never ask for user input.
-	if s.Aof.ReadInto(&cardOrder) {
-		return
-	}
+    if ReadInto(s, player, &cardOrder) {
+        return
+    }
 	cardOrder = d.Shuffle()
 	s.Aof.Log(&cardOrder)
 	return
@@ -159,15 +159,25 @@ func SelectChoice(s *State, player Aff, message string, choices ...string) (choi
 }
 
 func GetOrLog(s *State, player Aff, thing interface{}, message string, choices ...string) {
-	if s.Aof.ReadInto(thing) {
-		return
-	}
-	GetInput(s, player, thing, message, choices...)
+    if ReadInto(s, player, thing) {
+        return
+    }
+	GetInput(s, thing, message, choices...)
 	s.Aof.Log(thing)
 }
 
+func ReadInto(s *State player Aff, thing interface{}) bool {
+   	if s.Aof.ReadInto(thing) {
+		return true
+	}
+    if player != s.LocalPlayer {
+        return s.Link.ReadInto(thing)
+    }
+    return false
+}
+
 func SelectRandomCard(s *State, player Aff) (card Card) {
-	if s.Aof.ReadInto(&card) {
+	if ReadInto(s, player, &card) {
 		return
 	}
 	n := rng.Intn(len(s.Hands[player].Cards))
@@ -285,7 +295,7 @@ func EndTurn(s *State) {
 func Action(s *State) {
 	card := SelectCard(s, s.Phasing)
 	PlayCard(s, s.Phasing, card)
-	s.Redraw(s)
+	s.Commit(s)
 	s.Txn.Flush()
 }
 
@@ -336,12 +346,12 @@ func PlayOps(s *State, player Aff, card Card) {
 		if player == SelectFirst(s, player) {
 			MessageBoth(s, fmt.Sprintf("%s will conduct operations first", player))
 			ConductOps(s, player, card)
-			s.Redraw(s)
+			s.Commit(s)
 			PlayEvent(s, opp, card)
 		} else {
 			MessageBoth(s, fmt.Sprintf("%s will implement the event first", opp))
 			PlayEvent(s, opp, card)
-			s.Redraw(s)
+			s.Commit(s)
 			ConductOps(s, player, card)
 		}
 	} else {
@@ -698,7 +708,7 @@ func SelectRegion(s *State, player Aff, message string) (r Region) {
 		choices[i] = name
 		i++
 	}
-	GetInput(s, player, &r, message, choices...)
+	GetOrLog(s, player, &r, message, choices...)
 	return
 }
 

@@ -16,15 +16,19 @@ const (
 )
 
 var (
-	port int
+	port    int
+	server  bool
+	state   *twistr.State
+	closers []io.Closer
 )
 
 func init() {
 	flag.IntVar(&port, "port", 1551, "Server port number")
+	closers = []io.Closer{}
 }
 
 // XXX: should also include game name in the file path
-func aofPath(server bool) string {
+func aofPath() string {
 	var fname string
 	switch {
 	case server:
@@ -35,26 +39,28 @@ func aofPath(server bool) string {
 	return fmt.Sprintf("%s/%s", AofDir, fname)
 }
 
-func setup(aofPath string) (*twistr.State, error) {
+func setup(aofPath string) error {
 	in, err := os.Open(aofPath)
 	if err != nil {
 		if !os.IsNotExist(err) {
-			return nil, err
+			return err
 		}
 		in, err = os.OpenFile(aofPath, os.O_CREATE|os.O_RDONLY, 0666)
 		if err != nil {
-			return nil, err
+			return err
 		}
 	}
-	txn, err := twistr.OpenTxnLog(aofPath)
+	aof := twistr.NewCommandStream(in)
+	out, err := os.OpenFile(path, os.O_WRONLY|os.O_APPEND, 0666)
 	if err != nil {
-		return nil, err
+		in.Close()
+		return err
 	}
-	aof := twistr.NewAof(in, txn)
-	s := twistr.NewState()
-	s.Aof = aof
-	s.Txn = txn
-	return s, nil
+	state = twistr.NewState()
+	state.Aof = aof
+	state.Txn = twistr.NewTxnLog(out)
+	closers = append(closers, in, out)
+	return nil
 }
 
 func connectHost(nc *twistr.NCursesUI) string {
@@ -64,7 +70,7 @@ func connectHost(nc *twistr.NCursesUI) string {
 func isServer(nc *twistr.NCursesUI) bool {
 	var reply string
 	for {
-		reply = nc.GetInput("server or client")
+		reply = twistr.Solicit(nc, "What mode?", []string{"server", "client"})
 		reply = strings.ToLower(reply)
 		switch reply {
 		case "server":
@@ -75,7 +81,7 @@ func isServer(nc *twistr.NCursesUI) bool {
 	}
 
 }
-func connect(nc *twistr.NCursesUI, server bool) (net.Conn, error) {
+func connect(nc *twistr.NCursesUI) (net.Conn, error) {
 	switch {
 	case server:
 		return twistr.Server(port)
@@ -89,18 +95,16 @@ func main() {
 	flag.Parse()
 
 	ui := twistr.MakeNCursesUI()
-	toClose := []io.Closer{ui}
+	closers = append(closers, ui)
 
 	// XXX: revisit 'aof path' and 'is server' for multiple game support
-	server := isServer(ui)
+	server = isServer(ui)
 	path := aofPath(server)
 
-	state, err := setup(path)
-	if err != nil {
+	if err := setup(path); err != nil {
 		panic(fmt.Sprintf("Failed to start game: %s\n", err.Error()))
 	}
 	state.UI = ui
-	toClose = append(toClose, state)
 
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, os.Interrupt, os.Kill)
@@ -108,8 +112,8 @@ func main() {
 	// This goroutine cleans up
 	go func() {
 		exitcode := <-done
-		for _, thing := range toClose {
-			thing.Close()
+		for _, c := range closers {
+			c.Close()
 		}
 		os.Exit(exitcode)
 	}()
@@ -123,11 +127,11 @@ func main() {
 		done <- 0
 	}()
 
-	state.Conn, err = connect(ui, server)
-	if err != nil {
+	if conn, err := connect(ui, server); err != nil {
 		panic(fmt.Sprintf("Couldn't connect %s\n", err.Error()))
 	}
-	toClose = append(toClose, state.Conn)
+	closers = append(closers, conn)
+	state.Link = twistr.NewCommandStream(conn)
 
 	twistr.Start(state)
 }
