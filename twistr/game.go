@@ -78,7 +78,7 @@ func SelectShuffle(s *State, d *Deck) (cardOrder []Card) {
         return
     }
 	cardOrder = d.Shuffle()
-	s.Aof.Log(&cardOrder)
+	s.Txn.Log(&cardOrder)
 	return
 }
 
@@ -163,7 +163,7 @@ func GetOrLog(s *State, player Aff, thing interface{}, message string, choices .
         return
     }
 	GetInput(s, thing, message, choices...)
-	s.Aof.Log(thing)
+	s.Txn.Log(thing)
 }
 
 func ReadInto(s *State player Aff, thing interface{}) bool {
@@ -182,7 +182,7 @@ func SelectRandomCard(s *State, player Aff) (card Card) {
 	}
 	n := rng.Intn(len(s.Hands[player].Cards))
 	card = s.Hands[player].Cards[n]
-	s.Aof.Log(&card)
+	s.Txn.Log(&card)
 	return
 }
 
