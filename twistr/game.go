@@ -173,6 +173,8 @@ func getInput(s *State, player Aff, thing interface{}, message string, choices .
 		return
 	}
 	if s.LocalPlayer != player {
+		// Autocommit to preclude deadlock
+		s.Commit()
 		Debug("Reading from peer '%s'", message)
 		s.LinkIn.ReadInto(thing)
 	} else {
@@ -190,6 +192,7 @@ func getRandom(s *State, player Aff, thing interface{}, impl func()) {
 		return
 	}
 	if s.LocalPlayer != player {
+		s.Commit()
 		Debug("Reading random from peer")
 		s.LinkIn.ReadInto(thing)
 	} else {
@@ -336,6 +339,7 @@ func PlayCard(s *State, player Aff, card Card) {
 		MessageBoth(s, fmt.Sprintf("%s receives the China Card, face down.", player.Opp()))
 		s.ChinaCardPlayed()
 	}
+	s.Commit()
 }
 
 func PlaySpace(s *State, player Aff, card Card) {
@@ -367,14 +371,18 @@ func PlayOps(s *State, player Aff, card Card) {
 	MessageBoth(s, fmt.Sprintf("%s plays %s for operations", player, card))
 	opp := player.Opp()
 	if card.Aff == opp {
-		if player == SelectFirst(s, player) {
+		first := SelectFirst(s, player)
+		s.Commit()
+		if first == player {
 			MessageBoth(s, fmt.Sprintf("%s will conduct operations first", player))
 			ConductOps(s, player, card)
+			// XXX commit
 			s.Commit()
 			PlayEvent(s, opp, card)
 		} else {
 			MessageBoth(s, fmt.Sprintf("%s will implement the event first", opp))
 			PlayEvent(s, opp, card)
+			// XXX commit
 			s.Commit()
 			ConductOps(s, player, card)
 		}
@@ -407,6 +415,7 @@ func OpRealign(s *State, player Aff, ops int) {
 		rollUSA := SelectRoll(s, USA)
 		rollSOV := SelectRoll(s, SOV)
 		realign(s, target, rollUSA, rollSOV)
+		s.Commit()
 	}
 }
 
@@ -415,7 +424,6 @@ func OpCoup(s *State, player Aff, ops int) {
 	for !canCoup(s, player, target, false) {
 		target = SelectCountry(s, player, "Oh no you goofed. Coup where?")
 	}
-
 	roll := SelectRoll(s, player)
 	ops += opsMod(s, player, []*Country{target})
 	coup(s, player, ops, roll, target, false)
@@ -458,6 +466,7 @@ func PlayEvent(s *State, player Aff, card Card) {
 			MessageBoth(s, fmt.Sprintf("%s implements %s", player, card))
 			card.Impl(s, player)
 		}
+		s.Commit()
 	}
 	switch {
 	case card.Id == MissileEnvy:

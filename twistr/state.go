@@ -65,6 +65,7 @@ func (s *State) MessageOne(player Aff, message string) error {
 func (s *State) Commit() {
 	s.Aof.Flush()
 	s.LinkOut.Flush()
+	Debug("Committed!")
 	s.UI.Redraw(s)
 }
 
