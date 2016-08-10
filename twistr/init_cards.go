@@ -1,11 +1,27 @@
 package twistr
 
+import (
+	"golang.org/x/text/transform"
+	"golang.org/x/text/unicode/norm"
+	"unicode"
+)
+
 var (
 	Cards    map[CardId]Card
 	EarlyWar []Card
 	MidWar   []Card
 	LateWar  []Card
 )
+
+func notAscii(r rune) bool {
+	return r >= unicode.MaxASCII
+}
+
+func asciify(in string) string {
+	t := transform.Chain(norm.NFKD, transform.RemoveFunc(notAscii))
+	result, _, _ := transform.String(t, in)
+	return result
+}
 
 func init() {
 	Cards = make(map[CardId]Card)
@@ -16,7 +32,7 @@ func init() {
 			Aff:  c.Aff,
 			Ops:  c.Ops,
 			Name: c.Name,
-			Text: c.Text,
+			Text: asciify(c.Text),
 			Star: c.Name[len(c.Name)-1] == '*',
 			Era:  c.Era,
 			Impl: c.Impl,
