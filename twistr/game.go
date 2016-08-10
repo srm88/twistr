@@ -61,14 +61,17 @@ func Start(s *State) {
 
 func ShowHand(s *State, whose, to Aff) {
 	s.Message(to, fmt.Sprintf("%s hand: %s\n", whose, strings.Join(s.Hands[whose].Names(), ", ")))
+	CardMode(s, s.Hands[whose].Cards)
 }
 
 func ShowDiscard(s *State, to Aff) {
 	s.Message(to, fmt.Sprintf("Discard pile: %s\n", strings.Join(s.Discard.Names(), ", ")))
+	CardMode(s, s.Discard.Cards)
 }
 
 func ShowCard(s *State, c Card, to Aff) {
 	s.Message(to, fmt.Sprintf("Card: %s\n", c.Name))
+	CardMode(s, []Card{c})
 }
 
 func SelectShuffle(s *State, d *Deck) (cardOrder []Card) {

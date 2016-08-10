@@ -44,6 +44,19 @@ func lookupAff(player string) (Aff, error) {
 
 type Era int
 
+func (e Era) String() string {
+	switch e {
+	case Early:
+		return "Early War"
+	case Mid:
+		return "Mid War"
+	case Late:
+		return "Late War"
+	default:
+		return "?"
+	}
+}
+
 type CountryId int
 
 type CardId int

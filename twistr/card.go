@@ -7,6 +7,7 @@ type Card struct {
 	Name string
 	Text string
 	Star bool
+	Era  Era
 	Impl func(*State, Aff)
 }
 
