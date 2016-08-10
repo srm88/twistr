@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -34,5 +35,5 @@ func MessageBoth(ui UI, message string) {
 }
 
 func Debug(message string, a ...interface{}) {
-	fmt.Fprintf(os.Stderr, message, a...)
+	fmt.Fprintf(os.Stderr, strings.TrimRight(message, "\n")+"\n", a...)
 }

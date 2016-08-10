@@ -73,11 +73,14 @@ func SelectShuffle(s *State, d *Deck) (cardOrder []Card) {
 	// Duplicates what getInput does. It doesn't make sense to reuse getInput
 	// because this will never ask for user input.
 	if s.Replay.ReadInto(&cardOrder) {
+		Debug("Read shuffle order from replay")
 		return
 	}
 	if !s.Master {
+		Debug("Reading shuffle order from master")
 		s.LinkIn.ReadInto(&cardOrder)
 	} else {
+		Debug("Sending shuffle order to client")
 		cardOrder = d.Shuffle()
 		s.LinkOut.Log(&cardOrder)
 	}
@@ -166,11 +169,14 @@ func SelectChoice(s *State, player Aff, message string, choices ...string) (choi
 // Non-replayed local inputs are written to the peer.
 func getInput(s *State, player Aff, thing interface{}, message string, choices ...string) {
 	if s.Replay.ReadInto(thing) {
+		Debug("Reading from replay '%s'", message)
 		return
 	}
 	if s.LocalPlayer != player {
+		Debug("Reading from peer '%s'", message)
 		s.LinkIn.ReadInto(thing)
 	} else {
+		Debug("Requesting from player '%s'", message)
 		localInput(s, thing, message, choices...)
 		s.LinkOut.Log(thing)
 	}
@@ -180,11 +186,14 @@ func getInput(s *State, player Aff, thing interface{}, message string, choices .
 // Like getInput, but for computer-decided things.
 func getRandom(s *State, player Aff, thing interface{}, impl func()) {
 	if s.Replay.ReadInto(thing) {
+		Debug("Reading random from replay")
 		return
 	}
 	if s.LocalPlayer != player {
+		Debug("Reading random from peer")
 		s.LinkIn.ReadInto(thing)
 	} else {
+		Debug("Sending random to peer")
 		impl()
 		s.LinkOut.Log(thing)
 	}

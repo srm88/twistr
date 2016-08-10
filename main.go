@@ -1,10 +1,12 @@
 package main
 
 import (
+	"bytes"
 	"flag"
 	"fmt"
 	"github.com/srm88/twistr/twistr"
 	"io"
+	"io/ioutil"
 	"net"
 	"os"
 	"os/signal"
@@ -17,6 +19,7 @@ const (
 
 var (
 	port       int
+	secretPort int
 	serverMode bool
 	state      *twistr.State
 	closers    []io.Closer
@@ -24,22 +27,16 @@ var (
 
 func init() {
 	flag.IntVar(&port, "port", 1551, "Server port number")
+	secretPort = port + 1
 	closers = []io.Closer{}
 }
 
-// XXX: should also include game name in the file path
+// XXX: should include game name in the file path
 func aofPath() string {
-	var fname string
-	switch {
-	case serverMode:
-		fname = "server.aof"
-	default:
-		fname = "client.aof"
-	}
-	return fmt.Sprintf("%s/%s", AofDir, fname)
+	return fmt.Sprintf("%s/%s", AofDir, "server.aof")
 }
 
-func setup(aofPath string) error {
+func setupMaster(aofPath string) error {
 	in, err := os.Open(aofPath)
 	if err != nil {
 		if !os.IsNotExist(err) {
@@ -56,20 +53,28 @@ func setup(aofPath string) error {
 		return err
 	}
 	state = twistr.NewState()
+	state.Master = true
 	state.Replay = twistr.NewCmdIn(in)
 	state.Aof = twistr.NewCmdOut(out)
-	state.Master = serverMode
 	// XXX hardcode
-	if serverMode {
-		state.LocalPlayer = twistr.SOV
-	} else {
-		state.LocalPlayer = twistr.USA
-	}
+	state.LocalPlayer = twistr.SOV
 	closers = append(closers, in, out)
 	return nil
 }
 
-func connectHost(nc *twistr.NCursesUI) string {
+// Return writer with which to accept sync'd aof
+func setupSlave() io.Writer {
+	replayBuf := new(bytes.Buffer)
+	state = twistr.NewState()
+	state.Master = false
+	state.Replay = twistr.NewCmdIn(replayBuf)
+	state.Aof = twistr.NewCmdOut(ioutil.Discard)
+	// XXX hardcode
+	state.LocalPlayer = twistr.USA
+	return replayBuf
+}
+
+func connectHost() string {
 	return "localhost"
 }
 
@@ -85,14 +90,23 @@ func isServer(nc *twistr.NCursesUI) bool {
 			return false
 		}
 	}
-
 }
-func connect(nc *twistr.NCursesUI) (net.Conn, error) {
+
+func connect() (net.Conn, error) {
 	switch {
 	case serverMode:
 		return twistr.Server(port)
 	default:
-		return twistr.Client(fmt.Sprintf("%s:%d", connectHost(nc), port))
+		return twistr.Client(fmt.Sprintf("%s:%d", connectHost(), port))
+	}
+}
+
+func secretConnect() (net.Conn, error) {
+	switch {
+	case serverMode:
+		return twistr.Server(secretPort)
+	default:
+		return twistr.Client(fmt.Sprintf("%s:%d", connectHost(), secretPort))
 	}
 }
 
@@ -108,9 +122,15 @@ func main() {
 	path := aofPath()
 
 	var err error
-	if err = setup(path); err != nil {
-		panic(fmt.Sprintf("Failed to start game: %s\n", err.Error()))
+	var clientReplay io.Writer
+	if serverMode {
+		if err = setupMaster(path); err != nil {
+			panic(fmt.Sprintf("Failed to start game: %s\n", err.Error()))
+		}
+	} else {
+		clientReplay = setupSlave()
 	}
+
 	state.UI = ui
 
 	sigs := make(chan os.Signal, 1)
@@ -135,12 +155,39 @@ func main() {
 	}()
 
 	var conn net.Conn
-	if conn, err = connect(ui); err != nil {
+	if conn, err = connect(); err != nil {
 		panic(fmt.Sprintf("Couldn't connect %s\n", err.Error()))
 	}
 	closers = append(closers, conn)
 	state.LinkIn = twistr.NewCmdIn(conn)
 	state.LinkOut = twistr.NewCmdOut(conn)
 
+	// XXX this all needs to move out of main ...
+	// sync aof to slave
+	if serverMode {
+		in, err := os.Open(path)
+		if err != nil {
+			panic(fmt.Sprintf("Failed to open aof to sync ... %s\n", err.Error()))
+		}
+		secretConn, err := secretConnect()
+		if err != nil {
+			panic(fmt.Sprintf("Failed to accept client conn to sync ... %s\n", err.Error()))
+		}
+		twistr.Debug("Master syncing aof")
+		if _, err := io.Copy(secretConn, in); err != nil {
+			panic(fmt.Sprintf("Failed while sending sync ... %s\n", err.Error()))
+		}
+		secretConn.Close()
+	} else {
+		secretConn, err := secretConnect()
+		if err != nil {
+			panic(fmt.Sprintf("Failed to dial master to sync ... %s\n", err.Error()))
+		}
+		twistr.Debug("Client receiving aof sync")
+		if _, err := io.Copy(clientReplay, secretConn); err != nil {
+			panic(fmt.Sprintf("Failed while reading sync ... %s\n", err.Error()))
+		}
+		secretConn.Close()
+	}
 	twistr.Start(state)
 }
