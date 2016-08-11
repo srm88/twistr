@@ -362,10 +362,9 @@ func (nc *NCursesUI) ShowMessages(messages []string) {
 }
 
 const (
-	cardWidth    = 35
-	cardsPerRow  = 3
-	cardsPerPage = 6
-	maxHeight    = 36
+	cardWidth   = 35
+	cardsPerRow = 3
+	maxHeight   = 36
 )
 
 type cardRow []Card
