@@ -16,13 +16,34 @@ func parseMeta(input string) (bool, string) {
 	return false, ""
 }
 
+func parseCommand(raw string) (cmd string, args []string) {
+	tokens := strings.Split(raw, " ")
+	if len(tokens) == 0 {
+		return "", nil
+	}
+	return tokens[0], tokens[1:]
+}
+
 func modal(s *State, command string) {
-	switch command {
+	who := s.Phasing
+	cmd, args := parseCommand(command)
+	switch cmd {
 	case "hand":
 		CardMode(s, s.Hands[s.Phasing].Cards)
-	default:
-		s.Message(s.Phasing, "Unknown command")
+		return
+	case "card":
+		if len(args) != 1 {
+			break
+		}
+		card, err := lookupCard(args[0])
+		if err != nil {
+			s.Message(who, err.Error())
+			return
+		}
+		CardMode(s, []Card{card})
+		return
 	}
+	s.Message(s.Phasing, "Unknown command")
 }
 
 func CardMode(s *State, cards []Card) {
