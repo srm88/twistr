@@ -59,18 +59,22 @@ func Start(s *State) {
 	}
 }
 
-func ShowHand(s *State, whose, to Aff) {
-	s.Message(to, fmt.Sprintf("%s hand: %s\n", whose, strings.Join(s.Hands[whose].Names(), ", ")))
-	CardMode(s, s.Hands[whose].Cards)
+func ShowHand(s *State, whose, to Aff, showChina ...bool) {
+	cs := []Card{}
+	for _, c := range s.Hands[whose].Cards {
+		cs = append(cs, c)
+	}
+	if len(showChina) > 0 && showChina[0] && s.ChinaCardPlayer == whose && s.ChinaCardFaceUp {
+		cs = append(cs, Cards[TheChinaCard])
+	}
+	CardMode(s, cs)
 }
 
 func ShowDiscard(s *State, to Aff) {
-	s.Message(to, fmt.Sprintf("Discard pile: %s\n", strings.Join(s.Discard.Names(), ", ")))
 	CardMode(s, s.Discard.Cards)
 }
 
 func ShowCard(s *State, c Card, to Aff) {
-	s.Message(to, fmt.Sprintf("Card: %s\n", c.Name))
 	CardMode(s, []Card{c})
 }
 
@@ -674,7 +678,7 @@ func SelectInfluenceForce(s *State, player Aff, selectFn func() ([]*Country, err
 	var err error
 	cs, err = selectFn()
 	for err != nil {
-		s.Message(player, err.Error())
+		s.UI.Message(player, err.Error())
 		cs, err = selectFn()
 	}
 	return cs

@@ -10,6 +10,7 @@ type State struct {
 	LocalPlayer     Aff
 	Aof             *Aof
 	Txn             *TxnLog
+	Messages        []string
 	VP              int
 	Defcon          int
 	MilOps          [2]int
@@ -53,6 +54,7 @@ func NewState(ui UI, aofPath string) (*State, error) {
 		UI:              ui,
 		Aof:             aof,
 		Txn:             txn,
+		Messages:        []string{},
 		VP:              0,
 		Defcon:          5,
 		MilOps:          [2]int{0, 0},
@@ -73,6 +75,11 @@ func NewState(ui UI, aofPath string) (*State, error) {
 		ChinaCardFaceUp: true,
 	}
 	return s, nil
+}
+
+func (s *State) Message(player Aff, msg string) {
+	s.Messages = append(s.Messages, msg)
+	s.UI.Message(player, msg)
 }
 
 func (s *State) Close() error {

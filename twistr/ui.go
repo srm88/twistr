@@ -29,7 +29,13 @@ func modal(s *State, command string) {
 	cmd, args := parseCommand(command)
 	switch cmd {
 	case "hand":
-		CardMode(s, s.Hands[s.Phasing].Cards)
+		ShowHand(s, s.Phasing, s.Phasing, true)
+		return
+	case "log":
+		LogMode(s, s.Messages)
+		return
+	case "board":
+		BoardMode(s)
 		return
 	case "card":
 		if len(args) != 1 {
@@ -37,13 +43,21 @@ func modal(s *State, command string) {
 		}
 		card, err := lookupCard(args[0])
 		if err != nil {
-			s.Message(who, err.Error())
+			s.UI.Message(who, err.Error())
 			return
 		}
 		CardMode(s, []Card{card})
 		return
 	}
-	s.Message(s.Phasing, "Unknown command")
+	s.UI.Message(s.Phasing, "Unknown command")
+}
+
+func BoardMode(s *State) {
+	s.Redraw(s)
+}
+
+func LogMode(s *State, messages []string) {
+	s.ShowMessages(messages)
 }
 
 func CardMode(s *State, cards []Card) {
@@ -84,6 +98,7 @@ retry:
 type UI interface {
 	Solicit(player Aff, message string, choices []string) (reply string)
 	Message(player Aff, message string)
+	ShowMessages([]string)
 	ShowCards(*State, []Card)
 	Redraw(*State)
 	Close() error

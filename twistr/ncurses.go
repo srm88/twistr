@@ -277,6 +277,7 @@ func (nc *NCursesUI) Close() error {
 }
 
 func (nc *NCursesUI) Redraw(s *State) {
+	nc.clear()
 	var name, stab, infUsa, infSov int16
 	nc.MovePrint(0, 0, world)
 	for id, extra := range data {
@@ -338,6 +339,28 @@ func (nc *NCursesUI) Redraw(s *State) {
 	nc.Move(37, 0)
 }
 
+func (nc *NCursesUI) clear() {
+	for i := 0; i < maxHeight; i++ {
+		nc.Move(i, 0)
+		nc.ClearToEOL()
+	}
+	nc.Move(37, 0)
+	nc.Refresh()
+}
+
+func (nc *NCursesUI) ShowMessages(messages []string) {
+	nc.clear()
+	start := 0
+	if len(messages) > maxHeight {
+		start = len(messages) - maxHeight
+	}
+	for i, msg := range messages[start:] {
+		nc.MovePrint(i, 0, msg)
+	}
+	nc.Move(37, 0)
+	nc.Refresh()
+}
+
 const (
 	cardWidth    = 35
 	cardsPerRow  = 3
@@ -373,6 +396,7 @@ func cardHeight(card Card) int {
 }
 
 func (nc *NCursesUI) ShowCards(s *State, cards []Card) {
+	nc.clear()
 	x := 5
 	y := 2
 	offsetY := 0
@@ -392,8 +416,6 @@ func (nc *NCursesUI) ShowCards(s *State, cards []Card) {
 	}
 	nc.Refresh()
 	nc.Move(37, 0)
-	nc.GetChar()
-	nc.Redraw(s)
 }
 
 func (nc *NCursesUI) drawCard(card Card, start Pos) {
