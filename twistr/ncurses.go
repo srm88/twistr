@@ -394,7 +394,7 @@ func cardHeight(card Card) int {
 	return 2 + len(lines)
 }
 
-func (nc *NCursesUI) ShowCards(s *State, cards []Card) {
+func (nc *NCursesUI) ShowCards(cards []Card) {
 	nc.clear()
 	x := 5
 	y := 2

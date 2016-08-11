@@ -6,6 +6,7 @@ import (
 
 type State struct {
 	UI
+	Mode            Mode
 	Master          bool
 	LocalPlayer     Aff
 	Aof             *Aof
@@ -74,7 +75,13 @@ func NewState(ui UI, aofPath string) (*State, error) {
 		ChinaCardPlayer: SOV,
 		ChinaCardFaceUp: true,
 	}
+	s.Mode = BoardMode{s}
 	return s, nil
+}
+
+func (s *State) Redraw(s2 *State) {
+	// Careful ...
+	s.Mode = s.Mode.Display(s.UI)
 }
 
 func (s *State) Message(player Aff, msg string) {

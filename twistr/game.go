@@ -67,15 +67,18 @@ func ShowHand(s *State, whose, to Aff, showChina ...bool) {
 	if len(showChina) > 0 && showChina[0] && s.ChinaCardPlayer == whose && s.ChinaCardFaceUp {
 		cs = append(cs, Cards[TheChinaCard])
 	}
-	CardMode(s, cs)
+	s.Mode = CardMode{cs}
+	s.Redraw(s)
 }
 
 func ShowDiscard(s *State, to Aff) {
-	CardMode(s, s.Discard.Cards)
+	s.Mode = CardMode{s.Discard.Cards}
+	s.Redraw(s)
 }
 
 func ShowCard(s *State, c Card, to Aff) {
-	CardMode(s, []Card{c})
+	s.Mode = CardMode{[]Card{c}}
+	s.Redraw(s)
 }
 
 func SelectShuffle(s *State, d *Deck) (cardOrder []Card) {

@@ -9,6 +9,50 @@ const (
 	MetaRune = ';'
 )
 
+type Mode interface {
+	Display(UI) Mode
+	Command(string) Mode
+}
+
+type BoardMode struct {
+	s *State
+}
+
+func (m BoardMode) Display(ui UI) Mode {
+	ui.Redraw(m.s)
+	return m
+}
+
+func (m BoardMode) Command(raw string) Mode {
+	return m
+}
+
+type LogMode struct {
+	messages []string
+}
+
+func (m LogMode) Display(ui UI) Mode {
+	ui.ShowMessages(m.messages)
+	return m
+}
+
+func (m LogMode) Command(raw string) Mode {
+	return m
+}
+
+type CardMode struct {
+	cards []Card
+}
+
+func (m CardMode) Display(ui UI) Mode {
+	ui.ShowCards(m.cards)
+	return m
+}
+
+func (m CardMode) Command(raw string) Mode {
+	return m
+}
+
 func parseMeta(input string) (bool, string) {
 	if len(input) > 0 && input[0] == MetaRune {
 		return true, strings.ToLower(input[1:])
@@ -32,10 +76,12 @@ func modal(s *State, command string) {
 		ShowHand(s, s.Phasing, s.Phasing, true)
 		return
 	case "log":
-		LogMode(s, s.Messages)
+		s.Mode = LogMode{s.Messages}
+		s.Redraw(s)
 		return
 	case "board":
-		BoardMode(s)
+		s.Mode = BoardMode{s}
+		s.Redraw(s)
 		return
 	case "card":
 		if len(args) != 1 {
@@ -46,22 +92,11 @@ func modal(s *State, command string) {
 			s.UI.Message(who, err.Error())
 			return
 		}
-		CardMode(s, []Card{card})
+		s.Mode = CardMode{[]Card{card}}
+		s.Redraw(s)
 		return
 	}
 	s.UI.Message(s.Phasing, "Unknown command")
-}
-
-func BoardMode(s *State) {
-	s.Redraw(s)
-}
-
-func LogMode(s *State, messages []string) {
-	s.ShowMessages(messages)
-}
-
-func CardMode(s *State, cards []Card) {
-	s.ShowCards(s, cards)
 }
 
 func GetInput(s *State, player Aff, inp interface{}, message string, choices ...string) {
@@ -99,7 +134,7 @@ type UI interface {
 	Solicit(player Aff, message string, choices []string) (reply string)
 	Message(player Aff, message string)
 	ShowMessages([]string)
-	ShowCards(*State, []Card)
+	ShowCards([]Card)
 	Redraw(*State)
 	Close() error
 }
