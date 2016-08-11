@@ -42,14 +42,27 @@ func (m LogMode) Command(raw string) Mode {
 
 type CardMode struct {
 	cards []Card
+	start int
 }
 
-func (m CardMode) Display(ui UI) Mode {
-	ui.ShowCards(m.cards)
+func NewCardMode(cards []Card) *CardMode {
+	return &CardMode{cards, 0}
+}
+
+func (m *CardMode) Display(ui UI) Mode {
+	ui.ShowCards(m.cards[m.start:])
 	return m
 }
 
-func (m CardMode) Command(raw string) Mode {
+func (m *CardMode) Command(raw string) Mode {
+	switch raw {
+	case "next":
+		if m.start+6 <= len(m.cards) {
+			m.start += 6
+		}
+	case "prev":
+		m.start = Max(0, m.start-6)
+	}
 	return m
 }
 
@@ -83,6 +96,9 @@ func modal(s *State, command string) {
 		s.Mode = BoardMode{s}
 		s.Redraw(s)
 		return
+	case "deck":
+		s.Mode = NewCardMode(s.Deck.Cards)
+		s.Redraw(s)
 	case "card":
 		if len(args) != 1 {
 			break
@@ -92,7 +108,11 @@ func modal(s *State, command string) {
 			s.UI.Message(who, err.Error())
 			return
 		}
-		s.Mode = CardMode{[]Card{card}}
+		s.Mode = NewCardMode([]Card{card})
+		s.Redraw(s)
+		return
+	default:
+		s.Mode = s.Mode.Command(command)
 		s.Redraw(s)
 		return
 	}

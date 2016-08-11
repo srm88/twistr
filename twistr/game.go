@@ -67,17 +67,17 @@ func ShowHand(s *State, whose, to Aff, showChina ...bool) {
 	if len(showChina) > 0 && showChina[0] && s.ChinaCardPlayer == whose && s.ChinaCardFaceUp {
 		cs = append(cs, Cards[TheChinaCard])
 	}
-	s.Mode = CardMode{cs}
+	s.Mode = NewCardMode(cs)
 	s.Redraw(s)
 }
 
 func ShowDiscard(s *State, to Aff) {
-	s.Mode = CardMode{s.Discard.Cards}
+	s.Mode = NewCardMode(s.Discard.Cards)
 	s.Redraw(s)
 }
 
 func ShowCard(s *State, c Card, to Aff) {
-	s.Mode = CardMode{[]Card{c}}
+	s.Mode = NewCardMode([]Card{c})
 	s.Redraw(s)
 }
 
