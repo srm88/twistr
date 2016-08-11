@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	gc "github.com/rthornton128/goncurses"
-	"go/doc"
 	"log"
 	"os"
 	"strconv"
@@ -465,12 +464,6 @@ func (nc *NCursesUI) drawCard(card Card, start Pos) {
 		nc.MovePrint(start.Y+2+i, start.X, fmt.Sprintf(lineFormat, line))
 	}
 	nc.ColorOff(C_CardText)
-}
-
-func wordWrap(body string, columns int) []string {
-	b := new(bytes.Buffer)
-	doc.ToText(b, body, "", "", columns)
-	return strings.Split(b.String(), "\n")
 }
 
 // countryColors returns the default coloring for a country, notwithstanding

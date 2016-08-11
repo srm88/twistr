@@ -75,7 +75,7 @@ func NewState(ui UI, aofPath string) (*State, error) {
 		ChinaCardPlayer: SOV,
 		ChinaCardFaceUp: true,
 	}
-	s.Mode = BoardMode{s}
+	s.Mode = NewBoardMode(s)
 	return s, nil
 }
 

@@ -18,25 +18,53 @@ type BoardMode struct {
 	s *State
 }
 
-func (m BoardMode) Display(ui UI) Mode {
+func NewBoardMode(s *State) *BoardMode {
+	return &BoardMode{s}
+}
+
+func (m *BoardMode) Display(ui UI) Mode {
 	ui.Redraw(m.s)
 	return m
 }
 
-func (m BoardMode) Command(raw string) Mode {
+func (m *BoardMode) Command(raw string) Mode {
 	return m
 }
 
 type LogMode struct {
-	messages []string
+	lines   []string
+	columns int
+	rows    int
+	start   int
 }
 
-func (m LogMode) Display(ui UI) Mode {
-	ui.ShowMessages(m.messages)
+func NewLogMode(messages []string) *LogMode {
+	m := &LogMode{
+		lines:   []string{},
+		columns: 100,
+		rows:    30,
+		start:   0,
+	}
+	for _, msg := range messages {
+		m.lines = append(m.lines, wordWrap(msg, m.columns)...)
+	}
 	return m
 }
 
-func (m LogMode) Command(raw string) Mode {
+func (m *LogMode) Display(ui UI) Mode {
+	ui.ShowMessages(m.lines[m.start:Min(len(m.lines), m.start+m.rows)])
+	return m
+}
+
+func (m *LogMode) Command(raw string) Mode {
+	switch raw {
+	case "next":
+		if m.start+m.rows <= len(m.lines) {
+			m.start += m.rows
+		}
+	case "prev":
+		m.start = Max(0, m.start-m.rows)
+	}
 	return m
 }
 
@@ -89,11 +117,11 @@ func modal(s *State, command string) {
 		ShowHand(s, s.Phasing, s.Phasing, true)
 		return
 	case "log":
-		s.Mode = LogMode{s.Messages}
+		s.Mode = NewLogMode(s.Messages)
 		s.Redraw(s)
 		return
 	case "board":
-		s.Mode = BoardMode{s}
+		s.Mode = NewBoardMode(s)
 		s.Redraw(s)
 		return
 	case "deck":
