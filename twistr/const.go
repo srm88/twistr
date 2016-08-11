@@ -364,6 +364,93 @@ var countryIdLookup = map[string]CountryId{
 	"japan":             Japan,
 }
 
+var countryShortLookup = map[string]CountryId{
+	"AFG": Afghanistan,
+	"ALG": Algeria,
+	"AGO": Angola,
+	"ARG": Argentina,
+	"SEA": SEAfricanStates,
+	"AUT": Austria,
+	"AUS": Australia,
+	"BGR": Bulgaria,
+	"BOL": Bolivia,
+	"BRA": Brazil,
+	"BUR": Burma,
+	"BWA": Botswana,
+	"BLX": Benelux,
+	"CAN": Canada,
+	"CIV": IvoryCoast,
+	"CMR": Cameroon,
+	"CHL": Chile,
+	"COL": Colombia,
+	"CRI": CostaRica,
+	"CUB": Cuba,
+	"CZE": Czechoslovakia,
+	"DNK": Denmark,
+	"DOM": DominicanRep,
+	"ECU": Ecuador,
+	"EDE": EGermany,
+	"EGY": Egypt,
+	"ETH": Ethiopia,
+	"FIN": Finland,
+	"FRA": France,
+	"GRC": Greece,
+	"GST": GulfStates,
+	"GTM": Guatemala,
+	"HND": Honduras,
+	"HTI": Haiti,
+	"HUN": Hungary,
+	"IDN": Indonesia,
+	"ISR": Israel,
+	"IND": India,
+	"IRQ": Iraq,
+	"IRN": Iran,
+	"ITA": Italy,
+	"JOR": Jordan,
+	"JPN": Japan,
+	"KEN": Kenya,
+	"LAO": LaosCambodia,
+	"LBN": Lebanon,
+	"LBY": Libya,
+	"MAR": Morocco,
+	"MEX": Mexico,
+	"MYS": Malaysia,
+	"NGA": Nigeria,
+	"NIC": Nicaragua,
+	"NKR": NKorea,
+	"NOR": Norway,
+	"PAN": Panama,
+	"PER": Peru,
+	"PHL": Philippines,
+	"PAK": Pakistan,
+	"POL": Poland,
+	"PRY": Paraguay,
+	"ROU": Romania,
+	"SAU": SaudiArabia,
+	"SDN": Sudan,
+	"SWE": Sweden,
+	"SKR": SKorea,
+	"SOM": Somalia,
+	"ESP": SpainPortugal,
+	"SHS": SaharanStates,
+	"SLV": ElSalvador,
+	"SYR": Syria,
+	"THA": Thailand,
+	"TUN": Tunisia,
+	"TUR": Turkey,
+	"TWN": Taiwan,
+	"UK":  UK,
+	"URY": Uruguay,
+	"VEN": Venezuela,
+	"VNM": Vietnam,
+	"WAS": WestAfricanStates,
+	"WDE": WGermany,
+	"YUG": Yugoslavia,
+	"ZAF": SouthAfrica,
+	"ZIR": Zaire,
+	"ZWE": Zimbabwe,
+}
+
 var cardIdLookup = map[string]CardId{
 	"asiascoring":               AsiaScoring,
 	"europescoring":             EuropeScoring,
@@ -574,9 +661,12 @@ func lookupOpsKind(name string) (OpsKind, error) {
 
 // lookupCountry expects the incoming string to be lowercase.
 func lookupCountry(name string) (*Country, error) {
-	cid, ok := countryIdLookup[name]
-	if !ok {
-		return nil, errors.New("Unknown country '" + name + "'")
+	var cid CountryId
+	var ok bool
+	if cid, ok = countryIdLookup[strings.ToLower(name)]; !ok {
+		if cid, ok = countryShortLookup[strings.ToUpper(name)]; !ok {
+			return nil, errors.New("Unknown country '" + name + "'")
+		}
 	}
 	return Countries[cid], nil
 }
