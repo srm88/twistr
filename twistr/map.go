@@ -55,6 +55,22 @@ func (c Country) In(r Region) bool {
 	return false
 }
 
+func cloneCountries(cMap map[CountryId]*Country) map[CountryId]*Country {
+	clone := make(map[CountryId]*Country)
+	for cid, oldC := range cMap {
+		// Fill each new country pointer's value with the old pointer's value
+		clone[cid] = new(Country)
+		*clone[cid] = *oldC
+	}
+	// Each clone's AdjCountries pointers point at originals. Point to clones.
+	for _, newC := range clone {
+		for i, oldC := range newC.AdjCountries {
+			newC.AdjCountries[i] = clone[oldC.Id]
+		}
+	}
+	return clone
+}
+
 func AllIn(cs []*Country, r Region) bool {
 	for _, c := range cs {
 		if !c.In(r) {

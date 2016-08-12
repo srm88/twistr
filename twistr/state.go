@@ -77,7 +77,7 @@ func NewState() *State {
 		Turn:            1,
 		AR:              1,
 		Phasing:         SOV,
-		Countries:       Countries,
+		Countries:       cloneCountries(Countries),
 		Events:          make(map[CardId]Aff),
 		TurnEvents:      make(map[CardId]Aff),
 		SpaceAttempts:   [2]int{0, 0},
@@ -89,6 +89,39 @@ func NewState() *State {
 		ChinaCardPlayer: SOV,
 		ChinaCardFaceUp: true,
 	}
+}
+
+func (s *State) Clone() *State {
+	clone := &State{
+		VP:              s.VP,
+		Defcon:          s.Defcon,
+		MilOps:          [2]int{s.MilOps[0], s.MilOps[1]},
+		SpaceRace:       [2]int{s.SpaceRace[0], s.SpaceRace[1]},
+		Turn:            s.Turn,
+		AR:              s.AR,
+		Phasing:         s.Phasing,
+		Countries:       cloneCountries(s.Countries),
+		Events:          make(map[CardId]Aff),
+		TurnEvents:      make(map[CardId]Aff),
+		SpaceAttempts:   [2]int{s.SpaceAttempts[0], s.SpaceAttempts[1]},
+		SREvents:        make(map[SpaceId]Aff),
+		Removed:         s.Removed.Clone(),
+		Discard:         s.Discard.Clone(),
+		Deck:            s.Deck.Clone(),
+		Hands:           [2]*Deck{s.Hands[0].Clone(), s.Hands[1].Clone()},
+		ChinaCardPlayer: s.ChinaCardPlayer,
+		ChinaCardFaceUp: s.ChinaCardFaceUp,
+	}
+	for c, a := range s.Events {
+		clone.Events[c] = a
+	}
+	for c, a := range s.TurnEvents {
+		clone.TurnEvents[c] = a
+	}
+	for s, a := range s.SREvents {
+		clone.SREvents[s] = a
+	}
+	return clone
 }
 
 func (s *State) ImproveDefcon(n int) {
