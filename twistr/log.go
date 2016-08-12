@@ -28,14 +28,15 @@ func NewTxnLog(wc io.WriteCloser) *TxnLog {
 	}
 }
 
-func (log TxnLog) Close() error {
-	return log.wc.Close()
+func (tl TxnLog) Close() error {
+	return tl.wc.Close()
 }
 
-func (log *TxnLog) Flush() {
+func (tl *TxnLog) Flush() {
 	// Writes the contents of its internal buffer into the
 	// WriteCloser
-	log.WriteTo(log.wc)
+	log.Printf("Actual AOF flush:\n%s\n", tl.Buffer.String())
+	tl.WriteTo(tl.wc)
 }
 
 func OpenTxnLog(path string) (*TxnLog, error) {
