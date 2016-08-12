@@ -136,12 +136,6 @@ func (d *Deck) Names() []string {
 	return names
 }
 
-func (d *Deck) Clone() *Deck {
-	clone := &Deck{Cards: make([]Card, len(d.Cards))}
-	copy(clone.Cards, d.Cards)
-	return clone
-}
-
 // Create a cardFilter that rejects specific cards.
 func CardBlacklist(blacklist ...CardId) func(Card) bool {
 	return func(c Card) bool {
