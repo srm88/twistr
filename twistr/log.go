@@ -12,7 +12,8 @@ type Aof struct {
 	*bufio.Scanner
 	in io.ReadCloser
 	io.WriteCloser
-	done bool
+	exhaust io.Writer
+	done    bool
 }
 
 type TxnLog struct {
@@ -45,11 +46,12 @@ func OpenTxnLog(path string) (*TxnLog, error) {
 	return NewTxnLog(out), nil
 }
 
-func NewAof(r io.ReadCloser, w io.WriteCloser) *Aof {
+func NewAof(r io.ReadCloser, w io.WriteCloser, e io.Writer) *Aof {
 	return &Aof{
 		Scanner:     bufio.NewScanner(r),
 		in:          r,
 		WriteCloser: w,
+		exhaust:     e,
 		done:        false,
 	}
 }
@@ -71,6 +73,7 @@ func (aof *Aof) ReadInto(thing interface{}) bool {
 		log.Printf("Corrupt log! Tried to parse '%s' into %s\n", line, thing)
 		return false
 	}
+	aof.exhaust.Write([]byte(line))
 	return true
 }
 
@@ -84,5 +87,6 @@ func (aof *Aof) Log(thing interface{}) (err error) {
 		log.Println(err)
 		return
 	}
+	aof.exhaust.Write(b)
 	return
 }

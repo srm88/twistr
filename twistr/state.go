@@ -7,6 +7,7 @@ import (
 type Game struct {
 	UI
 	*State
+	History     *History
 	Master      bool
 	LocalPlayer Aff
 	Aof         *Aof
@@ -14,7 +15,11 @@ type Game struct {
 }
 
 func (g *Game) Commit() {
+	if g.History.InReplay() {
+		return
+	}
 	g.Txn.Flush()
+	g.History.Commit()
 	g.Redraw(g.State)
 }
 
@@ -35,12 +40,14 @@ func NewGame(ui UI, aofPath string, state *State) (*Game, error) {
 		return nil, err
 	}
 
+	history := NewHistory(ui)
 	g := &Game{
-		UI:          ui,
+		UI:          history,
 		State:       state,
+		History:     history,
 		Master:      false,
 		LocalPlayer: USA,
-		Aof:         NewAof(in, txn),
+		Aof:         NewAof(in, txn, history),
 		Txn:         txn,
 	}
 	return g, nil
