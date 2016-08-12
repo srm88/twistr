@@ -13,6 +13,11 @@ type Game struct {
 	Txn         *TxnLog
 }
 
+func (g *Game) Commit() {
+	g.Txn.Flush()
+	g.Redraw(g.State)
+}
+
 func NewGame(ui UI, aofPath string, state *State) (*Game, error) {
 	in, err := os.Open(aofPath)
 	if err != nil {

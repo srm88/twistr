@@ -30,19 +30,17 @@ func Start(s *Game) {
 	s.Deck.Push(EarlyWar...)
 	cards := SelectShuffle(s, s.Deck)
 	s.Deck.Reorder(cards)
-	s.Redraw(s.State)
+	s.Commit()
 	Deal(s)
 	s.Redraw(s.State)
 	// SOV chooses 6 influence in E europe
-	s.Redraw(s.State)
 	cs := SelectInfluenceForce(s, SOV, func() ([]*Country, error) {
 		return SelectExactlyNInfluence(s, SOV,
 			"6 influence in East Europe", 6,
 			InRegion(EastEurope))
 	})
 	PlaceInfluence(s, SOV, cs)
-	s.Redraw(s.State)
-	s.Txn.Flush()
+	s.Commit()
 	// US chooses 7 influence in W europe
 	csUSA := SelectInfluenceForce(s, USA, func() ([]*Country, error) {
 		return SelectExactlyNInfluence(s, USA,
@@ -50,8 +48,7 @@ func Start(s *Game) {
 			InRegion(WestEurope))
 	})
 	PlaceInfluence(s, USA, csUSA)
-	s.Redraw(s.State)
-	s.Txn.Flush()
+	s.Commit()
 	// Temporary
 	for s.Turn = 1; s.Turn <= 10; s.Turn++ {
 		Turn(s)
@@ -286,8 +283,7 @@ func Action(s *Game) {
 	card := SelectCard(s, s.Phasing)
 	// XXX dectxn back from PlayCard should return to SelectCard
 	PlayCard(s, s.Phasing, card)
-	s.Redraw(s.State)
-	s.Txn.Flush()
+	s.Commit()
 }
 
 func PlayCard(s *Game, player Aff, card Card) {
@@ -335,10 +331,10 @@ func PlayOps(s *Game, player Aff, card Card) {
 	MessageBoth(s, fmt.Sprintf("%s plays %s for operations", player, card))
 	opp := player.Opp()
 	if card.Aff == opp {
-		// XXX dectxn commit happens with SelectFirst
-		if player == SelectFirst(s, player) {
+		first := SelectFirst(s, player)
+		s.Commit()
+		if player == first {
 			MessageBoth(s, fmt.Sprintf("%s will conduct operations first", player))
-			// XXX dectxn cannot back out of conductops
 			ConductOps(s, player, card)
 			s.Redraw(s.State)
 			PlayEvent(s, opp, card)
