@@ -8,6 +8,7 @@ import (
 type Game struct {
 	UI
 	*State
+	aofPath     string
 	History     *History
 	Master      bool
 	LocalPlayer Aff
@@ -15,8 +16,15 @@ type Game struct {
 	Txn         *TxnLog
 }
 
+// Checkpoint game. User cannot rewind past the point this is called.
 func (g *Game) Commit() {
 	if g.History.InReplay() {
+		// Still need to flush the AOF in replay mode, or pending writes will
+		// not be written to disk until the first post-replay commit -- this
+		// means if the user rewinds again before that next commit, we would
+		// lose the *entire* aof.
+		// Another thing to address with replay-writes-to-tmp-aof, mv-when-done
+		g.Txn.Flush()
 		return
 	}
 	g.Txn.Flush()
@@ -25,15 +33,22 @@ func (g *Game) Commit() {
 }
 
 func (g *Game) CanRewind() bool {
-	// XXX check if in replay?
 	return g.History.CanPop()
 }
 
 func (g *Game) ReadInto(thing interface{}) bool {
+	// Sorta gross.
+	// Read first from history (replay), then aof (initial load)
+	// If reading from history, *write* to aof (this should write to a temp aof).
+	// If neither history nor aof have any buffered commands, return false.
 	var ok bool
 	var line string
 	ok, line = g.History.Next()
-	if !ok {
+	// Re-log into the AOF!
+	if ok {
+		log.Printf("Re-logging '%s'\n", line)
+		g.Aof.Write(append([]byte(line), '\n'))
+	} else {
 		ok, line = g.Aof.Next()
 		if !ok {
 			return false
@@ -47,11 +62,13 @@ func (g *Game) ReadInto(thing interface{}) bool {
 }
 
 func (g *Game) Rewind() {
-	// XXX: rewrite aof during replay, `mv` in place when done
-	g.History.Dump()
+	// XXX: durability: should rewrite aof during replay, `mv` in place when done
 	g.History.Pop()
-	g.History.Dump()
-	// WOwwwwwwWWW this is nuts
+	// WOwwwwwwWWW this is nuts!!
+	// Drop any buffered aof writes on the floor, truncate the aof on disk,
+	// totally reset all state, and REPLAY HISTORY.
+	g.Txn.Reset()
+	os.Truncate(g.aofPath, 0)
 	g.State = NewState()
 	Start(g)
 }
@@ -77,6 +94,7 @@ func NewGame(ui UI, aofPath string, state *State) (*Game, error) {
 	g := &Game{
 		UI:          history,
 		State:       state,
+		aofPath:     aofPath,
 		History:     history,
 		Master:      false,
 		LocalPlayer: USA,
