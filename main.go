@@ -9,8 +9,9 @@ import (
 
 // Temp:
 func main() {
+	state := twistr.NewState()
 	ui := twistr.MakeNCursesUI()
-	state, err := twistr.NewState(ui, "/tmp/twistr.aof")
+	game, err := twistr.NewGame(ui, "/tmp/twistr.aof", state)
 	if err != nil {
 		panic(fmt.Sprintf("Failed to start game: %s\n", err.Error()))
 	}
@@ -20,7 +21,7 @@ func main() {
 	// This goroutine cleans up
 	go func() {
 		exitcode := <-done
-		state.Close()
+		game.Close()
 		os.Exit(exitcode)
 	}()
 	// This one forwards the signal to the cleanup routine
@@ -32,5 +33,5 @@ func main() {
 	defer func() {
 		done <- 0
 	}()
-	twistr.Start(state)
+	twistr.Start(game)
 }

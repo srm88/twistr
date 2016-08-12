@@ -7,7 +7,7 @@ type Card struct {
 	Name string
 	Text string
 	Star bool
-	Impl func(*State, Aff)
+	Impl func(*Game, Aff)
 }
 
 func (c Card) Equal(other Card) bool {

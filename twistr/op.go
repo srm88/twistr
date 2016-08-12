@@ -21,7 +21,7 @@ func realignMods(target Country) (mods Influence) {
 	return
 }
 
-func realign(s *State, target *Country, rollUSA, rollSOV int) {
+func realign(s *Game, target *Country, rollUSA, rollSOV int) {
 	mods := realignMods(*target)
 	rollUSA += mods[USA]
 	rollSOV += mods[SOV]
@@ -43,7 +43,7 @@ func realign(s *State, target *Country, rollUSA, rollSOV int) {
 	}
 }
 
-func coupBonus(s *State, player Aff, target *Country) (bonus int) {
+func coupBonus(s *Game, player Aff, target *Country) (bonus int) {
 	if s.Effect(SALTNegotiations) {
 		bonus -= 1
 	}
@@ -56,7 +56,7 @@ func coupBonus(s *State, player Aff, target *Country) (bonus int) {
 	return
 }
 
-func opsMod(s *State, player Aff, countries []*Country) (mod int) {
+func opsMod(s *Game, player Aff, countries []*Country) (mod int) {
 	if player == SOV && s.Effect(VietnamRevolts) {
 		if AllIn(countries, SoutheastAsia) {
 			mod += 1
@@ -66,7 +66,7 @@ func opsMod(s *State, player Aff, countries []*Country) (mod int) {
 }
 
 // Coup
-func coup(s *State, player Aff, ops int, roll int, target *Country, free bool) bool {
+func coup(s *Game, player Aff, ops int, roll int, target *Country, free bool) bool {
 	bonus := coupBonus(s, player, target)
 	delta := roll + bonus + ops - (target.Stability * 2)
 	if delta <= 0 {
@@ -89,7 +89,7 @@ func coup(s *State, player Aff, ops int, roll int, target *Country, free bool) b
 
 // A country cannot be coup'd if it lacks any of the opponent's influence.
 // Some permanent events also impose coup restrictions, e.g. NATO with Europe.
-func canCoup(s *State, player Aff, t *Country, free bool) bool {
+func canCoup(s *Game, player Aff, t *Country, free bool) bool {
 	switch {
 	case t.Inf[player.Opp()] < 1:
 		return false
@@ -106,7 +106,7 @@ func canCoup(s *State, player Aff, t *Country, free bool) bool {
 	}
 }
 
-func canRealign(s *State, player Aff, t *Country, free bool) bool {
+func canRealign(s *Game, player Aff, t *Country, free bool) bool {
 	switch {
 	case natoProtected(s, player, t):
 		return false
@@ -121,18 +121,18 @@ func canRealign(s *State, player Aff, t *Country, free bool) bool {
 	}
 }
 
-func defconProtected(s *State, t *Country) bool {
+func defconProtected(s *Game, t *Country) bool {
 	// asia 3, defcon 5, not protected
 	// europe 4, defcon 3, protected
 	// middle east 2, defcon 2, protected
 	return t.Region.Volatility >= s.Defcon
 }
 
-func natoProtected(s *State, player Aff, t *Country) bool {
+func natoProtected(s *Game, player Aff, t *Country) bool {
 	return s.Effect(NATO) && player == SOV && t.In(Europe) && t.Controlled() == USA
 }
 
-func japanProtected(s *State, player Aff, t *Country) bool {
+func japanProtected(s *Game, player Aff, t *Country) bool {
 	return s.Effect(USJapanMutualDefensePact) && t.Id == Japan && player == SOV
 }
 

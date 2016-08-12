@@ -4,12 +4,49 @@ import (
 	"os"
 )
 
-type State struct {
+type Game struct {
 	UI
-	Master          bool
-	LocalPlayer     Aff
-	Aof             *Aof
-	Txn             *TxnLog
+	*State
+	Master      bool
+	LocalPlayer Aff
+	Aof         *Aof
+	Txn         *TxnLog
+}
+
+func NewGame(ui UI, aofPath string, state *State) (*Game, error) {
+	in, err := os.Open(aofPath)
+	if err != nil {
+		if !os.IsNotExist(err) {
+			return nil, err
+		}
+		in, err = os.OpenFile(aofPath, os.O_CREATE|os.O_RDONLY, 0666)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	txn, err := OpenTxnLog(aofPath)
+	if err != nil {
+		return nil, err
+	}
+
+	g := &Game{
+		UI:          ui,
+		State:       state,
+		Master:      false,
+		LocalPlayer: USA,
+		Aof:         NewAof(in, txn),
+		Txn:         txn,
+	}
+	return g, nil
+}
+
+func (g *Game) Close() error {
+	g.UI.Close()
+	return g.Aof.Close()
+}
+
+type State struct {
 	VP              int
 	Defcon          int
 	MilOps          [2]int
@@ -31,28 +68,8 @@ type State struct {
 	ChernobylRegion Region
 }
 
-func NewState(ui UI, aofPath string) (*State, error) {
-	in, err := os.Open(aofPath)
-	if err != nil {
-		if !os.IsNotExist(err) {
-			return nil, err
-		}
-		in, err = os.OpenFile(aofPath, os.O_CREATE|os.O_RDONLY, 0666)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	txn, err := OpenTxnLog(aofPath)
-	if err != nil {
-		return nil, err
-	}
-
-	aof := NewAof(in, txn)
-	s := &State{
-		UI:              ui,
-		Aof:             aof,
-		Txn:             txn,
+func NewState() *State {
+	return &State{
 		VP:              0,
 		Defcon:          5,
 		MilOps:          [2]int{0, 0},
@@ -72,12 +89,6 @@ func NewState(ui UI, aofPath string) (*State, error) {
 		ChinaCardPlayer: SOV,
 		ChinaCardFaceUp: true,
 	}
-	return s, nil
-}
-
-func (s *State) Close() error {
-	s.UI.Close()
-	return s.Aof.Close()
 }
 
 func (s *State) ImproveDefcon(n int) {

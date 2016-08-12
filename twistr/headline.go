@@ -2,7 +2,7 @@ package twistr
 
 import "fmt"
 
-func Headline(s *State) {
+func Headline(s *Game) {
 	// XXX DEFECTORS
 	var usaHl, sovHl Card
 	headlineSecond, ok := s.SREvents[OppHeadlineFirst]
