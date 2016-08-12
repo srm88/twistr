@@ -63,18 +63,14 @@ func (aof *Aof) Close() error {
 	return aof.Close()
 }
 
-func (aof *Aof) ReadInto(thing interface{}) bool {
+func (aof *Aof) Next() (bool, string) {
 	if aof.done || !aof.Scan() {
 		aof.done = true
-		return false
+		return false, ""
 	}
 	line := aof.Text()
-	if err := Unmarshal(line, thing); err != nil {
-		log.Printf("Corrupt log! Tried to parse '%s' into %s\n", line, thing)
-		return false
-	}
 	aof.exhaust.Write([]byte(line))
-	return true
+	return true, line
 }
 
 func (aof *Aof) Log(thing interface{}) (err error) {

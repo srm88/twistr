@@ -71,7 +71,7 @@ func ShowCard(s *Game, c Card, to Aff) {
 func SelectShuffle(s *Game, d *Deck) (cardOrder []Card) {
 	// Duplicates what GetOrLog does. It doesn't make sense to reuse GetOrLog
 	// because this will never ask for user input.
-	if s.Aof.ReadInto(&cardOrder) {
+	if s.ReadInto(&cardOrder) {
 		return
 	}
 	cardOrder = d.Shuffle()
@@ -156,7 +156,7 @@ func SelectChoice(s *Game, player Aff, message string, choices ...string) (choic
 }
 
 func GetOrLog(s *Game, player Aff, thing interface{}, message string, choices ...string) {
-	if s.Aof.ReadInto(thing) {
+	if s.ReadInto(thing) {
 		return
 	}
 	GetInput(s, player, thing, message, choices...)
@@ -164,7 +164,7 @@ func GetOrLog(s *Game, player Aff, thing interface{}, message string, choices ..
 }
 
 func SelectRandomCard(s *Game, player Aff) (card Card) {
-	if s.Aof.ReadInto(&card) {
+	if s.ReadInto(&card) {
 		return
 	}
 	n := rng.Intn(len(s.Hands[player].Cards))

@@ -216,7 +216,7 @@ type NCursesUI struct {
 func MakeNCursesUI() *NCursesUI {
 	scr, err := gc.Init()
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
+		log.Println(err)
 		os.Exit(1)
 	}
 	if !gc.HasColors() {

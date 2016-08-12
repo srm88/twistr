@@ -1,6 +1,7 @@
 package twistr
 
 import (
+	"log"
 	"os"
 )
 
@@ -21,6 +22,38 @@ func (g *Game) Commit() {
 	g.Txn.Flush()
 	g.History.Commit()
 	g.Redraw(g.State)
+}
+
+func (g *Game) CanRewind() bool {
+	// XXX check if in replay?
+	return g.History.CanPop()
+}
+
+func (g *Game) ReadInto(thing interface{}) bool {
+	var ok bool
+	var line string
+	ok, line = g.History.Next()
+	if !ok {
+		ok, line = g.Aof.Next()
+		if !ok {
+			return false
+		}
+	}
+	if err := Unmarshal(line, thing); err != nil {
+		log.Printf("Corrupt log! Tried to parse '%s' into %s\n", line, thing)
+		return false
+	}
+	return true
+}
+
+func (g *Game) Rewind() {
+	// XXX: rewrite aof during replay, `mv` in place when done
+	g.History.Dump()
+	g.History.Pop()
+	g.History.Dump()
+	// WOwwwwwwWWW this is nuts
+	g.State = NewState()
+	Start(g)
 }
 
 func NewGame(ui UI, aofPath string, state *State) (*Game, error) {
@@ -81,6 +114,7 @@ type State struct {
 }
 
 func NewState() *State {
+	resetCountries()
 	return &State{
 		VP:              0,
 		Defcon:          5,
@@ -89,7 +123,7 @@ func NewState() *State {
 		Turn:            1,
 		AR:              1,
 		Phasing:         SOV,
-		Countries:       cloneCountries(Countries),
+		Countries:       Countries,
 		Events:          make(map[CardId]Aff),
 		TurnEvents:      make(map[CardId]Aff),
 		SpaceAttempts:   [2]int{0, 0},

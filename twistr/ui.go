@@ -4,7 +4,7 @@ import (
 	"fmt"
 )
 
-func GetInput(ui UI, player Aff, inp interface{}, message string, choices ...string) {
+func GetInput(g *Game, player Aff, inp interface{}, message string, choices ...string) {
 	var err error
 	validChoice := func(in string) bool {
 		if len(choices) == 0 {
@@ -18,7 +18,22 @@ func GetInput(ui UI, player Aff, inp interface{}, message string, choices ...str
 		return false
 	}
 retry:
-	inputStr := ui.Solicit(player, message, choices)
+	inputStr := g.Solicit(player, message, choices)
+	switch inputStr {
+	case "canrewind":
+		message = fmt.Sprintf("%v\n", g.CanRewind())
+		goto retry
+	case "barf":
+		g.History.Dump()
+		goto retry
+	case "rewind":
+		if !g.CanRewind() {
+			message = "Cannot rewind."
+			goto retry
+		}
+		g.Rewind()
+		panic("Nope")
+	}
 	if len(choices) > 0 && !validChoice(inputStr) {
 		err = fmt.Errorf("'%s' is not a valid choice", inputStr)
 	} else {
