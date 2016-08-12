@@ -946,6 +946,7 @@ func PlayGrainSalesToSoviets(s *State, player Aff) {
 		switch SelectChoice(s, player, "Play this card or return it?",
 			"play", "return") {
 		case "play":
+			// XXX dectxn back from PlayCard should return to SelectChoice ^
 			PlayCard(s, player, card)
 		default:
 			ConductOps(s, player, PseudoCard(Cards[GrainSalesToSoviets].Ops))

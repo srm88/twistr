@@ -284,6 +284,7 @@ func EndTurn(s *State) {
 
 func Action(s *State) {
 	card := SelectCard(s, s.Phasing)
+	// XXX dectxn back from PlayCard should return to SelectCard
 	PlayCard(s, s.Phasing, card)
 	s.Redraw(s)
 	s.Txn.Flush()
@@ -296,6 +297,7 @@ func PlayCard(s *State, player Aff, card Card) {
 	case SPACE:
 		PlaySpace(s, player, card)
 	case OPS:
+		// XXX dectxn back from Playops should return to SelectPlay, etc
 		PlayOps(s, player, card)
 	case EVENT:
 		PlayEvent(s, player, card)
@@ -333,8 +335,10 @@ func PlayOps(s *State, player Aff, card Card) {
 	MessageBoth(s, fmt.Sprintf("%s plays %s for operations", player, card))
 	opp := player.Opp()
 	if card.Aff == opp {
+		// XXX dectxn commit happens with SelectFirst
 		if player == SelectFirst(s, player) {
 			MessageBoth(s, fmt.Sprintf("%s will conduct operations first", player))
+			// XXX dectxn cannot back out of conductops
 			ConductOps(s, player, card)
 			s.Redraw(s)
 			PlayEvent(s, opp, card)
