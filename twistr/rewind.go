@@ -57,9 +57,9 @@ func (r *History) Message(player Aff, message string) {
 	log.Printf("Suppress: %s\n", message)
 }
 
-func (r *History) Redraw(s *State) {
+func (r *History) Redraw(g *Game) {
 	if !r.InReplay() {
-		r.wrapped.Redraw(s)
+		r.wrapped.Redraw(g)
 	}
 }
 

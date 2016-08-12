@@ -4,7 +4,7 @@ import (
 	"fmt"
 )
 
-func GetInput(g *Game, player Aff, inp interface{}, message string, choices ...string) {
+func GetInput(g *State, player Aff, inp interface{}, message string, choices ...string) {
 	var err error
 	validChoice := func(in string) bool {
 		if len(choices) == 0 {
@@ -48,6 +48,6 @@ retry:
 type UI interface {
 	Solicit(player Aff, message string, choices []string) (reply string)
 	Message(player Aff, message string)
-	Redraw(*State)
+	Redraw(*Game)
 	Close() error
 }

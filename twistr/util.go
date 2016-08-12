@@ -27,7 +27,7 @@ func Roll() int {
 	return rng.Intn(6) + 1
 }
 
-func MessageBoth(g *Game, message string) {
+func MessageBoth(g *State, message string) {
 	g.Message(USA, message)
 	g.Message(SOV, message)
 }

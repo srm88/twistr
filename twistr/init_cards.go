@@ -45,7 +45,7 @@ var cardTable = []struct {
 	Name     string
 	Ops      int
 	Text     string
-	Impl     func(*Game, Aff)
+	Impl     func(*State, Aff)
 }{
 	{AsiaScoring, Early, false, NEU, 1, "Asia Scoring", 0, "Presence: 3; Domination: 7; Control: 9; +1 VP per controlled Battleground country in Region; +1 VP per country controlled that is adjacent to enemy superpower; MAY NOT BE HELD!", PlayAsiaScoring},
 	{EuropeScoring, Early, false, NEU, 2, "Europe Scoring", 0, "Presence: 3; Domination: 7; Control: Automatic Victory; +1 VP per controlled Battleground country in Region; +1 VP per country controlled that is adjacent to enemy superpower; MAY NOT BE HELD!", PlayEuropeScoring},

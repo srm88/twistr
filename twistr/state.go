@@ -5,9 +5,9 @@ import (
 	"os"
 )
 
-type Game struct {
+type State struct {
 	UI
-	*State
+	*Game
 	aofPath     string
 	History     *History
 	Master      bool
@@ -17,39 +17,39 @@ type Game struct {
 }
 
 // Checkpoint game. User cannot rewind past the point this is called.
-func (g *Game) Commit() {
-	if g.History.InReplay() {
+func (s *State) Commit() {
+	if s.History.InReplay() {
 		// Still need to flush the AOF in replay mode, or pending writes will
 		// not be written to disk until the first post-replay commit -- this
 		// means if the user rewinds again before that next commit, we would
 		// lose the *entire* aof.
 		// Another thing to address with replay-writes-to-tmp-aof, mv-when-done
-		g.Txn.Flush()
+		s.Txn.Flush()
 		return
 	}
-	g.Txn.Flush()
-	g.History.Commit()
-	g.Redraw(g.State)
+	s.Txn.Flush()
+	s.History.Commit()
+	s.Redraw(s.Game)
 }
 
-func (g *Game) CanRewind() bool {
-	return g.History.CanPop()
+func (s *State) CanRewind() bool {
+	return s.History.CanPop()
 }
 
-func (g *Game) ReadInto(thing interface{}) bool {
+func (s *State) ReadInto(thing interface{}) bool {
 	// Sorta gross.
 	// Read first from history (replay), then aof (initial load)
 	// If reading from history, *write* to aof (this should write to a temp aof).
 	// If neither history nor aof have any buffered commands, return false.
 	var ok bool
 	var line string
-	ok, line = g.History.Next()
+	ok, line = s.History.Next()
 	// Re-log into the AOF!
 	if ok {
 		log.Printf("Re-logging '%s'\n", line)
-		g.Aof.Write(append([]byte(line), '\n'))
+		s.Aof.Write(append([]byte(line), '\n'))
 	} else {
-		ok, line = g.Aof.Next()
+		ok, line = s.Aof.Next()
 		if !ok {
 			return false
 		}
@@ -61,19 +61,19 @@ func (g *Game) ReadInto(thing interface{}) bool {
 	return true
 }
 
-func (g *Game) Rewind() {
+func (s *State) Rewind() {
 	// XXX: durability: should rewrite aof during replay, `mv` in place when done
-	g.History.Pop()
+	s.History.Pop()
 	// WOwwwwwwWWW this is nuts!!
 	// Drop any buffered aof writes on the floor, truncate the aof on disk,
 	// totally reset all state, and REPLAY HISTORY.
-	g.Txn.Reset()
-	os.Truncate(g.aofPath, 0)
-	g.State = NewState()
-	Start(g)
+	s.Txn.Reset()
+	os.Truncate(s.aofPath, 0)
+	s.Game = NewGame()
+	Start(s)
 }
 
-func NewGame(ui UI, aofPath string, state *State) (*Game, error) {
+func NewState(ui UI, aofPath string, game *Game) (*State, error) {
 	in, err := os.Open(aofPath)
 	if err != nil {
 		if !os.IsNotExist(err) {
@@ -91,9 +91,9 @@ func NewGame(ui UI, aofPath string, state *State) (*Game, error) {
 	}
 
 	history := NewHistory(ui)
-	g := &Game{
+	s := &State{
 		UI:          history,
-		State:       state,
+		Game:        game,
 		aofPath:     aofPath,
 		History:     history,
 		Master:      false,
@@ -101,15 +101,15 @@ func NewGame(ui UI, aofPath string, state *State) (*Game, error) {
 		Aof:         NewAof(in, txn, history),
 		Txn:         txn,
 	}
-	return g, nil
+	return s, nil
 }
 
-func (g *Game) Close() error {
-	g.UI.Close()
-	return g.Aof.Close()
+func (s *State) Close() error {
+	s.UI.Close()
+	return s.Aof.Close()
 }
 
-type State struct {
+type Game struct {
 	VP              int
 	Defcon          int
 	MilOps          [2]int
@@ -131,9 +131,9 @@ type State struct {
 	ChernobylRegion Region
 }
 
-func NewState() *State {
+func NewGame() *Game {
 	resetCountries()
-	return &State{
+	return &Game{
 		VP:              0,
 		Defcon:          5,
 		MilOps:          [2]int{0, 0},
@@ -155,11 +155,11 @@ func NewState() *State {
 	}
 }
 
-func (s *State) ImproveDefcon(n int) {
+func (s *Game) ImproveDefcon(n int) {
 	s.Defcon = Min(s.Defcon+n, 5)
 }
 
-func (s *State) DegradeDefcon(n int) {
+func (s *Game) DegradeDefcon(n int) {
 	s.Defcon -= n
 	if s.Defcon < 2 {
 		// XXX writeme
@@ -167,7 +167,7 @@ func (s *State) DegradeDefcon(n int) {
 	}
 }
 
-func (s *State) Era() Era {
+func (s *Game) Era() Era {
 	switch {
 	case s.Turn < 4:
 		return Early
@@ -178,14 +178,14 @@ func (s *State) Era() Era {
 	}
 }
 
-func (s *State) ActionsPerTurn() int {
+func (s *Game) ActionsPerTurn() int {
 	if s.Era() == Early {
 		return 6
 	}
 	return 7
 }
 
-func (s *State) Effect(which CardId, player ...Aff) bool {
+func (s *Game) Effect(which CardId, player ...Aff) bool {
 	aff, ok := s.Events[which]
 	if ok && (len(player) == 0 || player[0] == aff) {
 		return true
@@ -195,7 +195,7 @@ func (s *State) Effect(which CardId, player ...Aff) bool {
 }
 
 // Cancel ends an event.
-func (s *State) Cancel(event CardId) {
+func (s *Game) Cancel(event CardId) {
 	// XXX: this would clobber NorthSeaOil, which registers both a turn-
 	// and permanent event.
 	delete(s.Events, event)
@@ -203,16 +203,16 @@ func (s *State) Cancel(event CardId) {
 }
 
 // CancelTurnEvents cancels all turn-based events currently in effect.
-func (s *State) CancelTurnEvents() {
+func (s *Game) CancelTurnEvents() {
 	s.TurnEvents = make(map[CardId]Aff)
 }
 
-func (s *State) ChinaCardPlayed() {
+func (s *Game) ChinaCardPlayed() {
 	s.ChinaCardPlayer = s.ChinaCardPlayer.Opp()
 	s.ChinaCardFaceUp = false
 }
 
-func (s *State) GainVP(player Aff, n int) {
+func (s *Game) GainVP(player Aff, n int) {
 	switch player {
 	case USA:
 		s.VP += n

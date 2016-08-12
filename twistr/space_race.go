@@ -32,7 +32,7 @@ var SRTrack []SRBox = []SRBox{
 	SRBox{2, 4, 2, 0, ExtraAR},
 }
 
-func CanAdvance(s *Game, player Aff, ops int) bool {
+func CanAdvance(s *State, player Aff, ops int) bool {
 	pos := s.SpaceRace[player]
 	maxAttempts := 1
 	if s.SREvents[TwoSpace] == player {
@@ -50,7 +50,7 @@ func CanAdvance(s *Game, player Aff, ops int) bool {
 	}
 }
 
-func nextSRBox(s *Game, player Aff) (srb SRBox, err error) {
+func nextSRBox(s *State, player Aff) (srb SRBox, err error) {
 	pos := s.SpaceRace[player]
 
 	if pos >= len(SRTrack)-1 {
@@ -60,7 +60,7 @@ func nextSRBox(s *Game, player Aff) (srb SRBox, err error) {
 	return SRTrack[pos+1], err
 }
 
-func (srb SRBox) Enter(s *Game, player Aff) {
+func (srb SRBox) Enter(s *State, player Aff) {
 	pos := s.SpaceRace[player]
 	oppPos := s.SpaceRace[player.Opp()]
 
