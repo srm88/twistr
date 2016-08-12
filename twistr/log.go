@@ -80,12 +80,7 @@ func (aof *Aof) Log(thing interface{}) (err error) {
 		log.Println(err)
 		return
 	}
-	if _, err = aof.Write(b); err != nil {
-		log.Println(err)
-		return
-	}
-	b = []byte{'\n'}
-	if _, err = aof.Write(b); err != nil {
+	if _, err = aof.Write(append(b, '\n')); err != nil {
 		log.Println(err)
 		return
 	}
