@@ -15,15 +15,15 @@ type Mode interface {
 }
 
 type BoardMode struct {
-	s *State
+	g *Game
 }
 
-func NewBoardMode(s *State) *BoardMode {
-	return &BoardMode{s}
+func NewBoardMode(g *Game) *BoardMode {
+	return &BoardMode{g}
 }
 
 func (m *BoardMode) Display(ui UI) Mode {
-	ui.Redraw(m.s)
+	ui.Redraw(m.g)
 	return m
 }
 
@@ -118,15 +118,15 @@ func modal(s *State, command string) {
 		return
 	case "log":
 		s.Mode = NewLogMode(s.Messages)
-		s.Redraw(s)
+		s.Redraw(s.Game)
 		return
 	case "board":
-		s.Mode = NewBoardMode(s)
-		s.Redraw(s)
+		s.Mode = NewBoardMode(s.Game)
+		s.Redraw(s.Game)
 		return
 	case "deck":
 		s.Mode = NewCardMode(s.Deck.Cards)
-		s.Redraw(s)
+		s.Redraw(s.Game)
 	case "card":
 		if len(args) != 1 {
 			break
@@ -137,11 +137,21 @@ func modal(s *State, command string) {
 			return
 		}
 		s.Mode = NewCardMode([]Card{card})
-		s.Redraw(s)
+		s.Redraw(s.Game)
 		return
+	case "barf":
+		s.History.Dump()
+		return
+	case "undo":
+		if !s.CanUndo() {
+			// XXX message = "Cannot undo."
+			return
+		}
+		s.Undo()
+		panic("Should never get here!")
 	default:
 		s.Mode = s.Mode.Command(command)
-		s.Redraw(s)
+		s.Redraw(s.Game)
 		return
 	}
 	s.UI.Message(s.Phasing, "Unknown command")
@@ -166,7 +176,6 @@ retry:
 		modal(s, cmd)
 		goto retry
 	}
-
 	if len(choices) > 0 && !validChoice(inputStr) {
 		err = fmt.Errorf("'%s' is not a valid choice", inputStr)
 	} else {
@@ -183,6 +192,8 @@ type UI interface {
 	Message(player Aff, message string)
 	ShowMessages([]string)
 	ShowCards([]Card)
-	Redraw(*State)
+	// Inconsistent. Doesn't always use game -- other modes have their own
+	// state instead of relying on parameter.
+	Redraw(*Game)
 	Close() error
 }

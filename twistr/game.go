@@ -30,19 +30,17 @@ func Start(s *State) {
 	s.Deck.Push(EarlyWar...)
 	cards := SelectShuffle(s, s.Deck)
 	s.Deck.Reorder(cards)
-	s.Redraw(s)
+	s.Commit()
 	Deal(s)
-	s.Redraw(s)
+	s.Redraw(s.Game)
 	// SOV chooses 6 influence in E europe
-	s.Redraw(s)
 	cs := SelectInfluenceForce(s, SOV, func() ([]*Country, error) {
 		return SelectExactlyNInfluence(s, SOV,
 			"6 influence in East Europe", 6,
 			InRegion(EastEurope))
 	})
 	PlaceInfluence(s, SOV, cs)
-	s.Redraw(s)
-	s.Txn.Flush()
+	s.Commit()
 	// US chooses 7 influence in W europe
 	csUSA := SelectInfluenceForce(s, USA, func() ([]*Country, error) {
 		return SelectExactlyNInfluence(s, USA,
@@ -50,8 +48,7 @@ func Start(s *State) {
 			InRegion(WestEurope))
 	})
 	PlaceInfluence(s, USA, csUSA)
-	s.Redraw(s)
-	s.Txn.Flush()
+	s.Commit()
 	// Temporary
 	for s.Turn = 1; s.Turn <= 10; s.Turn++ {
 		Turn(s)
@@ -68,27 +65,27 @@ func ShowHand(s *State, whose, to Aff, showChina ...bool) {
 		cs = append(cs, Cards[TheChinaCard])
 	}
 	s.Mode = NewCardMode(cs)
-	s.Redraw(s)
+	s.Redraw(s.Game)
 }
 
 func ShowDiscard(s *State, to Aff) {
 	s.Mode = NewCardMode(s.Discard.Cards)
-	s.Redraw(s)
+	s.Redraw(s.Game)
 }
 
 func ShowCard(s *State, c Card, to Aff) {
 	s.Mode = NewCardMode([]Card{c})
-	s.Redraw(s)
+	s.Redraw(s.Game)
 }
 
 func SelectShuffle(s *State, d *Deck) (cardOrder []Card) {
 	// Duplicates what GetOrLog does. It doesn't make sense to reuse GetOrLog
 	// because this will never ask for user input.
-	if s.Aof.ReadInto(&cardOrder) {
+	if s.ReadInto(&cardOrder) {
 		return
 	}
 	cardOrder = d.Shuffle()
-	s.Aof.Log(&cardOrder)
+	s.Log(&cardOrder)
 	return
 }
 
@@ -169,20 +166,20 @@ func SelectChoice(s *State, player Aff, message string, choices ...string) (choi
 }
 
 func GetOrLog(s *State, player Aff, thing interface{}, message string, choices ...string) {
-	if s.Aof.ReadInto(thing) {
+	if s.ReadInto(thing) {
 		return
 	}
 	GetInput(s, player, thing, message, choices...)
-	s.Aof.Log(thing)
+	s.Log(thing)
 }
 
 func SelectRandomCard(s *State, player Aff) (card Card) {
-	if s.Aof.ReadInto(&card) {
+	if s.ReadInto(&card) {
 		return
 	}
 	n := rng.Intn(len(s.Hands[player].Cards))
 	card = s.Hands[player].Cards[n]
-	s.Aof.Log(&card)
+	s.Log(&card)
 	return
 }
 
@@ -295,8 +292,7 @@ func EndTurn(s *State) {
 func Action(s *State) {
 	card := SelectCard(s, s.Phasing)
 	PlayCard(s, s.Phasing, card)
-	s.Redraw(s)
-	s.Txn.Flush()
+	s.Commit()
 }
 
 func PlayCard(s *State, player Aff, card Card) {
@@ -343,15 +339,17 @@ func PlayOps(s *State, player Aff, card Card) {
 	MessageBoth(s, fmt.Sprintf("%s plays %s for operations", player, card))
 	opp := player.Opp()
 	if card.Aff == opp {
-		if player == SelectFirst(s, player) {
+		first := SelectFirst(s, player)
+		s.Commit()
+		if player == first {
 			MessageBoth(s, fmt.Sprintf("%s will conduct operations first", player))
 			ConductOps(s, player, card)
-			s.Redraw(s)
+			s.Redraw(s.Game)
 			PlayEvent(s, opp, card)
 		} else {
 			MessageBoth(s, fmt.Sprintf("%s will implement the event first", opp))
 			PlayEvent(s, opp, card)
-			s.Redraw(s)
+			s.Redraw(s.Game)
 			ConductOps(s, player, card)
 		}
 	} else {
@@ -422,7 +420,7 @@ func OpInfluence(s *State, player Aff, ops int) {
 }
 
 func PlayEvent(s *State, player Aff, card Card) {
-	prevented := card.Prevented(s)
+	prevented := card.Prevented(s.Game)
 	if !prevented {
 		// A soviet or US event is *always* played by that player, no matter
 		// who causes the event to be played.
@@ -461,7 +459,7 @@ func SelectPlay(s *State, player Aff, card Card) (pk PlayKind) {
 		// playing it for ops, and the rules don't prevent you from flipping
 		// the table either ...
 		canEvent = false
-	case card.Prevented(s):
+	case card.Prevented(s.Game):
 		canEvent = false
 	}
 	ops := card.Ops + opsMod(s, player, nil)
@@ -585,7 +583,7 @@ func HasInfluence(aff Aff) countryCheck {
 	}
 }
 
-func CanRemove(s State, aff Aff) countryCheck {
+func CanRemove(aff Aff) countryCheck {
 	removed := make(map[CountryId]int)
 	return func(c *Country) error {
 		removed[c.Id] += 1

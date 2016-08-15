@@ -80,7 +80,7 @@ type ScoreResult struct {
 	AdjSuper      [2][]*Country
 }
 
-func ScoreRegion(s *State, r Region) ScoreResult {
+func ScoreRegion(g *Game, r Region) ScoreResult {
 	result := ScoreResult{
 		Levels:        [2]ScoreLevel{Nothing, Nothing},
 		Battlegrounds: [2][]*Country{[]*Country{}, []*Country{}},
@@ -89,7 +89,7 @@ func ScoreRegion(s *State, r Region) ScoreResult {
 	counts := [2]int{0, 0}
 	allBattlegrounds := 0
 	for _, cid := range r.Countries {
-		c := s.Countries[cid]
+		c := g.Countries[cid]
 		if c.Battleground {
 			allBattlegrounds += 1
 		}
