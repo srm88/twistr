@@ -63,7 +63,7 @@ func PlaySocialistGovernments(s *State, player Aff) {
 	cs := SelectInfluenceForce(s, player, func() ([]*Country, error) {
 		return SelectNInfluence(s, player,
 			"Remove 3 US influence (no more than 2 per country)", 3,
-			MaxPerCountry(2), InRegion(WestEurope), CanRemove(*s, USA))
+			MaxPerCountry(2), InRegion(WestEurope), CanRemove(USA))
 	})
 	RemoveInfluence(s, USA, cs)
 }
@@ -179,7 +179,7 @@ func PlayWarsawPactFormed(s *State, player Aff) {
 		cs := SelectInfluenceForce(s, player, func() ([]*Country, error) {
 			return SelectNInfluence(s, player,
 				"4 countries to lose all US influence", 4,
-				MaxPerCountry(1), InRegion(EastEurope), CanRemove(*s, USA))
+				MaxPerCountry(1), InRegion(EastEurope), CanRemove(USA))
 		})
 		for _, c := range cs {
 			c.Inf[USA] = 0
@@ -350,7 +350,7 @@ func PlayEastEuropeanUnrest(s *State, player Aff) {
 	cs := SelectInfluenceForce(s, player, func() ([]*Country, error) {
 		return SelectNInfluence(s, player,
 			"Choose 3 countries in E Europe", 3,
-			MaxPerCountry(1), InRegion(EastEurope), CanRemove(*s, SOV))
+			MaxPerCountry(1), InRegion(EastEurope), CanRemove(SOV))
 	})
 	RemoveInfluence(s, SOV, cs)
 	if s.Era() == Late {
@@ -395,7 +395,7 @@ func PlayDeStalinization(s *State, player Aff) {
 	from := SelectInfluenceForce(s, player, func() ([]*Country, error) {
 		return SelectNInfluence(s, player,
 			"Choose 4 influence to relocate", 4,
-			CanRemove(*s, SOV))
+			CanRemove(SOV))
 	})
 	if len(from) == 0 {
 		return
@@ -657,7 +657,7 @@ func PlaySummit(s *State, player Aff) {
 	playerRoll := SelectRoll(s)
 	oppRoll := SelectRoll(s)
 	for _, region := range Regions {
-		sr := ScoreRegion(s, region)
+		sr := ScoreRegion(s.Game, region)
 		switch {
 		case sr.Levels[player] == Domination || sr.Levels[player] == Control:
 			playerRoll++
@@ -830,7 +830,7 @@ func PlayMuslimRevolution(s *State, player Aff) {
 			"2 countries to lose all influence", 2,
 			InCountries(Sudan, Iran, Iraq, Egypt, Libya, SaudiArabia, Syria, Jordan),
 			MaxPerCountry(1),
-			CanRemove(*s, USA))
+			CanRemove(USA))
 	})
 	for _, c := range cs {
 		c.Inf[USA] = 0
@@ -1014,7 +1014,7 @@ func PlayTheVoiceOfAmerica(s *State, player Aff) {
 			"Add a total of 4 influence from countries not in Europe (no more than 2 per country)", 4,
 			InRegion(Asia, Africa, CentralAmerica, SouthAmerica, MiddleEast),
 			MaxPerCountry(2),
-			CanRemove(*s, SOV))
+			CanRemove(SOV))
 	})
 	RemoveInfluence(s, SOV, cs)
 }
@@ -1217,7 +1217,7 @@ func PlayStarWars(s *State, player Aff) {
 	}
 	// Limit choice to playable events
 	canPlayEvent := func(c Card) bool {
-		return !c.Prevented(s)
+		return !c.Prevented(s.Game)
 	}
 	card := SelectDiscarded(s, player,
 		canPlayEvent,
@@ -1260,7 +1260,7 @@ func PlayMarineBarracksBombing(s *State, player Aff) {
 	cs := SelectInfluenceForce(s, player, func() ([]*Country, error) {
 		return SelectNInfluence(s, player,
 			"Remove 2 US influence from the Middle East", 2,
-			InRegion(MiddleEast), CanRemove(*s, USA))
+			InRegion(MiddleEast), CanRemove(USA))
 	})
 	RemoveInfluence(s, USA, cs)
 }
@@ -1395,7 +1395,7 @@ func PlayPershingIIDeployed(s *State, player Aff) {
 	cs := SelectInfluenceForce(s, player, func() ([]*Country, error) {
 		return SelectNInfluence(s, player,
 			"Remove 1 US Influence from any 3 countries in W Europe", 3,
-			MaxPerCountry(1), InRegion(WestEurope), CanRemove(*s, USA))
+			MaxPerCountry(1), InRegion(WestEurope), CanRemove(USA))
 	})
 	RemoveInfluence(s, USA, cs)
 }

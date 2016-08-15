@@ -9,8 +9,9 @@ import (
 
 // Temp:
 func main() {
+	game := twistr.NewGame()
 	ui := twistr.MakeNCursesUI()
-	state, err := twistr.NewState(ui, "/tmp/twistr.aof")
+	state, err := twistr.NewState(ui, "/tmp/twistr.aof", game)
 	if err != nil {
 		panic(fmt.Sprintf("Failed to start game: %s\n", err.Error()))
 	}

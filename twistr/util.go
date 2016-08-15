@@ -1,9 +1,7 @@
 package twistr
 
 import (
-	"fmt"
 	"math/rand"
-	"os"
 	"time"
 )
 
@@ -29,11 +27,7 @@ func Roll() int {
 	return rng.Intn(6) + 1
 }
 
-func MessageBoth(ui UI, message string) {
-	ui.Message(USA, message)
-	ui.Message(SOV, message)
-}
-
-func Debug(message string, a ...interface{}) {
-	fmt.Fprintf(os.Stderr, message, a...)
+func MessageBoth(g *State, message string) {
+	g.Message(USA, message)
+	g.Message(SOV, message)
 }

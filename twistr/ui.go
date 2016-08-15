@@ -4,7 +4,7 @@ import (
 	"fmt"
 )
 
-func GetInput(ui UI, player Aff, inp interface{}, message string, choices ...string) {
+func GetInput(g *State, player Aff, inp interface{}, message string, choices ...string) {
 	var err error
 	validChoice := func(in string) bool {
 		if len(choices) == 0 {
@@ -18,7 +18,22 @@ func GetInput(ui UI, player Aff, inp interface{}, message string, choices ...str
 		return false
 	}
 retry:
-	inputStr := ui.Solicit(player, message, choices)
+	inputStr := g.Solicit(player, message, choices)
+	switch inputStr {
+	case "canundo":
+		message = fmt.Sprintf("%v\n", g.CanUndo())
+		goto retry
+	case "barf":
+		g.History.Dump()
+		goto retry
+	case "undo":
+		if !g.CanUndo() {
+			message = "Cannot undo."
+			goto retry
+		}
+		g.Undo()
+		panic("Should never get here!")
+	}
 	if len(choices) > 0 && !validChoice(inputStr) {
 		err = fmt.Errorf("'%s' is not a valid choice", inputStr)
 	} else {
@@ -33,6 +48,6 @@ retry:
 type UI interface {
 	Solicit(player Aff, message string, choices []string) (reply string)
 	Message(player Aff, message string)
-	Redraw(*State)
+	Redraw(*Game)
 	Close() error
 }

@@ -216,7 +216,7 @@ type NCursesUI struct {
 func MakeNCursesUI() *NCursesUI {
 	scr, err := gc.Init()
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
+		log.Println(err)
 		os.Exit(1)
 	}
 	if !gc.HasColors() {
@@ -265,11 +265,11 @@ func (nc *NCursesUI) Close() error {
 	return nil
 }
 
-func (nc *NCursesUI) Redraw(s *State) {
+func (nc *NCursesUI) Redraw(g *Game) {
 	var name, stab, infUsa, infSov int16
 	nc.MovePrint(0, 0, world)
 	for id, extra := range data {
-		country := s.Countries[id]
+		country := g.Countries[id]
 		if country.Battleground {
 			name, stab = C_BattleName, C_BattleStab
 		} else {
@@ -298,30 +298,30 @@ func (nc *NCursesUI) Redraw(s *State) {
 		nc.AttrOff(gc.A_BOLD)
 	}
 	// Draw game metadata
-	nc.MovePrint(turnPos.X, turnPos.Y, strconv.Itoa(s.Turn))
+	nc.MovePrint(turnPos.X, turnPos.Y, strconv.Itoa(g.Turn))
 	var vp string
 	switch {
-	case s.VP > 0:
-		vp = fmt.Sprintf("US +%d", s.VP)
-	case s.VP < 0:
-		vp = fmt.Sprintf("USSR +%d", -s.VP)
+	case g.VP > 0:
+		vp = fmt.Sprintf("US +%d", g.VP)
+	case g.VP < 0:
+		vp = fmt.Sprintf("USSR +%d", -g.VP)
 	default:
 		vp = "0"
 	}
 	nc.MovePrint(vpPos.X, vpPos.Y, vp)
-	nc.MovePrint(usaMilOpsPos.X, usaMilOpsPos.Y, strconv.Itoa(s.MilOps[USA]))
-	nc.MovePrint(sovMilOpsPos.X, sovMilOpsPos.Y, strconv.Itoa(s.MilOps[SOV]))
-	nc.MovePrint(defconPos.X, defconPos.Y, strconv.Itoa(s.Defcon))
-	nc.MovePrint(usaSpacePos.X, usaSpacePos.Y, strconv.Itoa(s.SpaceRace[USA]))
-	nc.MovePrint(sovSpacePos.X, sovSpacePos.Y, strconv.Itoa(s.SpaceRace[SOV]))
+	nc.MovePrint(usaMilOpsPos.X, usaMilOpsPos.Y, strconv.Itoa(g.MilOps[USA]))
+	nc.MovePrint(sovMilOpsPos.X, sovMilOpsPos.Y, strconv.Itoa(g.MilOps[SOV]))
+	nc.MovePrint(defconPos.X, defconPos.Y, strconv.Itoa(g.Defcon))
+	nc.MovePrint(usaSpacePos.X, usaSpacePos.Y, strconv.Itoa(g.SpaceRace[USA]))
+	nc.MovePrint(sovSpacePos.X, sovSpacePos.Y, strconv.Itoa(g.SpaceRace[SOV]))
 	var phasingColor int16
-	if s.Phasing == USA {
+	if g.Phasing == USA {
 		phasingColor = C_UsaControl
 	} else {
 		phasingColor = C_SovControl
 	}
 	nc.ColorOn(phasingColor)
-	nc.MovePrint(arPos.X, arPos.Y, fmt.Sprintf("%2d", s.AR))
+	nc.MovePrint(arPos.X, arPos.Y, fmt.Sprintf("%2d", g.AR))
 	nc.ColorOff(phasingColor)
 	nc.Refresh()
 	nc.Move(37, 0)
