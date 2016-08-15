@@ -88,6 +88,7 @@ func (r *History) ShowCards(cs []Card) {
 }
 
 func (r *History) Redraw(g *Game) {
+	// XXX this is preventing redraw of anything when starting game up
 	if !r.InReplay() {
 		r.wrapped.Redraw(g)
 	}

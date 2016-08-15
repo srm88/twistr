@@ -24,7 +24,7 @@ func (s *State) Commit() {
 		return
 	}
 	buffered := s.History.Commit()
-	if _, err := s.aof.Write([]byte(buffered)); err != nil {
+	if _, err := s.aof.Write(append([]byte(buffered), '\n')); err != nil {
 		log.Fatalf("Failed to flush to aof: %s\n", err.Error())
 	}
 	s.Redraw(s.Game)
@@ -63,6 +63,28 @@ func (s *State) Undo() {
 	// Totally reset all state, and replay history.
 	s.Game = NewGame()
 	Start(s)
+}
+
+func (s *State) Close() error {
+	s.UI.Close()
+	return s.aof.Close()
+}
+
+func (s *State) Redraw(g *Game) {
+	// Careful ...
+	s.Mode = s.Mode.Display(s.UI)
+}
+
+func (s *State) Message(player Aff, msg string) {
+	s.Messages = append(s.Messages, msg)
+	s.UI.Message(player, msg)
+}
+
+func (s *State) SetMode(m Mode) {
+	if s.History.InReplay() {
+		return
+	}
+	s.Mode = m
 }
 
 func NewState(ui UI, aofPath string, game *Game) (*State, error) {
@@ -104,21 +126,6 @@ func NewState(ui UI, aofPath string, game *Game) (*State, error) {
 		aof:         out,
 	}
 	return s, nil
-}
-
-func (s *State) Close() error {
-	s.UI.Close()
-	return s.aof.Close()
-}
-
-func (s *State) Redraw(g *Game) {
-	// Careful ...
-	s.Mode = s.Mode.Display(s.UI)
-}
-
-func (s *State) Message(player Aff, msg string) {
-	s.Messages = append(s.Messages, msg)
-	s.UI.Message(player, msg)
 }
 
 type Game struct {
