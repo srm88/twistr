@@ -93,20 +93,22 @@ func coup(s *State, player Aff, ops int, roll int, target *Country, free bool) (
 
 // A country cannot be coup'd if it lacks any of the opponent's influence.
 // Some permanent events also impose coup restrictions, e.g. NATO with Europe.
-func canCoup(s *State, player Aff, t *Country, free bool) bool {
-	switch {
-	case t.Inf[player.Opp()] < 1:
-		return false
-	case natoProtected(s, player, t):
-		return false
-	case japanProtected(s, player, t):
-		return false
-	case s.Effect(TheReformer) && player == SOV && t.In(Europe):
-		return false
-	case defconProtected(s, t) && !free:
-		return false
-	default:
-		return true
+func CanCoup(s *State, player Aff, free bool) countryCheck {
+	return func(t *Country) error {
+		switch {
+		case t.Inf[player.Opp()] < 1:
+			return fmt.Errorf("No %s influence in %s", player.Opp(), t.Name)
+		case natoProtected(s, player, t):
+			return fmt.Errorf("%s protected by NATO", t.Name)
+		case japanProtected(s, player, t):
+			return fmt.Errorf("%s protected by US/Japan Mutual Defense Pact", t.Name)
+		case s.Effect(TheReformer) && player == SOV && t.In(Europe):
+			return fmt.Errorf("%s protected by The Reformer", t.Name)
+		case defconProtected(s, t) && !free:
+			return fmt.Errorf("%s protected by DEFCON", t.Name)
+		default:
+			return nil
+		}
 	}
 }
 
@@ -149,6 +151,16 @@ func Realign(s *State, player Aff) countryChange {
 		rollUsa := SelectRoll(s)
 		rollSov := SelectRoll(s)
 		realign(s, c, rollUsa, rollSov)
+		s.Commit()
+		return nil
+	}
+}
+
+func Coup(s *State, player Aff, card Card, free bool) countryChange {
+	return func(c *Country) error {
+		roll := SelectRoll(s)
+		ops := card.Ops + opsMod(s, player, card, []*Country{c})
+		coup(s, player, ops, roll, c, free)
 		s.Commit()
 		return nil
 	}

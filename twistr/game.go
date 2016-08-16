@@ -365,7 +365,7 @@ func ConductOps(s *State, player Aff, card Card, kinds ...OpsKind) {
 }
 
 func OpRealign(s *State, player Aff, card Card) {
-	selectInfluence(s, player, fmt.Sprintf("Realigns for %s (%d)", card.Name, card.Ops),
+	selectInfluence(s, player, fmt.Sprintf("Realigns with %s (%d)", card.Name, card.Ops),
 		Realign(s, player),
 		OpsLimit(s, player, card), false,
 		NormalCost,
@@ -373,19 +373,18 @@ func OpRealign(s *State, player Aff, card Card) {
 }
 
 func OpCoup(s *State, player Aff, card Card) {
-	target := SelectCountry(s, player, "Coup where?")
-	for !canCoup(s, player, target, false) {
-		target = SelectCountry(s, player, "Oh no you goofed. Coup where?")
-	}
-	roll := SelectRoll(s)
-	ops := card.Ops + opsMod(s, player, card, []*Country{target})
-	coup(s, player, ops, roll, target, false)
+	selectInfluence(s, player, fmt.Sprintf("Coup with %s (%d)", card.Name, card.Ops),
+		Coup(s, player, card, false),
+		LimitN(1), true,
+		NormalCost,
+		CanCoup(s, player, false))
 }
 
 func DoFreeCoup(s *State, player Aff, card Card, allowedTargets []CountryId) bool {
 	targets := []CountryId{}
+	check := CanCoup(s, player, true)
 	for _, t := range allowedTargets {
-		if canCoup(s, player, s.Countries[t], true) {
+		if check(s.Countries[t]) == nil {
 			targets = append(targets, t)
 		}
 	}
@@ -401,7 +400,7 @@ func DoFreeCoup(s *State, player Aff, card Card, allowedTargets []CountryId) boo
 
 func OpInfluence(s *State, player Aff, card Card) {
 	// XXX chernobyl, etc
-	selectInfluence(s, player, fmt.Sprintf("Place influence for %s (%d)", card.Name, card.Ops),
+	selectInfluence(s, player, fmt.Sprintf("Influence with %s (%d)", card.Name, card.Ops),
 		PlusInf(player, 1),
 		OpsLimit(s, player, card), false,
 		OpInfluenceCost(player),
