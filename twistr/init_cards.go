@@ -18,6 +18,7 @@ func init() {
 			Name: c.Name,
 			Text: c.Text,
 			Star: c.Name[len(c.Name)-1] == '*',
+			Era:  c.Era,
 			Impl: c.Impl,
 		}
 		Cards[c.Id] = card

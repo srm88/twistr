@@ -35,11 +35,11 @@ func realign(s *State, target *Country, rollUSA, rollSOV int) {
 		target.Inf[USA] -= Min((rollSOV - rollUSA), target.Inf[USA])
 	}
 	if initUSA > target.Inf[USA] {
-		MessageBoth(s, fmt.Sprintf("Removed %d influence from USA", initUSA-target.Inf[USA]))
+		s.Transcribe(fmt.Sprintf("%d US influence removed", initUSA-target.Inf[USA]))
 	} else if initSOV > target.Inf[SOV] {
-		MessageBoth(s, fmt.Sprintf("Removed %d influence from USSR", initSOV-target.Inf[SOV]))
+		s.Transcribe(fmt.Sprintf("%d soviet influence removed", initSOV-target.Inf[SOV]))
 	} else {
-		MessageBoth(s, "No influence removed")
+		s.Transcribe("No influence removed")
 	}
 }
 

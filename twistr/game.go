@@ -56,16 +56,26 @@ func Start(s *State) {
 	}
 }
 
-func ShowHand(s *State, whose, to Aff) {
-	s.Message(to, fmt.Sprintf("%s hand: %s\n", whose, strings.Join(s.Hands[whose].Names(), ", ")))
+func ShowHand(s *State, whose, to Aff, showChina ...bool) {
+	cs := []Card{}
+	for _, c := range s.Hands[whose].Cards {
+		cs = append(cs, c)
+	}
+	if len(showChina) > 0 && showChina[0] && s.ChinaCardPlayer == whose && s.ChinaCardFaceUp {
+		cs = append(cs, Cards[TheChinaCard])
+	}
+	s.SetOverlay(NewCardOverlay(cs))
+	s.Redraw(s.Game)
 }
 
 func ShowDiscard(s *State, to Aff) {
-	s.Message(to, fmt.Sprintf("Discard pile: %s\n", strings.Join(s.Discard.Names(), ", ")))
+	s.SetOverlay(NewCardOverlay(s.Discard.Cards))
+	s.Redraw(s.Game)
 }
 
 func ShowCard(s *State, c Card, to Aff) {
-	s.Message(to, fmt.Sprintf("Card: %s\n", c.Name))
+	s.SetOverlay(NewCardOverlay([]Card{c}))
+	s.Redraw(s.Game)
 }
 
 func SelectShuffle(s *State, d *Deck) (cardOrder []Card) {
@@ -197,11 +207,11 @@ func outOfCards(s *State, player Aff) bool {
 }
 
 func Turn(s *State) {
-	MessageBoth(s, fmt.Sprintf("== Turn %d", s.Turn))
+	s.Transcribe(fmt.Sprintf("== Turn %d", s.Turn))
 	if s.Turn > 1 {
 		Deal(s)
 	}
-	MessageBoth(s, "= Headline Phase")
+	s.Transcribe("= Headline Phase")
 	Headline(s)
 	usaCap := actionsThisTurn(s, USA)
 	sovCap := actionsThisTurn(s, SOV)
@@ -213,12 +223,12 @@ func Turn(s *State) {
 			return
 		}
 		if !sovDone {
-			MessageBoth(s, fmt.Sprintf("= %s AR %d.", SOV, s.AR))
+			s.Transcribe(fmt.Sprintf("= %s AR %d.", SOV, s.AR))
 			s.Phasing = SOV
 			Action(s)
 		}
 		if !usaDone {
-			MessageBoth(s, fmt.Sprintf("= %s AR %d.", USA, s.AR))
+			s.Transcribe(fmt.Sprintf("= %s AR %d.", USA, s.AR))
 			s.Phasing = USA
 			Action(s)
 		}
@@ -238,10 +248,10 @@ func awardMilOpsVPs(s *State) {
 	case usaShy == 0 && sovShy == 0:
 		return
 	case usaShy > sovShy:
-		MessageBoth(s, fmt.Sprintf("%s loses %d VP for not meeting required military operations.", USA, usaShy-sovShy))
+		s.Transcribe(fmt.Sprintf("%s loses %d VP for not meeting required military operations.", USA, usaShy-sovShy))
 		s.GainVP(SOV, usaShy-sovShy)
 	case sovShy > usaShy:
-		MessageBoth(s, fmt.Sprintf("%s loses %d VP for not meeting required military operations.", SOV, sovShy-usaShy))
+		s.Transcribe(fmt.Sprintf("%s loses %d VP for not meeting required military operations.", SOV, sovShy-usaShy))
 		s.GainVP(USA, sovShy-usaShy)
 	}
 }
@@ -271,7 +281,7 @@ func EndTurn(s *State) {
 	s.MilOps[SOV] = 0
 	s.ImproveDefcon(1)
 	if !s.ChinaCardFaceUp {
-		MessageBoth(s, fmt.Sprintf("The china card is now face up for %s.", s.ChinaCardPlayer))
+		s.Transcribe(fmt.Sprintf("The china card is now face up for %s.", s.ChinaCardPlayer))
 		s.ChinaCardFaceUp = true
 	}
 	s.AR = 1
@@ -297,7 +307,7 @@ func PlayCard(s *State, player Aff, card Card) {
 		PlayEvent(s, player, card)
 	}
 	if card.Id == TheChinaCard {
-		MessageBoth(s, fmt.Sprintf("%s receives the China Card, face down.", player.Opp()))
+		s.Transcribe(fmt.Sprintf("%s receives the China Card, face down.", player.Opp()))
 		s.ChinaCardPlayed()
 	}
 }
@@ -305,12 +315,12 @@ func PlayCard(s *State, player Aff, card Card) {
 func PlaySpace(s *State, player Aff, card Card) {
 	box, _ := nextSRBox(s, player)
 	roll := SelectRoll(s)
-	MessageBoth(s, fmt.Sprintf("%s plays %s for the space race.", player, card))
+	s.Transcribe(fmt.Sprintf("%s plays %s for the space race.", player, card))
 	if roll <= box.MaxRoll {
 		box.Enter(s, player)
-		MessageBoth(s, fmt.Sprintf("%s rolls %d. Space race attempt success!", player, roll))
+		s.Transcribe(fmt.Sprintf("%s rolls %d. Space race attempt success!", player, roll))
 	} else {
-		MessageBoth(s, fmt.Sprintf("%s rolls %d. Space race attempt fails!", player, roll))
+		s.Transcribe(fmt.Sprintf("%s rolls %d. Space race attempt fails!", player, roll))
 	}
 	s.SpaceAttempts[player] += 1
 	// China card can be spaced, but Action will take care of moving it to the
@@ -326,18 +336,18 @@ func SelectRoll(s *State) int {
 }
 
 func PlayOps(s *State, player Aff, card Card) {
-	MessageBoth(s, fmt.Sprintf("%s plays %s for operations", player, card))
+	s.Transcribe(fmt.Sprintf("%s plays %s for operations", player, card))
 	opp := player.Opp()
 	if card.Aff == opp {
 		first := SelectFirst(s, player)
 		s.Commit()
 		if player == first {
-			MessageBoth(s, fmt.Sprintf("%s will conduct operations first", player))
+			s.Transcribe(fmt.Sprintf("%s will conduct operations first", player))
 			ConductOps(s, player, card)
 			s.Redraw(s.Game)
 			PlayEvent(s, opp, card)
 		} else {
-			MessageBoth(s, fmt.Sprintf("%s will implement the event first", opp))
+			s.Transcribe(fmt.Sprintf("%s will implement the event first", opp))
 			PlayEvent(s, opp, card)
 			s.Redraw(s.Game)
 			ConductOps(s, player, card)
@@ -414,25 +424,26 @@ func PlayEvent(s *State, player Aff, card Card) {
 	if !prevented {
 		// A soviet or US event is *always* played by that player, no matter
 		// who causes the event to be played.
+		var implementer Aff
 		switch card.Aff {
 		case USA, SOV:
-			MessageBoth(s, fmt.Sprintf("%s implements %s", card.Aff, card))
-			card.Impl(s, card.Aff)
+			implementer = card.Aff
 		default:
-			MessageBoth(s, fmt.Sprintf("%s implements %s", player, card))
-			card.Impl(s, player)
+			implementer = player
 		}
+		s.Transcribe(fmt.Sprintf("%s implements %s", implementer, card))
+		card.Impl(s, implementer)
 	}
 	switch {
 	case card.Id == MissileEnvy:
 		s.Hands[player.Opp()].Push(Cards[MissileEnvy])
-		MessageBoth(s, fmt.Sprintf("%s to %s hand", card, player.Opp()))
+		s.Transcribe(fmt.Sprintf("%s to %s hand", card, player.Opp()))
 	case !prevented && card.Star:
 		s.Removed.Push(card)
-		MessageBoth(s, fmt.Sprintf("%s removed", card))
+		s.Transcribe(fmt.Sprintf("%s removed", card))
 	default:
 		s.Discard.Push(card)
-		MessageBoth(s, fmt.Sprintf("%s to discard", card))
+		s.Transcribe(fmt.Sprintf("%s to discard", card))
 	}
 }
 
@@ -669,7 +680,7 @@ func SelectInfluenceForce(s *State, player Aff, selectFn func() ([]*Country, err
 	var err error
 	cs, err = selectFn()
 	for err != nil {
-		s.Message(player, err.Error())
+		s.UI.Message(player, err.Error())
 		cs, err = selectFn()
 	}
 	return cs

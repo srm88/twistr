@@ -11,6 +11,7 @@ type State struct {
 	UI
 	*Game
 	History     *History
+	Overlay     Overlay
 	Master      bool
 	LocalPlayer Aff
 	aof         io.WriteCloser
@@ -22,8 +23,10 @@ func (s *State) Commit() {
 		return
 	}
 	buffered := s.History.Commit()
-	if _, err := s.aof.Write([]byte(buffered)); err != nil {
-		log.Fatalf("Failed to flush to aof: %s\n", err.Error())
+	if len(buffered) > 0 {
+		if _, err := s.aof.Write(append([]byte(buffered), '\n')); err != nil {
+			log.Fatalf("Failed to flush to aof: %s\n", err.Error())
+		}
 	}
 	s.Redraw(s.Game)
 }
@@ -63,6 +66,38 @@ func (s *State) Undo() {
 	Start(s)
 }
 
+func (s *State) Close() error {
+	s.UI.Close()
+	return s.aof.Close()
+}
+
+func (s *State) Redraw(g *Game) {
+	// Careful ...
+	if s.Overlay != nil {
+		s.Overlay = s.Overlay.Display(s.UI)
+	} else {
+		s.UI.Redraw(g)
+	}
+}
+
+func (s *State) Message(player Aff, msg string) {
+	s.UI.Message(player, msg)
+}
+
+// Transcribe is used for player-independent, objective, happenings in the
+// game.
+func (s *State) Transcribe(msg string) {
+	s.Game.Transcript = append(s.Game.Transcript, msg)
+	s.UI.Message(s.LocalPlayer, msg)
+}
+
+func (s *State) SetOverlay(o Overlay) {
+	if s.History.InReplay() {
+		return
+	}
+	s.Overlay = o
+}
+
 func NewState(ui UI, aofPath string, game *Game) (*State, error) {
 	in, err := os.Open(aofPath)
 	var history *History
@@ -93,6 +128,7 @@ func NewState(ui UI, aofPath string, game *Game) (*State, error) {
 
 	s := &State{
 		UI:          history,
+		Overlay:     nil,
 		Game:        game,
 		History:     history,
 		Master:      false,
@@ -102,12 +138,8 @@ func NewState(ui UI, aofPath string, game *Game) (*State, error) {
 	return s, nil
 }
 
-func (s *State) Close() error {
-	s.UI.Close()
-	return s.aof.Close()
-}
-
 type Game struct {
+	Transcript      []string
 	VP              int
 	Defcon          int
 	MilOps          [2]int
@@ -132,6 +164,7 @@ type Game struct {
 func NewGame() *Game {
 	resetCountries()
 	return &Game{
+		Transcript:      []string{},
 		VP:              0,
 		Defcon:          5,
 		MilOps:          [2]int{0, 0},

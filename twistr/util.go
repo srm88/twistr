@@ -1,7 +1,10 @@
 package twistr
 
 import (
+	"bytes"
+	"go/doc"
 	"math/rand"
+	"strings"
 	"time"
 )
 
@@ -23,11 +26,12 @@ func Min(a, b int) int {
 	return b
 }
 
-func Roll() int {
-	return rng.Intn(6) + 1
+func wordWrap(body string, columns int) []string {
+	b := new(bytes.Buffer)
+	doc.ToText(b, body, "", "", columns)
+	return strings.Split(b.String(), "\n")
 }
 
-func MessageBoth(g *State, message string) {
-	g.Message(USA, message)
-	g.Message(SOV, message)
+func Roll() int {
+	return rng.Intn(6) + 1
 }

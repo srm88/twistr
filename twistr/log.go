@@ -15,14 +15,17 @@ type History struct {
 
 func NewHistoryBacklog(ui UI, backlog string) *History {
 	inputs := strings.Split(backlog, "\n")
-	if inputs[len(inputs)-1] == "" {
-		inputs = inputs[:len(inputs)-1]
+	end := len(inputs)
+	for ; end > 1; end-- {
+		if inputs[end-1] != "" {
+			break
+		}
 	}
 	return &History{
 		wrapped:   ui,
-		inputs:    inputs,
+		inputs:    inputs[:end],
 		index:     0,
-		watermark: len(inputs),
+		watermark: end,
 		replaying: true,
 	}
 }
@@ -74,7 +77,21 @@ func (r *History) Message(player Aff, message string) {
 	log.Printf("Suppress: %s\n", message)
 }
 
+func (r *History) ShowMessages(ms []string) {
+	// Future, fix this to get messages from this object
+	if !r.InReplay() {
+		r.wrapped.ShowMessages(ms)
+	}
+}
+
+func (r *History) ShowCards(cs []Card) {
+	if !r.InReplay() {
+		r.wrapped.ShowCards(cs)
+	}
+}
+
 func (r *History) Redraw(g *Game) {
+	// XXX this is preventing redraw of anything when starting game up
 	if !r.InReplay() {
 		r.wrapped.Redraw(g)
 	}

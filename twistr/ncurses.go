@@ -79,6 +79,11 @@ const (
 	C_Afr
 	C_Asi
 	C_Sea
+	// Card drawing
+	C_Early
+	C_Mid
+	C_Late
+	C_CardText
 )
 
 var (
@@ -207,6 +212,11 @@ func initColors() {
 	gc.InitPair(C_Afr, gc.C_BLACK, 229)
 	gc.InitPair(C_Asi, gc.C_BLACK, 214)
 	gc.InitPair(C_Sea, gc.C_BLACK, 220)
+
+	gc.InitPair(C_Early, gc.C_WHITE, 38)
+	gc.InitPair(C_Mid, gc.C_WHITE, 25)
+	gc.InitPair(C_Late, gc.C_WHITE, 236)
+	gc.InitPair(C_CardText, gc.C_BLACK, 153)
 }
 
 type NCursesUI struct {
@@ -266,6 +276,7 @@ func (nc *NCursesUI) Close() error {
 }
 
 func (nc *NCursesUI) Redraw(g *Game) {
+	nc.clear()
 	var name, stab, infUsa, infSov int16
 	nc.MovePrint(0, 0, world)
 	for id, extra := range data {
@@ -325,6 +336,134 @@ func (nc *NCursesUI) Redraw(g *Game) {
 	nc.ColorOff(phasingColor)
 	nc.Refresh()
 	nc.Move(37, 0)
+}
+
+func (nc *NCursesUI) clear() {
+	for i := 0; i < maxHeight; i++ {
+		nc.Move(i, 0)
+		nc.ClearToEOL()
+	}
+	nc.Move(37, 0)
+	nc.Refresh()
+}
+
+func (nc *NCursesUI) ShowMessages(messages []string) {
+	nc.clear()
+	start := 0
+	if len(messages) > maxHeight {
+		start = len(messages) - maxHeight
+	}
+	for i, msg := range messages[start:] {
+		nc.MovePrint(i, 0, msg)
+	}
+	nc.Move(37, 0)
+	nc.Refresh()
+}
+
+const (
+	cardWidth   = 35
+	cardsPerRow = 3
+	maxHeight   = 36
+)
+
+type cardRow []Card
+
+func (cr cardRow) Height() int {
+	h := 0
+	for _, c := range cr {
+		height := cardHeight(c)
+		if height > h {
+			h = height
+		}
+	}
+	return h
+}
+
+func cardRows(cards []Card) []cardRow {
+	rows := []cardRow{}
+	for i := 0; i < len(cards); i += cardsPerRow {
+		end := Min(i+cardsPerRow, len(cards))
+		rows = append(rows, cardRow(cards[i:end]))
+	}
+	return rows
+}
+
+func cardHeight(card Card) int {
+	lines := wordWrap(card.Text, cardWidth)
+	return 2 + len(lines)
+}
+
+func (nc *NCursesUI) ShowCards(cards []Card) {
+	nc.clear()
+	x := 5
+	y := 2
+	offsetY := 0
+	rows := cardRows(cards)
+	for _, row := range rows {
+		if offsetY+row.Height() > maxHeight {
+			break
+		}
+
+		for i, c := range row {
+			offsetX := i * (cardWidth + 1)
+			nc.drawCard(c, Pos{x + offsetX, y + offsetY})
+		}
+
+		offsetY += row.Height() + 1
+
+	}
+	nc.Refresh()
+	nc.Move(37, 0)
+}
+
+func (nc *NCursesUI) drawCard(card Card, start Pos) {
+	// Ops
+	var affColor int16
+	switch card.Aff {
+	case USA:
+		affColor = C_UsaControl
+	case SOV:
+		affColor = C_SovControl
+	default:
+		affColor = C_SovInfluence
+	}
+	var opsStr string
+	switch card.Ops {
+	case 0:
+		opsStr = " - "
+	default:
+		opsStr = " " + fmt.Sprintf("%1d", card.Ops) + " "
+	}
+	nc.ColorOn(affColor)
+	nc.MovePrint(start.Y, start.X, opsStr)
+	nc.ColorOff(affColor)
+
+	// War heading
+	var eraColor int16
+	switch card.Era {
+	case Early:
+		eraColor = C_Early
+	case Mid:
+		eraColor = C_Mid
+	default:
+		eraColor = C_Late
+	}
+	nc.ColorOn(eraColor)
+	lineFormat := "%-" + strconv.Itoa(cardWidth-len(opsStr)) + "s"
+	nc.MovePrint(start.Y, start.X+len(opsStr), fmt.Sprintf(lineFormat, card.Era.String()))
+	nc.ColorOff(eraColor)
+
+	// Name
+	lineFormat = "%-" + strconv.Itoa(cardWidth) + "s"
+	nc.AttrOn(gc.A_BOLD)
+	nc.ColorOn(C_CardText)
+	nc.MovePrint(start.Y+1, start.X, fmt.Sprintf(lineFormat, card.Name))
+	nc.AttrOff(gc.A_BOLD)
+	lines := wordWrap(card.Text, cardWidth)
+	for i, line := range lines {
+		nc.MovePrint(start.Y+2+i, start.X, fmt.Sprintf(lineFormat, line))
+	}
+	nc.ColorOff(C_CardText)
 }
 
 // countryColors returns the default coloring for a country, notwithstanding

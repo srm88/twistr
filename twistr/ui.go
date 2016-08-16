@@ -2,9 +2,152 @@ package twistr
 
 import (
 	"fmt"
+	"strings"
 )
 
-func GetInput(g *State, player Aff, inp interface{}, message string, choices ...string) {
+const (
+	MetaRune = ';'
+)
+
+type Overlay interface {
+	Display(UI) Overlay
+	Command(string) Overlay
+}
+
+type LogOverlay struct {
+	lines   []string
+	columns int
+	rows    int
+	start   int
+}
+
+func NewLogOverlay(messages []string) *LogOverlay {
+	m := &LogOverlay{
+		lines:   []string{},
+		columns: 100,
+		rows:    30,
+		start:   0,
+	}
+	for _, msg := range messages {
+		wrapped := wordWrap(msg, m.columns)
+		rows := len(wrapped)
+		if rows > 0 && wrapped[rows-1] == "" {
+			wrapped = wrapped[:rows-1]
+		}
+		m.lines = append(m.lines, wrapped...)
+	}
+	return m
+}
+
+func (m *LogOverlay) Display(ui UI) Overlay {
+	ui.ShowMessages(m.lines[m.start:Min(len(m.lines), m.start+m.rows)])
+	return m
+}
+
+func (m *LogOverlay) Command(raw string) Overlay {
+	switch raw {
+	case "next":
+		if m.start+m.rows <= len(m.lines) {
+			m.start += m.rows
+		}
+	case "prev":
+		m.start = Max(0, m.start-m.rows)
+	}
+	return m
+}
+
+type CardOverlay struct {
+	cards []Card
+	start int
+}
+
+func NewCardOverlay(cards []Card) *CardOverlay {
+	return &CardOverlay{cards, 0}
+}
+
+func (m *CardOverlay) Display(ui UI) Overlay {
+	ui.ShowCards(m.cards[m.start:])
+	return m
+}
+
+func (m *CardOverlay) Command(raw string) Overlay {
+	switch raw {
+	case "next":
+		if m.start+6 < len(m.cards) {
+			m.start += 6
+		}
+	case "prev":
+		m.start = Max(0, m.start-6)
+	}
+	return m
+}
+
+func parseMeta(input string) (bool, string) {
+	if len(input) > 0 && input[0] == MetaRune {
+		return true, strings.ToLower(input[1:])
+	}
+	return false, ""
+}
+
+func parseCommand(raw string) (cmd string, args []string) {
+	tokens := strings.Split(raw, " ")
+	if len(tokens) == 0 {
+		return "", nil
+	}
+	return tokens[0], tokens[1:]
+}
+
+func modal(s *State, command string) {
+	who := s.Phasing
+	cmd, args := parseCommand(command)
+	switch cmd {
+	case "hand":
+		ShowHand(s, s.Phasing, s.Phasing, true)
+		return
+	case "log":
+		s.SetOverlay(NewLogOverlay(s.Game.Transcript))
+		s.Redraw(s.Game)
+		return
+	case "board":
+		s.SetOverlay(nil)
+		s.Redraw(s.Game)
+		return
+	case "deck":
+		s.SetOverlay(NewCardOverlay(s.Deck.Cards))
+		s.Redraw(s.Game)
+	case "card":
+		if len(args) != 1 {
+			break
+		}
+		card, err := lookupCard(args[0])
+		if err != nil {
+			s.UI.Message(who, err.Error())
+			return
+		}
+		s.SetOverlay(NewCardOverlay([]Card{card}))
+		s.Redraw(s.Game)
+		return
+	case "barf":
+		s.History.Dump()
+		return
+	case "undo":
+		if !s.CanUndo() {
+			// XXX message = "Cannot undo."
+			return
+		}
+		s.Undo()
+		panic("Should never get here!")
+	default:
+		if s.Overlay != nil {
+			s.SetOverlay(s.Overlay.Command(cmd))
+		}
+		s.Redraw(s.Game)
+		return
+	}
+	s.UI.Message(s.Phasing, "Unknown command")
+}
+
+func GetInput(s *State, player Aff, inp interface{}, message string, choices ...string) {
 	var err error
 	validChoice := func(in string) bool {
 		if len(choices) == 0 {
@@ -18,21 +161,10 @@ func GetInput(g *State, player Aff, inp interface{}, message string, choices ...
 		return false
 	}
 retry:
-	inputStr := g.Solicit(player, message, choices)
-	switch inputStr {
-	case "canundo":
-		message = fmt.Sprintf("%v\n", g.CanUndo())
+	inputStr := s.Solicit(player, message, choices)
+	if ok, cmd := parseMeta(inputStr); ok {
+		modal(s, cmd)
 		goto retry
-	case "barf":
-		g.History.Dump()
-		goto retry
-	case "undo":
-		if !g.CanUndo() {
-			message = "Cannot undo."
-			goto retry
-		}
-		g.Undo()
-		panic("Should never get here!")
 	}
 	if len(choices) > 0 && !validChoice(inputStr) {
 		err = fmt.Errorf("'%s' is not a valid choice", inputStr)
@@ -48,6 +180,10 @@ retry:
 type UI interface {
 	Solicit(player Aff, message string, choices []string) (reply string)
 	Message(player Aff, message string)
+	ShowMessages([]string)
+	ShowCards([]Card)
+	// Inconsistent. Doesn't always use game -- other modes have their own
+	// state instead of relying on parameter.
 	Redraw(*Game)
 	Close() error
 }
