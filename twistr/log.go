@@ -132,7 +132,11 @@ func (r *History) Pop() {
 }
 
 func (r *History) Write(input []byte) (n int, err error) {
-	// Never do when replaying ...
+	// Never do when replaying. This means s.Log is safe to call on replayed
+	// input.
+	if r.InReplay() || r.replaying {
+		return
+	}
 	lines := strings.Split(string(input), "\n")
 	if lines[len(lines)-1] == "" {
 		lines = lines[:len(lines)-1]

@@ -1,6 +1,7 @@
 package twistr
 
 import "fmt"
+import "log"
 
 // All WIP. Maybe obliterate it.
 
@@ -136,10 +137,127 @@ func japanProtected(s *State, player Aff, t *Country) bool {
 	return s.Effect(USJapanMutualDefensePact) && t.Id == Japan && player == SOV
 }
 
-func influenceCost(player Aff, target Country) int {
+type influenceChange func(*Country) error
+
+func PlusInf(aff Aff, n int) influenceChange {
+	return func(c *Country) error {
+		c.Inf[aff] += n
+		return nil
+	}
+}
+
+func LessInf(aff Aff, n int) influenceChange {
+	return func(c *Country) error {
+		if c.Inf[aff] == 0 {
+			return fmt.Errorf("No %s influence in %s", aff, c.Name)
+		}
+		c.Inf[aff] = Max(0, c.Inf[aff]-n)
+		return nil
+	}
+}
+
+func DoubleInf(aff Aff) influenceChange {
+	return func(c *Country) error {
+		if c.Inf[aff] == 0 {
+			return fmt.Errorf("No %s influence in %s", aff, c.Name)
+		}
+		c.Inf[aff] *= 2
+		return nil
+	}
+}
+
+func ZeroInf(aff Aff) influenceChange {
+	return func(c *Country) error {
+		if c.Inf[aff] == 0 {
+			return fmt.Errorf("No %s influence in %s", aff, c.Name)
+		}
+		c.Inf[aff] = 0
+		return nil
+	}
+}
+
+func MatchInf(toMatch, toReceive Aff) influenceChange {
+	return func(c *Country) error {
+		if c.Inf[toReceive] >= c.Inf[toMatch] {
+			return fmt.Errorf("Already match %s influence in %s", toMatch, c.Name)
+		}
+		c.Inf[toReceive] = c.Inf[toMatch]
+		return nil
+	}
+}
+
+func NoOp(c *Country) error {
+	return nil
+}
+
+func NormalCost(player Aff, target *Country) int {
+	return 1
+}
+
+func OpInfluenceCost(player Aff, target *Country) int {
 	controlled := target.Controlled()
 	if controlled == player.Opp() {
 		return 2
 	}
 	return 1
+}
+
+func SelectInfluence(s *State, player Aff, message string, change influenceChange, n int, checks ...countryCheck) []*Country {
+	return selectInfluence(s, player, message, change, n, false, NormalCost, checks...)
+}
+
+func SelectInfluenceExactly(s *State, player Aff, message string, change influenceChange, n int, checks ...countryCheck) []*Country {
+	return selectInfluence(s, player, message, change, n, true, NormalCost, checks...)
+}
+
+func SelectOneInfluence(s *State, player Aff, message string, change influenceChange, checks ...countryCheck) *Country {
+	return selectInfluence(s, player, message, change, 1, true, NormalCost, checks...)[0]
+}
+
+func selectInfluence(s *State, player Aff, message string, change influenceChange, n int, exactly bool, costFun func(Aff, *Country) int, checks ...countryCheck) []*Country {
+	used := 0
+	chosen := []*Country{}
+	var c *Country
+	var err error
+loop:
+	if err != nil {
+		s.UI.Message(player, err.Error())
+		err = nil
+	}
+	if !s.ReadInto(&c) {
+		GetInput(s, player, &c, message)
+	}
+	cost := costFun(player, c)
+	switch {
+	case c == EndSelectCountry && exactly:
+		err = fmt.Errorf("Invalid choice")
+		goto loop
+	case c == EndSelectCountry:
+		// We are done!
+		s.Log(c)
+		return chosen
+	case used+cost > n:
+		err = fmt.Errorf("Too much! That would use %d.", used+cost)
+		goto loop
+	default:
+		for _, check := range checks {
+			if err = check(c); err != nil {
+				goto loop
+			}
+		}
+	}
+	// User managed to select a country; let's see if the story checks out.
+	if err = change(c); err != nil {
+		goto loop
+	}
+	// Success!
+	used += cost
+	chosen = append(chosen, c)
+	log.Printf("Added %s, now used %d\n", c.Name, used)
+	s.Log(c)
+	s.Redraw(s.Game)
+	if used == n {
+		return chosen
+	}
+	goto loop
 }

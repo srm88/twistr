@@ -5,6 +5,15 @@ import (
 	"strings"
 )
 
+// Magic singleton to terminate country list selection.
+const (
+	EndSelectCountryStr = "end"
+)
+
+var (
+	EndSelectCountry = &Country{Name: EndSelectCountryStr}
+)
+
 // Affiliation
 type Aff int
 
@@ -676,6 +685,9 @@ func lookupOpsKind(name string) (OpsKind, error) {
 func lookupCountry(name string) (*Country, error) {
 	var cid CountryId
 	var ok bool
+	if strings.ToLower(name) == EndSelectCountryStr {
+		return EndSelectCountry, nil
+	}
 	if cid, ok = countryIdLookup[strings.ToLower(name)]; !ok {
 		if cid, ok = countryShortLookup[strings.ToUpper(name)]; !ok {
 			return nil, errors.New("Unknown country '" + name + "'")

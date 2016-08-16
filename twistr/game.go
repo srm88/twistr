@@ -34,20 +34,13 @@ func Start(s *State) {
 	Deal(s)
 	s.Redraw(s.Game)
 	// SOV chooses 6 influence in E europe
-	cs := SelectInfluenceForce(s, SOV, func() ([]*Country, error) {
-		return SelectExactlyNInfluence(s, SOV,
-			"6 influence in East Europe", 6,
-			InRegion(EastEurope))
-	})
-	PlaceInfluence(s, SOV, cs)
+	SelectInfluenceExactly(s, SOV, "6 influence in East Europe",
+		PlusInf(SOV, 1), 6, InRegion(EastEurope))
 	s.Commit()
 	// US chooses 7 influence in W europe
-	csUSA := SelectInfluenceForce(s, USA, func() ([]*Country, error) {
-		return SelectExactlyNInfluence(s, USA,
-			"7 influence in West Europe", 7,
-			InRegion(WestEurope))
-	})
-	PlaceInfluence(s, USA, csUSA)
+	SelectInfluenceExactly(s, USA, "7 influence in West Europe",
+		PlusInf(USA, 1), 7, InRegion(WestEurope))
+
 	s.Commit()
 	// Temporary
 	for s.Turn = 1; s.Turn <= 10; s.Turn++ {
@@ -413,10 +406,11 @@ func DoFreeCoup(s *State, player Aff, card Card, allowedTargets []CountryId) boo
 }
 
 func OpInfluence(s *State, player Aff, ops int) {
-	cs := SelectInfluenceForce(s, player, func() ([]*Country, error) {
-		return SelectInfluenceOps(s, player, ops)
-	})
-	PlaceInfluence(s, player, cs)
+	// Compute ops
+	ops += opsMod(s, player, nil)
+	// XXX chernobyl, etc
+	selectInfluence(s, player, fmt.Sprintf("Place %d influence", ops),
+		PlusInf(player, 1), ops, false, OpInfluenceCost, CanReach(s, player))
 }
 
 func PlayEvent(s *State, player Aff, card Card) {
@@ -595,100 +589,27 @@ func CanRemove(aff Aff) countryCheck {
 	}
 }
 
-// SelectNInfluence asks the player to choose a number of countries to receive
-// or lose influence, and optional checks to perform on the chosen countries.
-func SelectNInfluence(s *State, player Aff, message string, n int, checks ...countryCheck) ([]*Country, error) {
-	return selectNInfluence(s, player, message, n, false, checks...)
-}
-
-func SelectExactlyNInfluence(s *State, player Aff, message string, n int, checks ...countryCheck) ([]*Country, error) {
-	return selectNInfluence(s, player, message, n, true, checks...)
-}
-
-func selectNInfluence(s *State, player Aff, message string, n int, exactly bool, checks ...countryCheck) (cs []*Country, err error) {
-	cs = SelectInfluence(s, player, message)
-	switch {
-	case exactly && len(cs) != n:
-		err = fmt.Errorf("Select exactly %d", n)
-		return
-	case !exactly && len(cs) > n:
-		err = fmt.Errorf("Too much. Select %d", n)
-		return
+func CanReach(s *State, player Aff) countryCheck {
+	influenced := make(map[CountryId]bool)
+	for cid, c := range s.Countries {
+		if c.Inf[player] > 0 {
+			influenced[cid] = true
+		}
 	}
-	for _, placement := range cs {
-		for _, check := range checks {
-			if err = check(placement); err != nil {
-				return
+	return func(c *Country) error {
+		if influenced[c.Id] {
+			return nil
+		}
+		if c.AdjSuper == player {
+			return nil
+		}
+		for _, ad := range c.AdjCountries {
+			if influenced[ad.Id] {
+				return nil
 			}
 		}
+		return fmt.Errorf("Cannot reach %s", c.Name)
 	}
-	return
-}
-
-func SelectInfluenceOps(s *State, player Aff, ops int) (cs []*Country, err error) {
-	// Compute ops
-	ops += opsMod(s, player, cs)
-	message := fmt.Sprintf("Place %d influence", ops)
-	cs = SelectInfluence(s, player, message)
-	for _, c := range cs {
-		if !canReach(c, player) {
-			return nil, fmt.Errorf("Cannot reach %s", c.Name)
-		}
-	}
-	// Compute cost. Copy each country so that we can update its influence
-	// as we go. E.g. two ops are spent breaking control, then the next
-	// influence place costs one op.
-	cost := 0
-	workingCountries := make(map[CountryId]Country)
-	for _, c := range cs {
-		workingCountries[c.Id] = *c
-	}
-	for _, c := range cs {
-		cost += influenceCost(player, workingCountries[c.Id])
-		tmp := workingCountries[c.Id]
-		tmp.Inf[player] += 1
-		workingCountries[c.Id] = tmp
-	}
-	switch {
-	case cost > ops:
-		err = fmt.Errorf("Overspent ops by %d", (cost - ops))
-	case cost < ops:
-		err = fmt.Errorf("Underspent ops by %d", (ops - cost))
-	}
-	return
-}
-
-func canReach(c *Country, player Aff) bool {
-	if c.Inf[player] > 0 {
-		return true
-	}
-	if c.AdjSuper == player {
-		return true
-	}
-	for _, ad := range c.AdjCountries {
-		if ad.Inf[player] > 0 {
-			return true
-		}
-	}
-	return false
-}
-
-// Repeat selectFn until the user's input is acceptible.
-// This should be reconsidered once we support log-replay and log-writing.
-func SelectInfluenceForce(s *State, player Aff, selectFn func() ([]*Country, error)) []*Country {
-	var cs []*Country
-	var err error
-	cs, err = selectFn()
-	for err != nil {
-		s.UI.Message(player, err.Error())
-		cs, err = selectFn()
-	}
-	return cs
-}
-
-func SelectInfluence(s *State, player Aff, message string) (cs []*Country) {
-	GetOrLog(s, player, &cs, message)
-	return
 }
 
 func SelectCountry(s *State, player Aff, message string, countries ...CountryId) (c *Country) {
@@ -709,18 +630,6 @@ func SelectRegion(s *State, player Aff, message string) (r Region) {
 	}
 	GetInput(s, player, &r, message, choices...)
 	return
-}
-
-func PlaceInfluence(s *State, player Aff, cs []*Country) {
-	for _, c := range cs {
-		c.Inf[player] += 1
-	}
-}
-
-func RemoveInfluence(s *State, player Aff, cs []*Country) {
-	for _, c := range cs {
-		c.Inf[player] = Max(0, c.Inf[player]-1)
-	}
 }
 
 // PseudoCard returns a card struct that can be used for events with text like
