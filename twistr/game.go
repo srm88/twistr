@@ -356,35 +356,39 @@ func PlayOps(s *State, player Aff, card Card) {
 func ConductOps(s *State, player Aff, card Card, kinds ...OpsKind) {
 	switch SelectOps(s, player, card, kinds...) {
 	case COUP:
-		OpCoup(s, player, card.Ops)
+		OpCoup(s, player, card)
 	case REALIGN:
-		OpRealign(s, player, card.Ops)
+		OpRealign(s, player, card)
 	case INFLUENCE:
-		OpInfluence(s, player, card.Ops)
+		OpInfluence(s, player, card)
 	}
 }
 
-func OpRealign(s *State, player Aff, ops int) {
-	// XXX; needs opsMod
-	for i := 0; i < ops; i++ {
+func OpRealign(s *State, player Aff, card Card) {
+	targets := []*Country{}
+	for spent := 0; spent < card.Ops+opsMod(s, player, card, targets); spent++ {
 		target := SelectCountry(s, player, "Realign where?")
-		for !canRealign(s, player, target, false) {
+		// Check that the choice is valid, and also hasn't violated any
+		// requirements for ops bonuses (vietnam revolts, china card)
+		for !canRealign(s, player, target, false) ||
+			spent >= card.Ops+opsMod(s, player, card, append(targets, target)) {
 			target = SelectCountry(s, player, "Oh no you goofed. Realign where?")
 		}
 		rollUSA := SelectRoll(s)
 		rollSOV := SelectRoll(s)
 		realign(s, target, rollUSA, rollSOV)
+		targets = append(targets, target)
+		s.Redraw(s.Game)
 	}
 }
 
-func OpCoup(s *State, player Aff, ops int) {
+func OpCoup(s *State, player Aff, card Card) {
 	target := SelectCountry(s, player, "Coup where?")
 	for !canCoup(s, player, target, false) {
 		target = SelectCountry(s, player, "Oh no you goofed. Coup where?")
 	}
-
 	roll := SelectRoll(s)
-	ops += opsMod(s, player, []*Country{target})
+	ops := card.Ops + opsMod(s, player, card, []*Country{target})
 	coup(s, player, ops, roll, target, false)
 }
 
@@ -401,16 +405,17 @@ func DoFreeCoup(s *State, player Aff, card Card, allowedTargets []CountryId) boo
 	}
 	target := SelectCountry(s, player, "Free coup where?", targets...)
 	roll := SelectRoll(s)
-	ops := card.Ops + opsMod(s, player, []*Country{target})
+	ops := card.Ops + opsMod(s, player, card, []*Country{target})
 	return coup(s, player, ops, roll, target, true)
 }
 
-func OpInfluence(s *State, player Aff, ops int) {
-	// Compute ops
-	ops += opsMod(s, player, nil)
+func OpInfluence(s *State, player Aff, card Card) {
 	// XXX chernobyl, etc
-	selectInfluence(s, player, fmt.Sprintf("Place %d influence", ops),
-		PlusInf(player, 1), ops, false, OpInfluenceCost, CanReach(s, player))
+	selectInfluence(s, player, fmt.Sprintf("Place influence for %s (%d)", card.Name, card.Ops),
+		PlusInf(player, 1),
+		OpsLimit(s, player, card), false,
+		OpInfluenceCost(player),
+		CanReach(s, player))
 }
 
 func PlayEvent(s *State, player Aff, card Card) {
@@ -457,7 +462,7 @@ func SelectPlay(s *State, player Aff, card Card) (pk PlayKind) {
 	case card.Prevented(s.Game):
 		canEvent = false
 	}
-	ops := card.Ops + opsMod(s, player, nil)
+	ops := card.Ops + opsMod(s, player, card, nil)
 	if !CanAdvance(s, player, ops) {
 		canSpace = false
 	}
@@ -578,17 +583,6 @@ func HasInfluence(aff Aff) countryCheck {
 	}
 }
 
-func CanRemove(aff Aff) countryCheck {
-	removed := make(map[CountryId]int)
-	return func(c *Country) error {
-		removed[c.Id] += 1
-		if c.Inf[aff]-removed[c.Id] < 0 {
-			return fmt.Errorf("Not enough %s influence in %s", aff, c.Name)
-		}
-		return nil
-	}
-}
-
 func CanReach(s *State, player Aff) countryCheck {
 	influenced := make(map[CountryId]bool)
 	for cid, c := range s.Countries {
@@ -613,6 +607,7 @@ func CanReach(s *State, player Aff) countryCheck {
 }
 
 func SelectCountry(s *State, player Aff, message string, countries ...CountryId) (c *Country) {
+	// XXX this doesn't permit use of country short codes
 	choices := make([]string, len(countries))
 	for i, cn := range countries {
 		choices[i] = s.Countries[cn].Ref()

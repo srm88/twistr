@@ -22,6 +22,7 @@ func realignMods(target Country) (mods Influence) {
 	return
 }
 
+// XXX realign bonus, irancontrascandal, ...
 func realign(s *State, target *Country, rollUSA, rollSOV int) {
 	mods := realignMods(*target)
 	rollUSA += mods[USA]
@@ -57,25 +58,29 @@ func coupBonus(s *State, player Aff, target *Country) (bonus int) {
 	return
 }
 
-func opsMod(s *State, player Aff, countries []*Country) (mod int) {
-	if player == SOV && s.Effect(VietnamRevolts) {
-		if AllIn(countries, SoutheastAsia) {
-			mod += 1
-		}
+func opsMod(s *State, player Aff, card Card, countries []*Country) (mod int) {
+	// containment, brezhnev, red scare (can't mod past 4 or below 1)
+	if player == SOV && s.Effect(VietnamRevolts) && AllIn(countries, SoutheastAsia) {
+		mod += 1
+	}
+	if card.Id == TheChinaCard && AllIn(countries, Asia) {
+		mod += 1
 	}
 	return
 }
 
 // Coup
-func coup(s *State, player Aff, ops int, roll int, target *Country, free bool) bool {
+func coup(s *State, player Aff, ops int, roll int, target *Country, free bool) (removedInfluence bool) {
 	bonus := coupBonus(s, player, target)
 	delta := roll + bonus + ops - (target.Stability * 2)
-	if delta <= 0 {
-		return false
+	removedInfluence = delta > 0
+	if removedInfluence {
+		oppCurInf := target.Inf[player.Opp()]
+		removed := Min(oppCurInf, delta)
+		gained := delta - removed
+		target.Inf[player] += gained
+		target.Inf[player.Opp()] -= removed
 	}
-	oppCurInf := target.Inf[player.Opp()]
-	removed := Min(oppCurInf, delta)
-	gained := delta - removed
 	if target.Battleground {
 		// XXX: CubanMissileCrisis, NuclearSubs
 		s.DegradeDefcon(1)
@@ -83,9 +88,7 @@ func coup(s *State, player Aff, ops int, roll int, target *Country, free bool) b
 	if !free {
 		s.MilOps[player] += ops
 	}
-	target.Inf[player] += gained
-	target.Inf[player.Opp()] -= removed
-	return true
+	return
 }
 
 // A country cannot be coup'd if it lacks any of the opponent's influence.
@@ -190,31 +193,45 @@ func NoOp(c *Country) error {
 	return nil
 }
 
-func NormalCost(player Aff, target *Country) int {
+func NormalCost(target *Country) int {
 	return 1
 }
 
-func OpInfluenceCost(player Aff, target *Country) int {
-	controlled := target.Controlled()
-	if controlled == player.Opp() {
-		return 2
+func OpInfluenceCost(player Aff) func(*Country) int {
+	return func(target *Country) int {
+		controlled := target.Controlled()
+		if controlled == player.Opp() {
+			return 2
+		}
+		return 1
 	}
-	return 1
+}
+
+func OpsLimit(s *State, player Aff, card Card) func([]*Country) int {
+	return func(cs []*Country) int {
+		return card.Ops + opsMod(s, player, card, cs)
+	}
+}
+
+func LimitN(n int) func([]*Country) int {
+	return func(cs []*Country) int {
+		return n
+	}
 }
 
 func SelectInfluence(s *State, player Aff, message string, change influenceChange, n int, checks ...countryCheck) []*Country {
-	return selectInfluence(s, player, message, change, n, false, NormalCost, checks...)
+	return selectInfluence(s, player, message, change, LimitN(n), false, NormalCost, checks...)
 }
 
 func SelectInfluenceExactly(s *State, player Aff, message string, change influenceChange, n int, checks ...countryCheck) []*Country {
-	return selectInfluence(s, player, message, change, n, true, NormalCost, checks...)
+	return selectInfluence(s, player, message, change, LimitN(n), true, NormalCost, checks...)
 }
 
 func SelectOneInfluence(s *State, player Aff, message string, change influenceChange, checks ...countryCheck) *Country {
-	return selectInfluence(s, player, message, change, 1, true, NormalCost, checks...)[0]
+	return selectInfluence(s, player, message, change, LimitN(1), true, NormalCost, checks...)[0]
 }
 
-func selectInfluence(s *State, player Aff, message string, change influenceChange, n int, exactly bool, costFun func(Aff, *Country) int, checks ...countryCheck) []*Country {
+func selectInfluence(s *State, player Aff, message string, change influenceChange, nFun func([]*Country) int, exactly bool, costFun func(*Country) int, checks ...countryCheck) []*Country {
 	used := 0
 	chosen := []*Country{}
 	var c *Country
@@ -227,7 +244,8 @@ loop:
 	if !s.ReadInto(&c) {
 		GetInput(s, player, &c, message)
 	}
-	cost := costFun(player, c)
+	cost := costFun(c)
+	n := nFun(append(chosen, c))
 	switch {
 	case c == EndSelectCountry && exactly:
 		err = fmt.Errorf("Invalid choice")

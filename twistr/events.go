@@ -665,7 +665,8 @@ func PlayJunta(s *State, player Aff) {
 	case "coup":
 		DoFreeCoup(s, player, Cards[Junta], centralOrSouth)
 	case "realign":
-		OpRealign(s, player, Cards[Junta].Ops)
+		// XXX free realign
+		OpRealign(s, player, Cards[Junta])
 	}
 }
 
@@ -1042,7 +1043,7 @@ func PlayChe(s *State, player Aff) {
 	   Africa. The USSR may perform a second Coup Attempt, against a different
 	   non-Battleground country in Central America, South America or Africa, if the
 	   first Coup Attempt removed any US Influence from the target country. */
-	// Free coup
+	// XXX NOT free coup
 	targets := []CountryId{}
 	allTargets := SouthAmerica.Countries
 	allTargets = append(targets, CentralAmerica.Countries...)
@@ -1276,6 +1277,7 @@ func PlayTearDownThisWall(s *State, player Aff) {
 	   Realignment rolls in Europe using the Operations value of this card. This
 	   Event prevents / cancels the effect(s) of the “#55 – Willy Brandt” Event. */
 	s.Countries[EGermany].Inf[USA] += 3
+	// XXX wrong, should be free coup/realign
 	ConductOps(s, player, Cards[TearDownThisWall], COUP, REALIGN)
 	s.Events[TearDownThisWall] = player
 	if s.Effect(WillyBrandt) {
