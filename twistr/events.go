@@ -655,7 +655,6 @@ func PlayJunta(s *State, player Aff) {
 	/* Add 2 Influence to a single country in Central or South America. The
 	   player may make free Coup Attempts or Realignment rolls in either Central or
 	   South America using the Operations value of this card. */
-	centralOrSouth := append(SouthAmerica.Countries, CentralAmerica.Countries...)
 	SelectOneInfluence(s, player, "Choose a country in Central or South America",
 		PlusInf(player, 2),
 		InRegion(SouthAmerica, CentralAmerica))
@@ -663,10 +662,11 @@ func PlayJunta(s *State, player Aff) {
 		"Do you want to coup, realign or do nothing in Central/South America?",
 		"coup", "realign", "nothing") {
 	case "coup":
-		DoFreeCoup(s, player, Cards[Junta], centralOrSouth)
+		OpCoup(s, player, Cards[Junta], true,
+			InRegion(SouthAmerica, CentralAmerica))
 	case "realign":
 		// XXX free realign
-		OpRealign(s, player, Cards[Junta])
+		OpRealign(s, player, Cards[Junta], true)
 	}
 }
 
@@ -1043,19 +1043,19 @@ func PlayChe(s *State, player Aff) {
 	   Africa. The USSR may perform a second Coup Attempt, against a different
 	   non-Battleground country in Central America, South America or Africa, if the
 	   first Coup Attempt removed any US Influence from the target country. */
-	// XXX NOT free coup
-	targets := []CountryId{}
-	allTargets := SouthAmerica.Countries
-	allTargets = append(targets, CentralAmerica.Countries...)
-	allTargets = append(targets, Africa.Countries...)
-	for _, c := range allTargets {
-		if !s.Countries[c].Battleground {
-			targets = append(targets, c)
+	notBg := func(c *Country) error {
+		if c.Battleground {
+			return fmt.Errorf("%s is a battleground", c.Name)
 		}
+		return nil
 	}
-	couped := DoFreeCoup(s, player, Cards[Che], targets)
+	couped := OpCoup(s, player, Cards[Che], false,
+		InRegion(SouthAmerica, CentralAmerica, Africa),
+		notBg)
 	if couped {
-		DoFreeCoup(s, player, Cards[Che], targets)
+		OpCoup(s, player, Cards[Che], false,
+			InRegion(SouthAmerica, CentralAmerica, Africa),
+			notBg)
 	}
 }
 
@@ -1213,11 +1213,16 @@ func PlayOrtegaElectedInNicaragua(s *State, player Aff) {
 	   Nicaragua. */
 	nicaragua := s.Countries[Nicaragua]
 	nicaragua.Inf[USA] = 0
-	adjToNicaragua := make([]CountryId, len(nicaragua.AdjCountries))
-	for i, c := range nicaragua.AdjCountries {
-		adjToNicaragua[i] = c.Id
+	adjToNicaragua := func(c *Country) error {
+		for _, neighbor := range nicaragua.AdjCountries {
+			if neighbor.Id == c.Id {
+				return nil
+			}
+		}
+		return fmt.Errorf("%s is not adjacent to Nicaragua", c.Name)
 	}
-	DoFreeCoup(s, player, Cards[OrtegaElectedInNicaragua], adjToNicaragua)
+	OpCoup(s, player, Cards[OrtegaElectedInNicaragua], true,
+		adjToNicaragua)
 }
 
 func PlayTerrorism(s *State, player Aff) {
@@ -1277,8 +1282,7 @@ func PlayTearDownThisWall(s *State, player Aff) {
 	   Realignment rolls in Europe using the Operations value of this card. This
 	   Event prevents / cancels the effect(s) of the “#55 – Willy Brandt” Event. */
 	s.Countries[EGermany].Inf[USA] += 3
-	// XXX wrong, should be free coup/realign
-	ConductOps(s, player, Cards[TearDownThisWall], COUP, REALIGN)
+	ConductOpsFree(s, player, Cards[TearDownThisWall], COUP, REALIGN)
 	s.Events[TearDownThisWall] = player
 	if s.Effect(WillyBrandt) {
 		s.Cancel(WillyBrandt)

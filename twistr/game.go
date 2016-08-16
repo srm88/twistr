@@ -354,48 +354,52 @@ func PlayOps(s *State, player Aff, card Card) {
 }
 
 func ConductOps(s *State, player Aff, card Card, kinds ...OpsKind) {
+	conductOps(s, player, card, false, kinds)
+}
+
+func ConductOpsFree(s *State, player Aff, card Card, kinds ...OpsKind) {
+	conductOps(s, player, card, true, kinds)
+}
+
+func conductOps(s *State, player Aff, card Card, free bool, kinds []OpsKind) {
 	switch SelectOps(s, player, card, kinds...) {
 	case COUP:
-		OpCoup(s, player, card)
+		OpCoup(s, player, card, free)
 	case REALIGN:
-		OpRealign(s, player, card)
+		OpRealign(s, player, card, free)
 	case INFLUENCE:
 		OpInfluence(s, player, card)
 	}
 }
 
-func OpRealign(s *State, player Aff, card Card) {
+func OpRealign(s *State, player Aff, card Card, free bool) {
+	// XXX Something here is breaking on replay NOPE It's selectroll
 	selectInfluence(s, player, fmt.Sprintf("Realigns with %s (%d)", card.Name, card.Ops),
-		Realign(s, player),
+		func(c *Country) error {
+			Realign(s, player, c)
+			return nil
+		},
 		OpsLimit(s, player, card), false,
 		NormalCost,
-		CanRealign(s, player, false))
+		CanRealign(s, player, free))
 }
 
-func OpCoup(s *State, player Aff, card Card) {
-	selectInfluence(s, player, fmt.Sprintf("Coup with %s (%d)", card.Name, card.Ops),
-		Coup(s, player, card, false),
+func OpCoup(s *State, player Aff, card Card, free bool, checks ...countryCheck) (success bool) {
+	var msg string
+	if free {
+		msg = fmt.Sprintf("Free coup with %s (%d)", card.Name, card.Ops)
+	} else {
+		msg = fmt.Sprintf("Coup with %s (%d)", card.Name, card.Ops)
+	}
+	selectInfluence(s, player, msg,
+		func(c *Country) error {
+			success = Coup(s, player, card, c, free)
+			return nil
+		},
 		LimitN(1), true,
 		NormalCost,
-		CanCoup(s, player, false))
-}
-
-func DoFreeCoup(s *State, player Aff, card Card, allowedTargets []CountryId) bool {
-	targets := []CountryId{}
-	check := CanCoup(s, player, true)
-	for _, t := range allowedTargets {
-		if check(s.Countries[t]) == nil {
-			targets = append(targets, t)
-		}
-	}
-	if len(targets) == 0 {
-		// Awkward
-		return false
-	}
-	target := SelectCountry(s, player, "Free coup where?", targets...)
-	roll := SelectRoll(s)
-	ops := card.Ops + opsMod(s, player, card, []*Country{target})
-	return coup(s, player, ops, roll, target, true)
+		append(checks, CanCoup(s, player, free))...)
+	return
 }
 
 func OpInfluence(s *State, player Aff, card Card) {

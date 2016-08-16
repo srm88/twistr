@@ -6,6 +6,13 @@ import "log"
 // All WIP. Maybe obliterate it.
 
 // Realignment
+func Realign(s *State, player Aff, c *Country) {
+	rollUsa := SelectRoll(s)
+	rollSov := SelectRoll(s)
+	realign(s, c, rollUsa, rollSov)
+	s.Commit()
+}
+
 func realignMods(target Country) (mods Influence) {
 	switch {
 	case target.Inf[USA] > target.Inf[SOV]:
@@ -70,6 +77,14 @@ func opsMod(s *State, player Aff, card Card, countries []*Country) (mod int) {
 }
 
 // Coup
+func Coup(s *State, player Aff, card Card, c *Country, free bool) (success bool) {
+	roll := SelectRoll(s)
+	ops := card.Ops + opsMod(s, player, card, []*Country{c})
+	success = coup(s, player, ops, roll, c, free)
+	s.Commit()
+	return
+}
+
 func coup(s *State, player Aff, ops int, roll int, target *Country, free bool) (removedInfluence bool) {
 	bonus := coupBonus(s, player, target)
 	delta := roll + bonus + ops - (target.Stability * 2)
@@ -145,26 +160,6 @@ func japanProtected(s *State, player Aff, t *Country) bool {
 }
 
 type countryChange func(*Country) error
-
-func Realign(s *State, player Aff) countryChange {
-	return func(c *Country) error {
-		rollUsa := SelectRoll(s)
-		rollSov := SelectRoll(s)
-		realign(s, c, rollUsa, rollSov)
-		s.Commit()
-		return nil
-	}
-}
-
-func Coup(s *State, player Aff, card Card, free bool) countryChange {
-	return func(c *Country) error {
-		roll := SelectRoll(s)
-		ops := card.Ops + opsMod(s, player, card, []*Country{c})
-		coup(s, player, ops, roll, c, free)
-		s.Commit()
-		return nil
-	}
-}
 
 func PlusInf(aff Aff, n int) countryChange {
 	return func(c *Country) error {
