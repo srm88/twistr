@@ -323,9 +323,13 @@ func PlaySpace(s *State, player Aff, card Card) {
 	}
 }
 
-func SelectRoll(s *State) int {
-	// XXX: replay-log
-	return Roll()
+func SelectRoll(s *State) (roll int) {
+	if s.ReadInto(&roll) {
+		return
+	}
+	roll = Roll()
+	s.Log(roll)
+	return
 }
 
 func PlayOps(s *State, player Aff, card Card) {
@@ -375,9 +379,8 @@ func conductOps(s *State, player Aff, card Card, free bool, kinds []OpsKind) {
 func OpRealign(s *State, player Aff, card Card, free bool) {
 	// XXX Something here is breaking on replay NOPE It's selectroll
 	selectInfluence(s, player, fmt.Sprintf("Realigns with %s (%d)", card.Name, card.Ops),
-		func(c *Country) error {
+		func(c *Country) {
 			Realign(s, player, c)
-			return nil
 		},
 		OpsLimit(s, player, card), false,
 		NormalCost,
@@ -392,9 +395,8 @@ func OpCoup(s *State, player Aff, card Card, free bool, checks ...countryCheck) 
 		msg = fmt.Sprintf("Coup with %s (%d)", card.Name, card.Ops)
 	}
 	selectInfluence(s, player, msg,
-		func(c *Country) error {
+		func(c *Country) {
 			success = Coup(s, player, card, c, free)
-			return nil
 		},
 		LimitN(1), true,
 		NormalCost,

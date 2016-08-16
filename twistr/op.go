@@ -159,57 +159,43 @@ func japanProtected(s *State, player Aff, t *Country) bool {
 	return s.Effect(USJapanMutualDefensePact) && t.Id == Japan && player == SOV
 }
 
-type countryChange func(*Country) error
+type countryChange func(*Country)
 
 func PlusInf(aff Aff, n int) countryChange {
-	return func(c *Country) error {
+	return func(c *Country) {
 		c.Inf[aff] += n
-		return nil
 	}
 }
 
 func LessInf(aff Aff, n int) countryChange {
-	return func(c *Country) error {
-		if c.Inf[aff] == 0 {
-			return fmt.Errorf("No %s influence in %s", aff, c.Name)
-		}
+	return func(c *Country) {
 		c.Inf[aff] = Max(0, c.Inf[aff]-n)
-		return nil
 	}
 }
 
 func DoubleInf(aff Aff) countryChange {
-	return func(c *Country) error {
-		if c.Inf[aff] == 0 {
-			return fmt.Errorf("No %s influence in %s", aff, c.Name)
-		}
+	return func(c *Country) {
 		c.Inf[aff] *= 2
-		return nil
 	}
 }
 
 func ZeroInf(aff Aff) countryChange {
-	return func(c *Country) error {
-		if c.Inf[aff] == 0 {
-			return fmt.Errorf("No %s influence in %s", aff, c.Name)
-		}
+	return func(c *Country) {
 		c.Inf[aff] = 0
-		return nil
 	}
 }
 
 func MatchInf(toMatch, toReceive Aff) countryChange {
-	return func(c *Country) error {
+	return func(c *Country) {
 		if c.Inf[toReceive] >= c.Inf[toMatch] {
-			return fmt.Errorf("Already match %s influence in %s", toMatch, c.Name)
+			return
 		}
 		c.Inf[toReceive] = c.Inf[toMatch]
-		return nil
 	}
 }
 
-func NoOp(c *Country) error {
-	return nil
+func NoOp(c *Country) {
+	return
 }
 
 func NormalCost(target *Country) int {
@@ -283,15 +269,15 @@ loop:
 			}
 		}
 	}
-	// User managed to select a country; let's see if the story checks out.
-	if err = change(c); err != nil {
-		goto loop
-	}
 	// Success!
 	used += cost
 	chosen = append(chosen, c)
 	log.Printf("Added %s, now used %d\n", c.Name, used)
+	// Must log the country before applying the countryChange. This allows
+	// countryChange implementations to write to the log, which must follow
+	// country selection.
 	s.Log(c)
+	change(c)
 	s.Redraw(s.Game)
 	if used == n {
 		return chosen
