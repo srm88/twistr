@@ -110,18 +110,20 @@ func canCoup(s *State, player Aff, t *Country, free bool) bool {
 	}
 }
 
-func canRealign(s *State, player Aff, t *Country, free bool) bool {
-	switch {
-	case natoProtected(s, player, t):
-		return false
-	case japanProtected(s, player, t):
-		return false
-	case t.Inf[player.Opp()] < 1:
-		return false
-	case defconProtected(s, t) && !free:
-		return false
-	default:
-		return true
+func CanRealign(s *State, player Aff, free bool) countryCheck {
+	return func(t *Country) error {
+		switch {
+		case natoProtected(s, player, t):
+			return fmt.Errorf("%s protected by NATO", t.Name)
+		case japanProtected(s, player, t):
+			return fmt.Errorf("%s protected by US/Japan Mutual Defense Pact", t.Name)
+		case t.Inf[player.Opp()] < 1:
+			return fmt.Errorf("No %s influence in %s", player.Opp(), t.Name)
+		case defconProtected(s, t) && !free:
+			return fmt.Errorf("%s protected by DEFCON", t.Name)
+		default:
+			return nil
+		}
 	}
 }
 
@@ -140,16 +142,26 @@ func japanProtected(s *State, player Aff, t *Country) bool {
 	return s.Effect(USJapanMutualDefensePact) && t.Id == Japan && player == SOV
 }
 
-type influenceChange func(*Country) error
+type countryChange func(*Country) error
 
-func PlusInf(aff Aff, n int) influenceChange {
+func Realign(s *State, player Aff) countryChange {
+	return func(c *Country) error {
+		rollUsa := SelectRoll(s)
+		rollSov := SelectRoll(s)
+		realign(s, c, rollUsa, rollSov)
+		s.Commit()
+		return nil
+	}
+}
+
+func PlusInf(aff Aff, n int) countryChange {
 	return func(c *Country) error {
 		c.Inf[aff] += n
 		return nil
 	}
 }
 
-func LessInf(aff Aff, n int) influenceChange {
+func LessInf(aff Aff, n int) countryChange {
 	return func(c *Country) error {
 		if c.Inf[aff] == 0 {
 			return fmt.Errorf("No %s influence in %s", aff, c.Name)
@@ -159,7 +171,7 @@ func LessInf(aff Aff, n int) influenceChange {
 	}
 }
 
-func DoubleInf(aff Aff) influenceChange {
+func DoubleInf(aff Aff) countryChange {
 	return func(c *Country) error {
 		if c.Inf[aff] == 0 {
 			return fmt.Errorf("No %s influence in %s", aff, c.Name)
@@ -169,7 +181,7 @@ func DoubleInf(aff Aff) influenceChange {
 	}
 }
 
-func ZeroInf(aff Aff) influenceChange {
+func ZeroInf(aff Aff) countryChange {
 	return func(c *Country) error {
 		if c.Inf[aff] == 0 {
 			return fmt.Errorf("No %s influence in %s", aff, c.Name)
@@ -179,7 +191,7 @@ func ZeroInf(aff Aff) influenceChange {
 	}
 }
 
-func MatchInf(toMatch, toReceive Aff) influenceChange {
+func MatchInf(toMatch, toReceive Aff) countryChange {
 	return func(c *Country) error {
 		if c.Inf[toReceive] >= c.Inf[toMatch] {
 			return fmt.Errorf("Already match %s influence in %s", toMatch, c.Name)
@@ -219,19 +231,19 @@ func LimitN(n int) func([]*Country) int {
 	}
 }
 
-func SelectInfluence(s *State, player Aff, message string, change influenceChange, n int, checks ...countryCheck) []*Country {
+func SelectInfluence(s *State, player Aff, message string, change countryChange, n int, checks ...countryCheck) []*Country {
 	return selectInfluence(s, player, message, change, LimitN(n), false, NormalCost, checks...)
 }
 
-func SelectInfluenceExactly(s *State, player Aff, message string, change influenceChange, n int, checks ...countryCheck) []*Country {
+func SelectInfluenceExactly(s *State, player Aff, message string, change countryChange, n int, checks ...countryCheck) []*Country {
 	return selectInfluence(s, player, message, change, LimitN(n), true, NormalCost, checks...)
 }
 
-func SelectOneInfluence(s *State, player Aff, message string, change influenceChange, checks ...countryCheck) *Country {
+func SelectOneInfluence(s *State, player Aff, message string, change countryChange, checks ...countryCheck) *Country {
 	return selectInfluence(s, player, message, change, LimitN(1), true, NormalCost, checks...)[0]
 }
 
-func selectInfluence(s *State, player Aff, message string, change influenceChange, nFun func([]*Country) int, exactly bool, costFun func(*Country) int, checks ...countryCheck) []*Country {
+func selectInfluence(s *State, player Aff, message string, change countryChange, nFun func([]*Country) int, exactly bool, costFun func(*Country) int, checks ...countryCheck) []*Country {
 	used := 0
 	chosen := []*Country{}
 	var c *Country

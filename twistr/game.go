@@ -365,21 +365,11 @@ func ConductOps(s *State, player Aff, card Card, kinds ...OpsKind) {
 }
 
 func OpRealign(s *State, player Aff, card Card) {
-	targets := []*Country{}
-	for spent := 0; spent < card.Ops+opsMod(s, player, card, targets); spent++ {
-		target := SelectCountry(s, player, "Realign where?")
-		// Check that the choice is valid, and also hasn't violated any
-		// requirements for ops bonuses (vietnam revolts, china card)
-		for !canRealign(s, player, target, false) ||
-			spent >= card.Ops+opsMod(s, player, card, append(targets, target)) {
-			target = SelectCountry(s, player, "Oh no you goofed. Realign where?")
-		}
-		rollUSA := SelectRoll(s)
-		rollSOV := SelectRoll(s)
-		realign(s, target, rollUSA, rollSOV)
-		targets = append(targets, target)
-		s.Redraw(s.Game)
-	}
+	selectInfluence(s, player, fmt.Sprintf("Realigns for %s (%d)", card.Name, card.Ops),
+		Realign(s, player),
+		OpsLimit(s, player, card), false,
+		NormalCost,
+		CanRealign(s, player, false))
 }
 
 func OpCoup(s *State, player Aff, card Card) {
