@@ -11,7 +11,7 @@ type State struct {
 	UI
 	*Game
 	History     *History
-	Overlay     Overlay
+	Mode        Mode
 	Master      bool
 	LocalPlayer Aff
 	aof         io.WriteCloser
@@ -73,8 +73,8 @@ func (s *State) Close() error {
 
 func (s *State) Redraw(g *Game) {
 	// Careful ...
-	if s.Overlay != nil {
-		s.Overlay = s.Overlay.Display(s.UI)
+	if s.Mode != nil {
+		s.Mode = s.Mode.Display(s.UI)
 	} else {
 		s.UI.Redraw(g)
 	}
@@ -91,11 +91,11 @@ func (s *State) Transcribe(msg string) {
 	s.UI.Message(s.LocalPlayer, msg)
 }
 
-func (s *State) SetOverlay(o Overlay) {
+func (s *State) Enter(o Mode) {
 	if s.History.InReplay() {
 		return
 	}
-	s.Overlay = o
+	s.Mode = o
 }
 
 func NewState(ui UI, aofPath string, game *Game) (*State, error) {
@@ -128,7 +128,7 @@ func NewState(ui UI, aofPath string, game *Game) (*State, error) {
 
 	s := &State{
 		UI:          history,
-		Overlay:     nil,
+		Mode:        nil,
 		Game:        game,
 		History:     history,
 		Master:      false,

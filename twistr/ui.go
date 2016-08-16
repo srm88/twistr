@@ -9,20 +9,20 @@ const (
 	MetaRune = ';'
 )
 
-type Overlay interface {
-	Display(UI) Overlay
-	Command(string) Overlay
+type Mode interface {
+	Display(UI) Mode
+	Command(string) Mode
 }
 
-type LogOverlay struct {
+type LogMode struct {
 	lines   []string
 	columns int
 	rows    int
 	start   int
 }
 
-func NewLogOverlay(messages []string) *LogOverlay {
-	m := &LogOverlay{
+func NewLogMode(messages []string) *LogMode {
+	m := &LogMode{
 		lines:   []string{},
 		columns: 100,
 		rows:    30,
@@ -39,12 +39,12 @@ func NewLogOverlay(messages []string) *LogOverlay {
 	return m
 }
 
-func (m *LogOverlay) Display(ui UI) Overlay {
+func (m *LogMode) Display(ui UI) Mode {
 	ui.ShowMessages(m.lines[m.start:Min(len(m.lines), m.start+m.rows)])
 	return m
 }
 
-func (m *LogOverlay) Command(raw string) Overlay {
+func (m *LogMode) Command(raw string) Mode {
 	switch raw {
 	case "next":
 		if m.start+m.rows <= len(m.lines) {
@@ -56,21 +56,21 @@ func (m *LogOverlay) Command(raw string) Overlay {
 	return m
 }
 
-type CardOverlay struct {
+type CardMode struct {
 	cards []Card
 	start int
 }
 
-func NewCardOverlay(cards []Card) *CardOverlay {
-	return &CardOverlay{cards, 0}
+func NewCardMode(cards []Card) *CardMode {
+	return &CardMode{cards, 0}
 }
 
-func (m *CardOverlay) Display(ui UI) Overlay {
+func (m *CardMode) Display(ui UI) Mode {
 	ui.ShowCards(m.cards[m.start:])
 	return m
 }
 
-func (m *CardOverlay) Command(raw string) Overlay {
+func (m *CardMode) Command(raw string) Mode {
 	switch raw {
 	case "next":
 		if m.start+6 < len(m.cards) {
@@ -105,15 +105,15 @@ func modal(s *State, command string) {
 		ShowHand(s, s.Phasing, s.Phasing, true)
 		return
 	case "log":
-		s.SetOverlay(NewLogOverlay(s.Game.Transcript))
+		s.Enter(NewLogMode(s.Game.Transcript))
 		s.Redraw(s.Game)
 		return
 	case "board":
-		s.SetOverlay(nil)
+		s.Enter(nil)
 		s.Redraw(s.Game)
 		return
 	case "deck":
-		s.SetOverlay(NewCardOverlay(s.Deck.Cards))
+		s.Enter(NewCardMode(s.Deck.Cards))
 		s.Redraw(s.Game)
 	case "card":
 		if len(args) != 1 {
@@ -124,7 +124,7 @@ func modal(s *State, command string) {
 			s.UI.Message(who, err.Error())
 			return
 		}
-		s.SetOverlay(NewCardOverlay([]Card{card}))
+		s.Enter(NewCardMode([]Card{card}))
 		s.Redraw(s.Game)
 		return
 	case "barf":
@@ -138,8 +138,8 @@ func modal(s *State, command string) {
 		s.Undo()
 		panic("Should never get here!")
 	default:
-		if s.Overlay != nil {
-			s.SetOverlay(s.Overlay.Command(cmd))
+		if s.Mode != nil {
+			s.Enter(s.Mode.Command(cmd))
 		}
 		s.Redraw(s.Game)
 		return
