@@ -5,6 +5,26 @@ import "log"
 
 // All WIP. Maybe obliterate it.
 
+type Mod struct {
+	Diff int
+	Name string
+}
+
+func (m Mod) String() string {
+	if m.Diff >= 0 {
+		return fmt.Sprintf("%s +%d", m.Name, m.Diff)
+	} else {
+		return fmt.Sprintf("%s %d", m.Name, m.Diff)
+	}
+}
+
+func TotalMod(ms []Mod) (total int) {
+	for _, m := range ms {
+		total += m.Diff
+	}
+	return total
+}
+
 // Realignment
 func Realign(s *State, player Aff, c *Country) {
 	rollUsa := SelectRoll(s)
@@ -13,27 +33,37 @@ func Realign(s *State, player Aff, c *Country) {
 	s.Commit()
 }
 
-func realignMods(target Country) (mods Influence) {
+func realignMods(target Country) (modsUsa []Mod, modsSov []Mod) {
 	switch {
 	case target.Inf[USA] > target.Inf[SOV]:
-		mods[USA] += 1
+		modsUsa = append(modsUsa, Mod{1, "US influence"})
 	case target.Inf[SOV] > target.Inf[USA]:
-		mods[SOV] += 1
+		modsSov = append(modsSov, Mod{1, "SOV influence"})
 	}
+	usaAdj, sovAdj := 0, 0
 	for _, neighbor := range target.AdjCountries {
 		control := neighbor.Controlled()
-		if control != NEU {
-			mods[control] += 1
+		switch control {
+		case USA:
+			usaAdj += 1
+		case SOV:
+			sovAdj += 1
 		}
+	}
+	if usaAdj > 0 {
+		modsUsa = append(modsUsa, Mod{usaAdj, "US controlled adjacent"})
+	}
+	if sovAdj > 0 {
+		modsSov = append(modsSov, Mod{sovAdj, "SOV controlled adjacent"})
 	}
 	return
 }
 
 // XXX realign bonus, irancontrascandal, ...
 func realign(s *State, target *Country, rollUSA, rollSOV int) {
-	mods := realignMods(*target)
-	rollUSA += mods[USA]
-	rollSOV += mods[SOV]
+	modsUsa, modsSov := realignMods(*target)
+	rollUSA += TotalMod(modsUsa)
+	rollSOV += TotalMod(modsSov)
 	initUSA := target.Inf[USA]
 	initSOV := target.Inf[SOV]
 	switch {
@@ -52,26 +82,57 @@ func realign(s *State, target *Country, rollUSA, rollSOV int) {
 	}
 }
 
-func coupBonus(s *State, player Aff, target *Country) (bonus int) {
+func coupMods(s *State, player Aff, target *Country) (mods []Mod) {
 	if s.Effect(SALTNegotiations) {
-		bonus -= 1
+		mods = append(mods, Mod{-1, "SALT Negotiations"})
 	}
 	if s.Effect(LatinAmericanDeathSquads, player) {
-		bonus += 1
+		mods = append(mods, Mod{1, "LatAm Death Squads"})
 	}
 	if s.Effect(LatinAmericanDeathSquads, player.Opp()) {
-		bonus -= 1
+		mods = append(mods, Mod{-1, "LatAm Death Squads"})
 	}
 	return
 }
 
-func opsMod(s *State, player Aff, card Card, countries []*Country) (mod int) {
-	// containment, brezhnev, red scare (can't mod past 4 or below 1)
+func ComputeCardOps(s *State, player Aff, card Card, countries []*Country) int {
+	return card.Ops + TotalMod(opsMods(s, player, card, countries))
+}
+
+func opsMods(s *State, player Aff, card Card, countries []*Country) (mods []Mod) {
+	tmpTotal := card.Ops
 	if player == SOV && s.Effect(VietnamRevolts) && AllIn(countries, SoutheastAsia) {
-		mod += 1
+		mods = append(mods, Mod{1, "Vietnam Revolts"})
+		tmpTotal += 1
 	}
 	if card.Id == TheChinaCard && AllIn(countries, Asia) {
-		mod += 1
+		mods = append(mods, Mod{1, "The China Card"})
+		tmpTotal += 1
+	}
+	// Brezhnev/containment/redscare computation is surprisingly complicated.
+	// The following switch statement is comprehensive.
+	brezhnev := player == SOV && s.Effect(BrezhnevDoctrine)
+	containment := player == USA && s.Effect(Containment)
+	redscare := s.Effect(RedScarePurge, player.Opp())
+	switch {
+	// Red scare will lower an op total above 4, containment/brezhnev won't help
+	case redscare && tmpTotal > 4:
+		mods = append(mods, Mod{-1, "Red Scare/Purge"})
+	// If the total is <= 4, the two can cancel each other out regardless of total
+	case redscare && containment:
+		mods = append(mods, Mod{-1, "Red Scare/Purge"}, Mod{1, "Containment"})
+	case redscare && brezhnev:
+		mods = append(mods, Mod{-1, "Red Scare/Purge"}, Mod{1, "Brezhnev Doctrine"})
+	// With no containment/brezhnev, redscare only decrs to 1 ops min
+	case redscare && tmpTotal > 1:
+		mods = append(mods, Mod{-1, "Red Scare/Purge"})
+	case redscare:
+		mods = append(mods, Mod{0, "Red Scare/Purge"})
+	// Similarly, with no red scare, containment/brezhnev only incrs to 4 ops max
+	case brezhnev && tmpTotal < 4:
+		mods = append(mods, Mod{1, "Brezhnev Doctrine"})
+	case containment && tmpTotal < 4:
+		mods = append(mods, Mod{1, "Containment"})
 	}
 	return
 }
@@ -79,15 +140,16 @@ func opsMod(s *State, player Aff, card Card, countries []*Country) (mod int) {
 // Coup
 func Coup(s *State, player Aff, card Card, c *Country, free bool) (success bool) {
 	roll := SelectRoll(s)
-	ops := card.Ops + opsMod(s, player, card, []*Country{c})
+	mods := opsMods(s, player, card, []*Country{c})
+	ops := card.Ops + TotalMod(mods)
 	success = coup(s, player, ops, roll, c, free)
 	s.Commit()
 	return
 }
 
 func coup(s *State, player Aff, ops int, roll int, target *Country, free bool) (removedInfluence bool) {
-	bonus := coupBonus(s, player, target)
-	delta := roll + bonus + ops - (target.Stability * 2)
+	mods := coupMods(s, player, target)
+	delta := roll + TotalMod(mods) + ops - (target.Stability * 2)
 	removedInfluence = delta > 0
 	if removedInfluence {
 		oppCurInf := target.Inf[player.Opp()]
@@ -214,7 +276,7 @@ func OpInfluenceCost(player Aff) func(*Country) int {
 
 func OpsLimit(s *State, player Aff, card Card) func([]*Country) int {
 	return func(cs []*Country) int {
-		return card.Ops + opsMod(s, player, card, cs)
+		return ComputeCardOps(s, player, card, cs)
 	}
 }
 

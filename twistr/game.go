@@ -443,8 +443,6 @@ func PlayEvent(s *State, player Aff, card Card) {
 
 func SelectPlay(s *State, player Aff, card Card) (pk PlayKind) {
 	canEvent, canSpace := true, true
-	// Scoring cards cannot be played for ops
-	canOps := card.Ops > 0
 	switch {
 	case card.Id == TheChinaCard:
 		canEvent = false
@@ -457,12 +455,11 @@ func SelectPlay(s *State, player Aff, card Card) (pk PlayKind) {
 	case card.Prevented(s.Game):
 		canEvent = false
 	}
-	ops := card.Ops + opsMod(s, player, card, nil)
-	if !CanAdvance(s, player, ops) {
+	if !CanAdvance(s, player, ComputeCardOps(s, player, card, nil)) {
 		canSpace = false
 	}
 	choices := []string{}
-	if canOps {
+	if !card.Scoring() {
 		choices = append(choices, OPS.Ref())
 	}
 	if canEvent {
