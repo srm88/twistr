@@ -85,9 +85,9 @@ func SelectShuffle(s *State, d *Deck) (cardOrder []Card) {
 // Return whether the card is an acceptable choice.
 type cardFilter func(Card) bool
 
-func ExceedsOps(minOps int) cardFilter {
+func ExceedsOps(minOps int, s *State, player Aff) cardFilter {
 	return func(c Card) bool {
-		return c.Ops > minOps
+		return ComputeCardOps(s, player, c, nil) > minOps
 	}
 }
 
@@ -283,9 +283,62 @@ func EndTurn(s *State) {
 }
 
 func Action(s *State) {
-	card := SelectCard(s, s.Phasing)
-	PlayCard(s, s.Phasing, card)
-	s.Commit()
+	switch {
+	// BearTrap/Quagmire precede Missile Envy
+	case s.Effect(BearTrap, s.Phasing.Opp()):
+		TryBearTrap(s)
+	case s.Effect(Quagmire, s.Phasing.Opp()):
+		TryQuagmire(s)
+	// Player forced to play missile envy for ops
+	case s.Effect(MissileEnvy, s.Phasing.Opp()):
+		card := Cards[MissileEnvy]
+		s.Hands[s.Phasing].Remove(card)
+		PlayOps(s, s.Phasing, card)
+		s.Cancel(MissileEnvy)
+	default:
+		card := SelectCard(s, s.Phasing)
+		PlayCard(s, s.Phasing, card)
+		s.Commit()
+	}
+}
+
+func TryQuagmire(s *State) {
+	tryQuagmireBearTrap(s, Quagmire)
+}
+
+func TryBearTrap(s *State) {
+	tryQuagmireBearTrap(s, BearTrap)
+}
+
+func tryQuagmireBearTrap(s *State, event CardId) {
+	s.Transcribe(fmt.Sprintf("%s is in %s.", s.Phasing, Cards[event]))
+	enoughOps := ExceedsOps(1, s, s.Phasing)
+	// Can't discard? Play only scoring cards.
+	if !hasInHand(s, s.Phasing, enoughOps) {
+		onlyScoring := func(c Card) bool {
+			return c.Scoring()
+		}
+		if !hasInHand(s, s.Phasing, onlyScoring) {
+			s.Transcribe(fmt.Sprintf("%s cannot escape the %s and has no scoring cards.", s.Phasing, Cards[event]))
+			return
+		}
+		s.Transcribe(fmt.Sprintf("%s cannot escape the %s and can only play scoring cards.", s.Phasing, Cards[event]))
+		card := SelectCard(s, s.Phasing, onlyScoring)
+		PlayCard(s, s.Phasing, card)
+		return
+	}
+	// select card and roll
+	card := SelectCard(s, s.Phasing, CardBlacklist(TheChinaCard), enoughOps)
+	s.Hands[s.Phasing].Remove(card)
+	s.Discard.Push(card)
+	roll := SelectRoll(s)
+	switch roll {
+	case 1, 2, 3, 4:
+		s.Transcribe(fmt.Sprintf("%s is free of the %s.", s.Phasing, Cards[event]))
+		s.Cancel(event)
+	default:
+		s.Transcribe(fmt.Sprintf("%s is still trapped in the %s.", s.Phasing, Cards[event]))
+	}
 }
 
 func PlayCard(s *State, player Aff, card Card) {
@@ -427,6 +480,8 @@ func PlayEvent(s *State, player Aff, card Card) {
 		}
 		s.Transcribe(fmt.Sprintf("%s implements %s", implementer, card))
 		card.Impl(s, implementer)
+	} else {
+		s.Transcribe(fmt.Sprintf("%s cannot be played as an event", card))
 	}
 	switch {
 	case card.Id == MissileEnvy:
@@ -442,6 +497,10 @@ func PlayEvent(s *State, player Aff, card Card) {
 }
 
 func SelectPlay(s *State, player Aff, card Card) (pk PlayKind) {
+	if card.Scoring() {
+		pk = EVENT
+		return
+	}
 	canEvent, canSpace := true, true
 	switch {
 	case card.Id == TheChinaCard:
@@ -458,10 +517,7 @@ func SelectPlay(s *State, player Aff, card Card) (pk PlayKind) {
 	if !CanAdvance(s, player, ComputeCardOps(s, player, card, nil)) {
 		canSpace = false
 	}
-	choices := []string{}
-	if !card.Scoring() {
-		choices = append(choices, OPS.Ref())
-	}
+	choices := []string{OPS.Ref()}
 	if canEvent {
 		choices = append(choices, EVENT.Ref())
 	}

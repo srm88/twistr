@@ -84,11 +84,12 @@ func PlayVietnamRevolts(s *State, player Aff) {
 func PlayBlockade(s *State, player Aff) {
 	/* Unless the US immediately discards a card with an Operations value of 3 or
 	   more, remove all US Influence from West Germany.  */
-	if hasInHand(s, USA, ExceedsOps(2)) &&
+	enoughOps := ExceedsOps(2, s, USA)
+	if hasInHand(s, USA, enoughOps) &&
 		"discard" == SelectChoice(s, USA,
 			"Discard a card with >=3 Ops, or remove all influence from West Germany?",
 			"discard", "remove") {
-		card := SelectCard(s, USA, CardBlacklist(TheChinaCard), ExceedsOps(2))
+		card := SelectCard(s, USA, CardBlacklist(TheChinaCard), enoughOps)
 		s.Hands[USA].Remove(card)
 		s.Discard.Push(card)
 	} else {
@@ -564,7 +565,7 @@ func PlayQuagmire(s *State, player Aff) {
 	   If the US is unable to discard an Operations card, it must play all of its
 	   scoring cards and then skip each action round for the rest of the turn. This
 	   Event cancels the effect(s) of the “#106 – NORAD” Event (if applicable). */
-	s.TurnEvents[Quagmire] = player
+	s.Events[Quagmire] = player
 	s.Cancel(NORAD)
 }
 
@@ -595,7 +596,7 @@ func PlayBearTrap(s *State, player Aff) {
 	   on a die. If the USSR is unable to discard an Operations card, it must play
 	   all of its scoring cards and then skip each action round for the rest of the
 	   turn. */
-	s.TurnEvents[BearTrap] = player
+	s.Events[BearTrap] = player
 }
 
 func PlaySummit(s *State, player Aff) {
@@ -664,7 +665,6 @@ func PlayJunta(s *State, player Aff) {
 		OpCoup(s, player, Cards[Junta], true,
 			InRegion(SouthAmerica, CentralAmerica))
 	case "realign":
-		// XXX free realign
 		OpRealign(s, player, Cards[Junta], true)
 	}
 }
@@ -698,15 +698,17 @@ func PlayMissileEnvy(s *State, player Aff) {
 	   immediately. If it contains an opponent’s Event, use the Operations value
 	   (no Event). The opponent must use this card for Operations during their next
 	   action round. */
-	// XXX: should be a special action (Issue #15)
 	maxOps := 0
 	for _, c := range s.Hands[player.Opp()].Cards {
 		if c.Ops > maxOps {
 			maxOps = c.Ops
 		}
 	}
+	isMaxOpCard := func(c Card) bool {
+		return c.Ops >= maxOps
+	}
 	selected := SelectCard(s, player.Opp(),
-		ExceedsOps(maxOps-1), CardBlacklist(TheChinaCard))
+		isMaxOpCard, CardBlacklist(TheChinaCard))
 	s.Hands[player.Opp()].Remove(selected)
 	switch selected.Aff {
 	case player, NEU:
@@ -715,6 +717,7 @@ func PlayMissileEnvy(s *State, player Aff) {
 		ConductOps(s, player, selected)
 		s.Discard.Push(selected)
 	}
+	s.TurnEvents[MissileEnvy] = player
 }
 
 func PlayWeWillBuryYou(s *State, player Aff) {
@@ -884,6 +887,7 @@ func PlayGrainSalesToSoviets(s *State, player Aff) {
 		switch SelectChoice(s, player, "Play this card or return it?",
 			"play", "return") {
 		case "play":
+			s.Hands[SOV].Remove(card)
 			PlayCard(s, player, card)
 		default:
 			ConductOps(s, player, PseudoCard(Cards[GrainSalesToSoviets].Ops))
@@ -1263,11 +1267,12 @@ func PlayLatinAmericanDebtCrisis(s *State, player Aff) {
 	/* The US must immediately discard a card with an Operations value of 3 or
 	   more or the USSR may double the amount of USSR Influence in 2 countries in
 	   South America. */
-	if hasInHand(s, USA, ExceedsOps(2)) &&
+	enoughOps := ExceedsOps(2, s, USA)
+	if hasInHand(s, USA, enoughOps) &&
 		"discard" == SelectChoice(s, USA,
 			"Discard a card with >=3 Ops, or double USSR influence in two SAM countries?",
 			"discard", "whatever") {
-		card := SelectCard(s, USA, CardBlacklist(TheChinaCard), ExceedsOps(2))
+		card := SelectCard(s, USA, CardBlacklist(TheChinaCard), enoughOps)
 		s.Discard.Push(card)
 	} else {
 		SelectInfluence(s, player, "Double USSR influence in 2 countries in South America",

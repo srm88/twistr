@@ -2,6 +2,7 @@ package twistr
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"log"
 	"os"
@@ -99,11 +100,11 @@ func (s *State) Enter(o Mode) {
 }
 
 func NewState(ui UI, aofPath string, game *Game) (*State, error) {
-	in, err := os.Open(aofPath)
 	var history *History
+	in, err := os.Open(aofPath)
 	if err != nil {
 		if !os.IsNotExist(err) {
-			return nil, err
+			return nil, fmt.Errorf("Error reading existing AOF: %s", err.Error())
 		}
 		history = NewHistory(ui)
 	} else {
@@ -121,9 +122,9 @@ func NewState(ui UI, aofPath string, game *Game) (*State, error) {
 		}
 	}
 
-	out, err := os.OpenFile(aofPath, os.O_WRONLY|os.O_APPEND, 0666)
+	out, err := os.OpenFile(aofPath, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0666)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Error opening for write: %s", err.Error())
 	}
 
 	s := &State{
