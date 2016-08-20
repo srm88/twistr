@@ -458,7 +458,7 @@ func conductOps(s *State, player Aff, card Card, free bool, kinds []OpsKind) {
 
 func OpRealign(s *State, player Aff, card Card, free bool) {
 	// XXX Something here is breaking on replay NOPE It's selectroll
-	selectInfluence(s, player, fmt.Sprintf("Realigns with %s (%d)", card.Name, card.Ops),
+	selectInfluence(s, player, fmt.Sprintf("Realigns with %s (%d)", card.Name, ComputeCardOps(s, player, card, nil)),
 		func(c *Country) {
 			Realign(s, player, c)
 		},
@@ -470,9 +470,9 @@ func OpRealign(s *State, player Aff, card Card, free bool) {
 func OpCoup(s *State, player Aff, card Card, free bool, checks ...countryCheck) (success bool) {
 	var msg string
 	if free {
-		msg = fmt.Sprintf("Free coup with %s (%d)", card.Name, card.Ops)
+		msg = fmt.Sprintf("Free coup with %s (%d)", card.Name, ComputeCardOps(s, player, card, nil))
 	} else {
-		msg = fmt.Sprintf("Coup with %s (%d)", card.Name, card.Ops)
+		msg = fmt.Sprintf("Coup with %s (%d)", card.Name, ComputeCardOps(s, player, card, nil))
 	}
 	selectInfluence(s, player, msg,
 		func(c *Country) {
@@ -486,7 +486,7 @@ func OpCoup(s *State, player Aff, card Card, free bool, checks ...countryCheck) 
 
 func OpInfluence(s *State, player Aff, card Card) {
 	// XXX chernobyl, etc
-	selectInfluence(s, player, fmt.Sprintf("Influence with %s (%d)", card.Name, card.Ops),
+	selectInfluence(s, player, fmt.Sprintf("Influence with %s (%d)", card.Name, ComputeCardOps(s, player, card, nil)),
 		PlusInf(player, 1),
 		OpsLimit(s, player, card), false,
 		OpInfluenceCost(player),
@@ -559,9 +559,9 @@ func SelectPlay(s *State, player Aff, card Card) (pk PlayKind) {
 func SelectOps(s *State, player Aff, card Card, kinds ...OpsKind) (o OpsKind) {
 	var message string
 	if card.Id == FreeOps {
-		message = fmt.Sprintf("Playing a %d ops card", card.Ops)
+		message = fmt.Sprintf("Playing a %d ops card (%d)", card.Ops, ComputeCardOps(s, player, card, nil))
 	} else {
-		message = fmt.Sprintf("Playing %s for ops", card.Name)
+		message = fmt.Sprintf("Playing %s for ops (%d)", card.Name, ComputeCardOps(s, player, card, nil))
 	}
 	var choices []string
 	if len(kinds) == 0 {
