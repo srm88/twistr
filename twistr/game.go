@@ -15,22 +15,35 @@ import (
 // AskNotWhatYourCountry: discard up to hand, draw replacements
 // OurManInTehran: draw top 5, return or discard, reshuffle
 func Deal(s *State) {
-	// XXX: handle running out of cards and shuffling in discards mid-deal
 	handSize := s.ActionsPerTurn() + 2
-	usDraw := s.Deck.Draw(handSize - len(s.Hands[USA].Cards))
-	s.Hands[USA].Push(usDraw...)
+	needCard := func(player Aff) bool {
+		return len(s.Hands[player].Cards) == handSize
+	}
+	drawIfNeeded := func(player Aff) {
+		if needCard(player) {
+			if len(s.Deck.Cards) == 0 {
+				ShuffleInDiscard(s)
+			}
+			card := s.Deck.Draw(1)[0]
+			s.Hands[player].Push(card)
+		}
+	}
+	for needCard(USA) || needCard(SOV) {
+		drawIfNeeded(USA)
+		drawIfNeeded(SOV)
+	}
 	ShowHand(s, USA, USA)
-	sovDraw := s.Deck.Draw(handSize - len(s.Hands[SOV].Cards))
-	s.Hands[SOV].Push(sovDraw...)
 	ShowHand(s, SOV, SOV)
+}
+
+func ShuffleInDiscard(s *State) {
+	s.Transcribe("Deck empty. Shuffling in discard pile ...")
+	ShuffleIn(s, s.Discard.Draw(len(s.Discard.Cards)))
 }
 
 func Start(s *State) {
 	// Early war cards into the draw deck
-	s.Deck.Push(EarlyWar...)
-	cards := SelectShuffle(s, s.Deck)
-	s.Deck.Reorder(cards)
-	s.Commit()
+	ShuffleIn(s, EarlyWar)
 	Deal(s)
 	s.Redraw(s.Game)
 	// SOV chooses 6 influence in E europe
@@ -42,11 +55,25 @@ func Start(s *State) {
 		PlusInf(USA, 1), 7, InRegion(WestEurope))
 
 	s.Commit()
-	// Temporary
 	for s.Turn = 1; s.Turn <= 10; s.Turn++ {
+		switch s.Turn {
+		case 4:
+			s.Transcribe("Shuffling in Mid War.")
+			ShuffleIn(s, MidWar)
+		case 8:
+			s.Transcribe("Shuffling in Late War.")
+			ShuffleIn(s, LateWar)
+		}
 		Turn(s)
 		EndTurn(s)
 	}
+}
+
+func ShuffleIn(s *State, cards []Card) {
+	s.Deck.Push(cards...)
+	order := SelectShuffle(s, s.Deck)
+	s.Deck.Reorder(order)
+	s.Commit()
 }
 
 func ShowHand(s *State, whose, to Aff, showChina ...bool) {
