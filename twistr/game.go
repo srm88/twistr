@@ -420,7 +420,7 @@ func PlayCard(s *State, player Aff, card Card) (pk PlayKind) {
 		s.ChinaCardPlayed()
 	}
 	if s.Effect(FlowerPower) && player == USA && warCard(card) && pk != SPACE && !card.Prevented(s.Game) {
-		s.Transcribe("The USSR receives 2 VP due to flower power.")
+		s.Transcribe("The USSR gains VP due to flower power.")
 		s.GainVP(SOV, 2)
 	}
 	return

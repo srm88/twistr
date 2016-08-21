@@ -145,6 +145,10 @@ func Coup(s *State, player Aff, card Card, c *Country, free bool) (success bool)
 		s.Transcribe(fmt.Sprintf("%s perturbs the delicate balance of the Cuban missile crisis!", player))
 		ThermoNuclearWar(s, player)
 	}
+	if s.Effect(YuriAndSamantha) && player == USA {
+		s.Transcribe("The USSR gains VP for Yuri And Samantha")
+		s.GainVP(SOV, 1)
+	}
 	roll := SelectRoll(s)
 	mods := opsMods(s, player, card, []*Country{c})
 	ops := card.Ops + TotalMod(mods)
