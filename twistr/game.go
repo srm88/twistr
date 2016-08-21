@@ -330,7 +330,15 @@ func Action(s *State) {
 		s.Cancel(MissileEnvy)
 	default:
 		card := SelectCard(s, s.Phasing)
-		PlayCard(s, s.Phasing, card)
+		pk := PlayCard(s, s.Phasing, card)
+		// Check We Will Bury You:
+		if s.Effect(WeWillBuryYou) && s.Phasing == USA {
+			if !(card.Id == UNIntervention && pk == EVENT) {
+				s.Transcribe("The USSR gains VP for We Will Bury You")
+				s.GainVP(SOV, 3)
+			}
+			s.Cancel(WeWillBuryYou)
+		}
 	}
 	s.Commit()
 	if defconWas != 2 && s.Defcon == 2 && s.Effect(NORAD) && s.Countries[Canada].Controlled() == USA {
@@ -385,10 +393,11 @@ func tryQuagmireBearTrap(s *State, event CardId) {
 	}
 }
 
-func PlayCard(s *State, player Aff, card Card) {
+func PlayCard(s *State, player Aff, card Card) (pk PlayKind) {
 	// Safe to remove a card that isn't actually in the hand
 	s.Hands[player].Remove(card)
-	switch SelectPlay(s, player, card) {
+	pk = SelectPlay(s, player, card)
+	switch pk {
 	case SPACE:
 		PlaySpace(s, player, card)
 	case OPS:
@@ -400,6 +409,7 @@ func PlayCard(s *State, player Aff, card Card) {
 		s.Transcribe(fmt.Sprintf("%s receives the China Card, face down.", player.Opp()))
 		s.ChinaCardPlayed()
 	}
+	return
 }
 
 func PlaySpace(s *State, player Aff, card Card) {
