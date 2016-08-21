@@ -240,6 +240,9 @@ func (s *Game) CancelTurnEvents() {
 }
 
 func (s *Game) ChinaCardPlayed() {
+	if s.ChinaCardPlayer == USA {
+		s.Cancel(FormosanResolution)
+	}
 	s.ChinaCardPlayer = s.ChinaCardPlayer.Opp()
 	s.ChinaCardFaceUp = false
 }

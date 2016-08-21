@@ -92,9 +92,13 @@ func ScoreRegion(g *Game, r Region) ScoreResult {
 	}
 	counts := [2]int{0, 0}
 	allBattlegrounds := 0
+	isBattleground := func(c *Country) bool {
+		return (c.Battleground ||
+			(c.Id == Taiwan && g.Effect(FormosanResolution) && c.Controlled() == USA))
+	}
 	for _, cid := range r.Countries {
 		c := g.Countries[cid]
-		if c.Battleground {
+		if isBattleground(c) {
 			allBattlegrounds += 1
 		}
 		aff := c.Controlled()
@@ -102,7 +106,7 @@ func ScoreRegion(g *Game, r Region) ScoreResult {
 			continue
 		}
 		counts[aff] += 1
-		if c.Battleground {
+		if isBattleground(c) {
 			if aff == SOV && g.Effect(ShuttleDiplomacy) && (&r == &Asia || &r == &MiddleEast) && result.ShuttleDiplomacyNullified == nil {
 				result.ShuttleDiplomacyNullified = c
 				counts[aff] -= 1
@@ -114,7 +118,6 @@ func ScoreRegion(g *Game, r Region) ScoreResult {
 			result.AdjSuper[aff] = append(result.AdjSuper[aff], c)
 		}
 	}
-	// Formosan
 	score := func(aff Aff) ScoreLevel {
 		opp := aff.Opp()
 		switch {
