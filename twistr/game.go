@@ -238,10 +238,11 @@ func Turn(s *State) {
 	}
 	s.Transcribe("= Headline Phase")
 	Headline(s)
-	usaCap := actionsThisTurn(s, USA)
-	sovCap := actionsThisTurn(s, SOV)
+	var usaCop, sovCap int
 	usaDone, sovDone := false, false
 	for {
+		usaCap = actionsThisTurn(s, USA)
+		sovCap = actionsThisTurn(s, SOV)
 		sovDone = s.AR > sovCap || outOfCards(s, SOV)
 		usaDone = s.AR > usaCap || outOfCards(s, USA)
 		if sovDone && usaDone {
