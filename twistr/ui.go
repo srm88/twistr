@@ -5,13 +5,9 @@ import (
 	"strings"
 )
 
-const (
-	MetaRune = ';'
-)
-
 type Mode interface {
 	Display(UI) Mode
-	Command(string) Mode
+	Command(string) bool
 }
 
 type LogMode struct {
@@ -44,16 +40,18 @@ func (m *LogMode) Display(ui UI) Mode {
 	return m
 }
 
-func (m *LogMode) Command(raw string) Mode {
+func (m *LogMode) Command(raw string) bool {
 	switch raw {
 	case "next":
 		if m.start+m.rows <= len(m.lines) {
 			m.start += m.rows
 		}
+		return true
 	case "prev":
 		m.start = Max(0, m.start-m.rows)
+		return true
 	}
-	return m
+	return false
 }
 
 type CardMode struct {
@@ -70,23 +68,18 @@ func (m *CardMode) Display(ui UI) Mode {
 	return m
 }
 
-func (m *CardMode) Command(raw string) Mode {
+func (m *CardMode) Command(raw string) bool {
 	switch raw {
 	case "next":
 		if m.start+6 < len(m.cards) {
 			m.start += 6
 		}
+		return true
 	case "prev":
 		m.start = Max(0, m.start-6)
+		return true
 	}
-	return m
-}
-
-func parseMeta(input string) (bool, string) {
-	if len(input) > 0 && input[0] == MetaRune {
-		return true, strings.ToLower(input[1:])
-	}
-	return false, ""
+	return false
 }
 
 func parseCommand(raw string) (cmd string, args []string) {
@@ -97,21 +90,18 @@ func parseCommand(raw string) (cmd string, args []string) {
 	return tokens[0], tokens[1:]
 }
 
-func modal(s *State, command string) {
+func modal(s *State, command string) bool {
 	who := s.Phasing
 	cmd, args := parseCommand(command)
 	switch cmd {
 	case "hand":
 		ShowHand(s, s.Phasing, s.Phasing, true)
-		return
 	case "log":
 		s.Enter(NewLogMode(s.Game.Transcript))
 		s.Redraw(s.Game)
-		return
 	case "board":
 		s.Enter(nil)
 		s.Redraw(s.Game)
-		return
 	case "deck":
 		s.Enter(NewCardMode(s.Deck.Cards))
 		s.Redraw(s.Game)
@@ -122,29 +112,27 @@ func modal(s *State, command string) {
 		card, err := lookupCard(args[0])
 		if err != nil {
 			s.UI.Message(who, err.Error())
-			return
 		}
 		s.Enter(NewCardMode([]Card{card}))
 		s.Redraw(s.Game)
-		return
 	case "barf":
 		s.History.Dump()
-		return
 	case "undo":
 		if !s.CanUndo() {
 			// XXX message = "Cannot undo."
-			return
+			return true
 		}
 		s.Undo()
 		panic("Should never get here!")
 	default:
+		ret := false
 		if s.Mode != nil {
-			s.Enter(s.Mode.Command(cmd))
+			ret = s.Mode.Command(cmd)
+			s.Redraw(s.Game)
 		}
-		s.Redraw(s.Game)
-		return
+		return ret
 	}
-	s.UI.Message(s.Phasing, "Unknown command")
+	return true
 }
 
 func GetInput(s *State, player Aff, inp interface{}, message string, choices ...string) {
@@ -162,8 +150,7 @@ func GetInput(s *State, player Aff, inp interface{}, message string, choices ...
 	}
 retry:
 	inputStr := s.Solicit(player, message, choices)
-	if ok, cmd := parseMeta(inputStr); ok {
-		modal(s, cmd)
+	if ok := modal(s, inputStr); ok {
 		goto retry
 	}
 	if len(choices) > 0 && !validChoice(inputStr) {
