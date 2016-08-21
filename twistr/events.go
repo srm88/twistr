@@ -360,6 +360,11 @@ func PlayUNIntervention(s *State, player Aff) {
 	card := SelectCard(s, player, opponentEvent, CardBlacklist(TheChinaCard))
 	ConductOps(s, player, PseudoCard(card.Ops))
 	s.Discard.Push(card)
+	if s.Effect(U2Incident) {
+		s.Transcribe("The USSR receives 1 VP due to U2 Incident")
+		s.GainVP(SOV, 1)
+	}
+
 }
 
 func PlayDeStalinization(s *State, player Aff) {
