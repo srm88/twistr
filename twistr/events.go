@@ -917,6 +917,7 @@ func PlayJohnPaulIIElectedPope(s *State, player Aff) {
 	c := s.Countries[Poland]
 	c.Inf[SOV] = Max(0, c.Inf[SOV]-2)
 	c.Inf[USA] += 1
+	s.Events[JohnPaulIIElectedPope] = player
 }
 
 func PlayLatinAmericanDeathSquads(s *State, player Aff) {
