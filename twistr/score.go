@@ -78,13 +78,17 @@ type ScoreResult struct {
 	Levels        [2]ScoreLevel
 	Battlegrounds [2][]*Country
 	AdjSuper      [2][]*Country
+	// Track separately the country that was nullified by shuttle diplomacy
+	// for messaging.
+	ShuttleDiplomacyNullified *Country
 }
 
 func ScoreRegion(g *Game, r Region) ScoreResult {
 	result := ScoreResult{
-		Levels:        [2]ScoreLevel{Nothing, Nothing},
-		Battlegrounds: [2][]*Country{[]*Country{}, []*Country{}},
-		AdjSuper:      [2][]*Country{[]*Country{}, []*Country{}},
+		Levels:                    [2]ScoreLevel{Nothing, Nothing},
+		Battlegrounds:             [2][]*Country{[]*Country{}, []*Country{}},
+		AdjSuper:                  [2][]*Country{[]*Country{}, []*Country{}},
+		ShuttleDiplomacyNullified: nil,
 	}
 	counts := [2]int{0, 0}
 	allBattlegrounds := 0
@@ -99,12 +103,18 @@ func ScoreRegion(g *Game, r Region) ScoreResult {
 		}
 		counts[aff] += 1
 		if c.Battleground {
-			result.Battlegrounds[aff] = append(result.Battlegrounds[aff], c)
+			if aff == SOV && g.Effect(ShuttleDiplomacy) && (&r == &Asia || &r == &MiddleEast) && result.ShuttleDiplomacyNullified == nil {
+				result.ShuttleDiplomacyNullified = c
+				counts[aff] -= 1
+			} else {
+				result.Battlegrounds[aff] = append(result.Battlegrounds[aff], c)
+			}
 		}
 		if c.AdjSuper == aff.Opp() {
 			result.AdjSuper[aff] = append(result.AdjSuper[aff], c)
 		}
 	}
+	// Formosan
 	score := func(aff Aff) ScoreLevel {
 		opp := aff.Opp()
 		switch {

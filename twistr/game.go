@@ -713,6 +713,6 @@ func PseudoCard(ops int) Card {
 	}
 }
 
-func score(s *State, player Aff, region Region) {
+func Score(s *State, player Aff, region Region) {
 	// XXX writeme (#17)
 }

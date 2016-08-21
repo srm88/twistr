@@ -214,7 +214,10 @@ func defconProtected(s *State, t *Country) bool {
 }
 
 func natoProtected(s *State, player Aff, t *Country) bool {
-	return s.Effect(NATO) && player == SOV && t.In(Europe) && t.Controlled() == USA
+	degaulled := s.Effect(DeGaulleLeadsFrance) && t.Id == France
+	willyd := s.Effect(WillyBrandt) && t.Id == WGermany
+	natod := (s.Effect(NATO) && player == SOV && t.In(Europe) && t.Controlled() == USA)
+	return natod && !degaulled && !willyd
 }
 
 func japanProtected(s *State, player Aff, t *Country) bool {

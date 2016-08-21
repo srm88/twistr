@@ -16,20 +16,22 @@ func PlayAsiaScoring(s *State, player Aff) {
 	/* Presence: 3; Domination: 7; Control: 9; +1 VP per controlled Battleground
 	country in Region; +1 VP per country controlled that is adjacent to enemy
 	superpower; MAY NOT BE HELD!  */
-	score(s, player, Asia)
+	Score(s, player, Asia)
+	s.Cancel(ShuttleDiplomacy)
 }
 
 func PlayEuropeScoring(s *State, player Aff) {
 	/* Presence: 3; Domination: 7; Control: Automatic Victory; +1 VP per
 	controlled Battleground country in Region; +1 VP per country controlled that
 	is adjacent to enemy superpower; MAY NOT BE HELD!  */
-	score(s, player, Europe)
+	Score(s, player, Europe)
 }
 
 func PlayMiddleEastScoring(s *State, player Aff) {
 	/* Presence: 3; Domination: 5; Control: 7; +1 VP per controlled Battleground
 	country in Region; MAY NOT BE HELD!  */
-	score(s, player, MiddleEast)
+	Score(s, player, MiddleEast)
+	s.Cancel(ShuttleDiplomacy)
 }
 
 func PlayDuckAndCover(s *State, player Aff) {
@@ -489,7 +491,7 @@ func PlayCentralAmericaScoring(s *State, player Aff) {
 	/* Presence: 1; Domination: 3; Control: 5; +1 VP per controlled Battleground
 	   country in Region; +1 VP per country controlled that is adjacent to enemy
 	   superpower; MAY NOT BE HELD! */
-	score(s, player, CentralAmerica)
+	Score(s, player, CentralAmerica)
 }
 
 func PlaySoutheastAsiaScoring(s *State, player Aff) {
@@ -1015,7 +1017,7 @@ func PlayAllianceForProgress(s *State, player Aff) {
 func PlayAfricaScoring(s *State, player Aff) {
 	/* Presence: 1; Domination: 4; Control: 6; +1 VP per controlled Battleground
 	   country in Region; MAY NOT BE HELD! */
-	score(s, player, Africa)
+	Score(s, player, Africa)
 }
 
 func PlayOneSmallStep(s *State, player Aff) {
@@ -1037,7 +1039,7 @@ func PlayOneSmallStep(s *State, player Aff) {
 func PlaySouthAmericaScoring(s *State, player Aff) {
 	/* Presence: 2; Domination: 5; Control: 6; +1 VP per controlled Battleground
 	   country in Region; MAY NOT BE HELD! */
-	score(s, player, SouthAmerica)
+	Score(s, player, SouthAmerica)
 }
 
 func PlayChe(s *State, player Aff) {
