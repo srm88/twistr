@@ -238,7 +238,7 @@ func Turn(s *State) {
 	}
 	s.Transcribe("= Headline Phase")
 	Headline(s)
-	var usaCop, sovCap int
+	var usaCap, sovCap int
 	usaDone, sovDone := false, false
 	for {
 		usaCap = actionsThisTurn(s, USA)
@@ -526,12 +526,18 @@ func OpCoup(s *State, player Aff, card Card, free bool, checks ...countryCheck) 
 }
 
 func OpInfluence(s *State, player Aff, card Card) {
-	// XXX chernobyl, etc
+	chernobylCheck := func(c *Country) error {
+		if s.Effect(Chernobyl) && player == SOV && c.In(s.ChernobylRegion) {
+			return fmt.Errorf("May not add influence in %s due to Chernobyl!", s.ChernobylRegion.Name)
+		}
+		return nil
+	}
 	selectInfluence(s, player, fmt.Sprintf("Influence with %s (%d)", card.Name, ComputeCardOps(s, player, card, nil)),
 		PlusInf(player, 1),
 		OpsLimit(s, player, card), false,
 		OpInfluenceCost(player),
-		CanReach(s, player))
+		CanReach(s, player),
+		chernobylCheck)
 }
 
 func PlayEvent(s *State, player Aff, card Card) {
