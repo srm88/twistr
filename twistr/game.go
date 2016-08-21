@@ -393,6 +393,15 @@ func tryQuagmireBearTrap(s *State, event CardId) {
 	}
 }
 
+func warCard(card Card) bool {
+	switch card.Id {
+	case ArabIsraeliWar, KoreanWar, BrushWar, IndoPakistaniWar, IranIraqWar:
+		return true
+	default:
+		return false
+	}
+}
+
 func PlayCard(s *State, player Aff, card Card) (pk PlayKind) {
 	// Safe to remove a card that isn't actually in the hand
 	s.Hands[player].Remove(card)
@@ -408,6 +417,10 @@ func PlayCard(s *State, player Aff, card Card) (pk PlayKind) {
 	if card.Id == TheChinaCard {
 		s.Transcribe(fmt.Sprintf("%s receives the China Card, face down.", player.Opp()))
 		s.ChinaCardPlayed()
+	}
+	if s.Effect(FlowerPower) && player == USA && warCard(card) && pk != SPACE && !card.Prevented(s.Game) {
+		s.Transcribe("The USSR receives 2 VP due to flower power.")
+		s.GainVP(SOV, 2)
 	}
 	return
 }

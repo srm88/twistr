@@ -358,7 +358,7 @@ func PlayUNIntervention(s *State, player Aff) {
 		return c.Aff == player.Opp()
 	}
 	card := SelectCard(s, player, opponentEvent, CardBlacklist(TheChinaCard))
-	ConductOps(s, player, card)
+	ConductOps(s, player, PseudoCard(card.Ops))
 	s.Discard.Push(card)
 }
 
