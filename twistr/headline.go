@@ -2,6 +2,10 @@ package twistr
 
 import "fmt"
 
+func SelectHeadline(s *State, player Aff) Card {
+	return SelectCard(s, player, CardBlacklist(TheChinaCard, UNIntervention))
+}
+
 func Headline(s *State) {
 	// XXX DEFECTORS
 	var usaHl, sovHl Card
@@ -9,24 +13,24 @@ func Headline(s *State) {
 	switch {
 	case ok && headlineSecond == USA:
 		s.Transcribe("USSR must choose the headline first")
-		sovHl = SelectCard(s, SOV, CardBlacklist(TheChinaCard))
+		sovHl = SelectHeadline(s, SOV)
 		s.Transcribe(fmt.Sprintf("USSR selects %s", sovHl.Name))
 		s.Commit()
-		usaHl = SelectCard(s, USA, CardBlacklist(TheChinaCard))
+		usaHl = SelectHeadline(s, USA)
 		s.Transcribe(fmt.Sprintf("USA selects %s", sovHl.Name))
 		s.Commit()
 	case ok && headlineSecond == SOV:
 		s.Transcribe("US must choose the headline first")
-		usaHl = SelectCard(s, USA, CardBlacklist(TheChinaCard))
+		usaHl = SelectHeadline(s, USA)
 		s.Transcribe(fmt.Sprintf("USA selects %s", sovHl.Name))
 		s.Commit()
-		sovHl = SelectCard(s, SOV, CardBlacklist(TheChinaCard))
+		sovHl = SelectHeadline(s, SOV)
 		s.Transcribe(fmt.Sprintf("USSR selects %s", sovHl.Name))
 		s.Commit()
 	default:
-		sovHl = SelectCard(s, SOV, CardBlacklist(TheChinaCard))
+		sovHl = SelectHeadline(s, SOV)
 		s.Commit()
-		usaHl = SelectCard(s, USA, CardBlacklist(TheChinaCard))
+		usaHl = SelectHeadline(s, USA)
 		s.Commit()
 		s.Transcribe(fmt.Sprintf("USA selects %s, and USSR selects %s", usaHl.Name, sovHl.Name))
 	}

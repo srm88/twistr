@@ -354,8 +354,10 @@ func PlayUNIntervention(s *State, player Aff) {
 	   associated Event. The opponent’s associated Event is canceled but you may
 	   use the Operations value of the opponent’s card to conduct Operations.
 	   This Event cannot be played during the Headline Phase.  */
-	// XXX: opponent's event
-	card := SelectCard(s, player)
+	opponentEvent := func(c Card) bool {
+		return c.Aff == player.Opp()
+	}
+	card := SelectCard(s, player, opponentEvent, CardBlacklist(TheChinaCard))
 	ConductOps(s, player, card)
 	s.Discard.Push(card)
 }
