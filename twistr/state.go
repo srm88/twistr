@@ -139,6 +139,13 @@ func NewState(ui UI, aofPath string, game *Game) (*State, error) {
 	return s, nil
 }
 
+func (s *State) DegradeDefcon(n int) {
+	s.Defcon -= n
+	if s.Defcon < 2 {
+		ThermoNuclearWar(s, s.Phasing)
+	}
+}
+
 type Game struct {
 	Transcript      []string
 	VP              int
@@ -189,14 +196,6 @@ func NewGame() *Game {
 
 func (s *Game) ImproveDefcon(n int) {
 	s.Defcon = Min(s.Defcon+n, 5)
-}
-
-func (s *Game) DegradeDefcon(n int) {
-	s.Defcon -= n
-	if s.Defcon < 2 {
-		// XXX writeme
-		panic("Thermonuclear war!")
-	}
 }
 
 func (s *Game) Era() Era {

@@ -69,6 +69,11 @@ func Start(s *State) {
 	}
 }
 
+func ThermoNuclearWar(s *State, caused Aff) {
+	// XXX writeme
+	panic("Thermonuclear war!")
+}
+
 func ShuffleIn(s *State, cards []Card) {
 	s.Deck.Push(cards...)
 	order := SelectShuffle(s, s.Deck)
