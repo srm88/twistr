@@ -7,7 +7,6 @@ func SelectHeadline(s *State, player Aff) Card {
 }
 
 func Headline(s *State) {
-	// XXX DEFECTORS
 	var usaHl, sovHl Card
 	headlineSecond, ok := s.SREvents[OppHeadlineFirst]
 	switch {
@@ -36,6 +35,13 @@ func Headline(s *State) {
 	}
 	s.Hands[USA].Remove(usaHl)
 	s.Hands[SOV].Remove(sovHl)
+	if usaHl.Id == Defectors {
+		s.Transcribe("USSR event canceled by Defectors.")
+		s.Discard.Push(usaHl)
+		s.Discard.Push(sovHl)
+		s.Commit()
+		return
+	}
 	// Check ops
 	if usaHl.Ops >= sovHl.Ops {
 		s.Phasing = USA

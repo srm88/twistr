@@ -399,7 +399,13 @@ func PlayDefectors(s *State, player Aff) {
 	   USSR Headline Event (including a scoring card). The canceled card is
 	   placed into the discard pile. If this card is played by the USSR during
 	   its action round, the US gains 1 VP.  */
-	s.GainVP(USA, 1)
+	// XXX: bug here that would allow US to play defectors and gain 1VP, e.g.
+	// if soviets play Grain Sales to Soviets.
+	// Can't address this if we're saying the event is always implemented by
+	// the card's affiliated player ...
+	if s.Phasing == SOV {
+		s.GainVP(USA, 1)
+	}
 }
 
 func PlayTheCambridgeFive(s *State, player Aff) {
