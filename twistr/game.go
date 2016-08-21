@@ -310,6 +310,7 @@ func EndTurn(s *State) {
 }
 
 func Action(s *State) {
+	defconWas := s.Defcon
 	switch {
 	// BearTrap/Quagmire precede Missile Envy
 	case s.Effect(BearTrap, s.Phasing.Opp()):
@@ -325,8 +326,19 @@ func Action(s *State) {
 	default:
 		card := SelectCard(s, s.Phasing)
 		PlayCard(s, s.Phasing, card)
-		s.Commit()
 	}
+	s.Commit()
+	if defconWas != 2 && s.Defcon == 2 && s.Effect(NORAD) && s.Countries[Canada].Controlled() == USA {
+		DoNorad(s)
+	}
+	s.Commit()
+}
+
+func DoNorad(s *State) {
+	s.Transcribe("The USA will add 1 influence to a US-influenced country per NORAD.")
+	SelectOneInfluence(s, USA, "1 influence to country containing US influence",
+		PlusInf(USA, 1),
+		HasInfluence(USA))
 }
 
 func TryQuagmire(s *State) {
