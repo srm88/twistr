@@ -59,9 +59,11 @@ func realignMods(target Country) (modsUsa []Mod, modsSov []Mod) {
 	return
 }
 
-// XXX realign bonus, irancontrascandal, ...
 func realign(s *State, target *Country, rollUSA, rollSOV int) {
 	modsUsa, modsSov := realignMods(*target)
+	if s.Effect(IranContraScandal) {
+		modsUsa = append(modsUsa, Mod{-1, "Iran-Contra Scandal"})
+	}
 	rollUSA += TotalMod(modsUsa)
 	rollSOV += TotalMod(modsSov)
 	initUSA := target.Inf[USA]
