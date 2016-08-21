@@ -159,8 +159,11 @@ func coup(s *State, player Aff, ops int, roll int, target *Country, free bool) (
 		target.Inf[player.Opp()] -= removed
 	}
 	if target.Battleground {
-		// XXX: CubanMissileCrisis, NuclearSubs
-		s.DegradeDefcon(1)
+		if s.Effect(NuclearSubs) && player == USA {
+			s.Transcribe("Defcon is unaffected due to Nuclear Subs")
+		} else {
+			s.DegradeDefcon(1)
+		}
 	}
 	if !free {
 		s.MilOps[player] += ops
