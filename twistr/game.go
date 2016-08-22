@@ -17,7 +17,7 @@ import (
 func Deal(s *State) {
 	handSize := s.ActionsPerTurn() + 2
 	needCard := func(player Aff) bool {
-		return len(s.Hands[player].Cards) == handSize
+		return len(s.Hands[player].Cards) < handSize
 	}
 	drawIfNeeded := func(player Aff) {
 		if needCard(player) {
@@ -134,6 +134,7 @@ func Turn(s *State) {
 	s.AR = 0
 	Headline(s)
 	s.AR = 1
+	s.Redraw(s.Game)
 	var usaCap, sovCap int
 	usaDone, sovDone := false, false
 	for {
@@ -272,8 +273,8 @@ func PlaySpace(s *State, player Aff, card Card) {
 	roll := SelectRoll(s)
 	s.Transcribe(fmt.Sprintf("%s plays %s for the space race.", player, card))
 	if roll <= box.MaxRoll {
-		box.Enter(s, player)
 		s.Transcribe(fmt.Sprintf("%s rolls %d. Space race attempt success!", player, roll))
+		box.Enter(s, player)
 	} else {
 		s.Transcribe(fmt.Sprintf("%s rolls %d. Space race attempt fails!", player, roll))
 	}
@@ -348,6 +349,7 @@ func OpCoup(s *State, player Aff, card Card, free bool, checks ...countryCheck) 
 	} else {
 		msg = fmt.Sprintf("Coup with %s (%d)", card.Name, ComputeCardOps(s, player, card, nil))
 	}
+	s.Transcribe(fmt.Sprintf("%s will coup.", player))
 	selectInfluence(s, player, msg,
 		func(c *Country) {
 			success = Coup(s, player, card, c, free)

@@ -360,6 +360,7 @@ func PlayUNIntervention(s *State, player Aff) {
 	}
 	card := SelectCard(s, player, opponentEvent, CardBlacklist(TheChinaCard))
 	s.Transcribe(fmt.Sprintf("%s plays %s for operations.", player, card))
+	s.Hands[player].Remove(card)
 	ConductOps(s, player, card)
 	s.Transcribe(fmt.Sprintf("%s to discard.", card))
 	s.Discard.Push(card)
@@ -1286,6 +1287,7 @@ func PlayLatinAmericanDebtCrisis(s *State, player Aff) {
 			"Discard a card with >=3 Ops, or double USSR influence in two SAM countries?",
 			"discard", "whatever") {
 		card := SelectCard(s, USA, CardBlacklist(TheChinaCard), enoughOps)
+		s.Hands[USA].Remove(card)
 		s.Transcribe(fmt.Sprintf("%s discarded for Latin American Debt Crisis.", card))
 		s.Discard.Push(card)
 	} else {
@@ -1323,6 +1325,7 @@ func PlayAldrichAmesRemix(s *State, player Aff) {
 	ShowHand(s, USA, SOV)
 	card := selectCardFrom(s, SOV, s.Hands[USA].Cards, false)
 	s.Hands[USA].Remove(card)
+	s.Transcribe(fmt.Sprintf("%s discarded from US hand for Aldrich Ames Remix.", card))
 	s.Discard.Push(card)
 }
 
