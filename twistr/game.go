@@ -336,7 +336,7 @@ func conductOps(s *State, player Aff, card Card, free bool, kinds []OpsKind) {
 
 func OpRealign(s *State, player Aff, card Card, free bool) {
 	selectInfluence(s, player, fmt.Sprintf("Realigns with %s (%d)", card.Name, ComputeCardOps(s, player, card, nil)),
-		func(c *Country) {
+		func(s *State, c *Country) {
 			Realign(s, player, c)
 		},
 		OpsLimit(s, player, card), false,
@@ -353,7 +353,7 @@ func OpCoup(s *State, player Aff, card Card, free bool, checks ...countryCheck) 
 	}
 	s.Transcribe(fmt.Sprintf("%s will coup.", player))
 	selectInfluence(s, player, msg,
-		func(c *Country) {
+		func(s *State, c *Country) {
 			success = Coup(s, player, card, c, free)
 		},
 		LimitN(1), true,

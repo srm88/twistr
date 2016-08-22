@@ -242,42 +242,48 @@ func japanProtected(s *State, player Aff, t *Country) bool {
 	return s.Effect(USJapanMutualDefensePact) && t.Id == Japan && player == SOV
 }
 
-type countryChange func(*Country)
+type countryChange func(*State, *Country)
 
 func PlusInf(aff Aff, n int) countryChange {
-	return func(c *Country) {
+	return func(s *State, c *Country) {
 		c.Inf[aff] += n
+		s.Transcribe(fmt.Sprintf("%s influence in %s +%d, now %d.", aff, c, n, c.Inf[aff]))
 	}
 }
 
 func LessInf(aff Aff, n int) countryChange {
-	return func(c *Country) {
+	return func(s *State, c *Country) {
 		c.Inf[aff] = Max(0, c.Inf[aff]-n)
+		s.Transcribe(fmt.Sprintf("%s influence in %s -%d, now %d.", aff, c, n, c.Inf[aff]))
 	}
 }
 
 func DoubleInf(aff Aff) countryChange {
-	return func(c *Country) {
+	return func(s *State, c *Country) {
 		c.Inf[aff] *= 2
+		s.Transcribe(fmt.Sprintf("%s influence doubled in %s, now %d.", aff, c, c.Inf[aff]))
 	}
 }
 
 func ZeroInf(aff Aff) countryChange {
-	return func(c *Country) {
+	return func(s *State, c *Country) {
 		c.Inf[aff] = 0
+		s.Transcribe(fmt.Sprintf("All %s influence in %s removed.", aff, c))
 	}
 }
 
 func MatchInf(toMatch, toReceive Aff) countryChange {
-	return func(c *Country) {
+	return func(s *State, c *Country) {
 		if c.Inf[toReceive] >= c.Inf[toMatch] {
+			s.Transcribe(fmt.Sprintf("%s already matches %s influence in %s.", toReceive, toMatch, c))
 			return
 		}
 		c.Inf[toReceive] = c.Inf[toMatch]
+		s.Transcribe(fmt.Sprintf("%s matches %s influence in %s, now %d.", toReceive, toMatch, c, c.Inf[toReceive]))
 	}
 }
 
-func NoOp(c *Country) {
+func NoOp(s *State, c *Country) {
 	return
 }
 
@@ -360,7 +366,7 @@ loop:
 	// countryChange implementations to write to the log, which must follow
 	// country selection.
 	s.Log(c)
-	change(c)
+	change(s, c)
 	s.Redraw(s.Game)
 	if used == n {
 		return chosen
