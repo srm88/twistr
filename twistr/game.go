@@ -132,7 +132,9 @@ func Turn(s *State) {
 		Deal(s)
 	}
 	s.Transcribe("= Headline Phase")
+	s.AR = 0
 	Headline(s)
+	s.AR = 1
 	var usaCap, sovCap int
 	usaDone, sovDone := false, false
 	for {
@@ -169,10 +171,10 @@ func awardMilOpsVPs(s *State) {
 	case usaShy == 0 && sovShy == 0:
 		return
 	case usaShy > sovShy:
-		s.Transcribe(fmt.Sprintf("%s loses %d VP for not meeting required military operations.", USA, usaShy-sovShy))
+		s.Transcribe(fmt.Sprintf("%s loses VP for not meeting required military operations.", USA))
 		s.GainVP(SOV, usaShy-sovShy)
 	case sovShy > usaShy:
-		s.Transcribe(fmt.Sprintf("%s loses %d VP for not meeting required military operations.", SOV, sovShy-usaShy))
+		s.Transcribe(fmt.Sprintf("%s loses VP for not meeting required military operations.", SOV))
 		s.GainVP(USA, sovShy-usaShy)
 	}
 }

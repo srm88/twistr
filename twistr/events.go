@@ -360,7 +360,7 @@ func PlayUNIntervention(s *State, player Aff) {
 	ConductOps(s, player, PseudoCard(card.Ops))
 	s.Discard.Push(card)
 	if s.Effect(U2Incident) {
-		s.Transcribe("The USSR receives 1 VP due to U2 Incident")
+		s.Transcribe("The USSR receives VP due to U2 Incident")
 		s.GainVP(SOV, 1)
 	}
 
@@ -407,7 +407,7 @@ func PlayDefectors(s *State, player Aff) {
 	// if soviets play Grain Sales to Soviets.
 	// Can't address this if we're saying the event is always implemented by
 	// the card's affiliated player ...
-	if s.Phasing == SOV {
+	if s.Phasing == SOV && s.AR > 0 {
 		s.GainVP(USA, 1)
 	}
 }
