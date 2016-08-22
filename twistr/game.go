@@ -193,6 +193,7 @@ func discardHeldCard(s *State, player Aff) {
 	}
 	card := SelectCard(s, player, CardBlacklist(TheChinaCard))
 	s.Hands[player].Remove(card)
+	s.Transcribe(fmt.Sprintf("%s discards held card, %s.", player, card))
 	s.Discard.Push(card)
 }
 
@@ -280,23 +281,24 @@ func PlaySpace(s *State, player Aff, card Card) {
 	// China card can be spaced, but Action will take care of moving it to the
 	// opponent.
 	if card.Id != TheChinaCard {
+		s.Transcribe(fmt.Sprintf("%s to discard.", card))
 		s.Discard.Push(card)
 	}
 }
 
 func PlayOps(s *State, player Aff, card Card) {
-	s.Transcribe(fmt.Sprintf("%s plays %s for operations", player, card))
+	s.Transcribe(fmt.Sprintf("%s plays %s for operations.", player, card))
 	opp := player.Opp()
 	if card.Aff == opp {
 		first := SelectFirst(s, player)
 		s.Commit()
 		if player == first {
-			s.Transcribe(fmt.Sprintf("%s will conduct operations first", player))
+			s.Transcribe(fmt.Sprintf("%s will conduct operations first.", player))
 			ConductOps(s, player, card)
 			s.Redraw(s.Game)
 			PlayEvent(s, opp, card)
 		} else {
-			s.Transcribe(fmt.Sprintf("%s will implement the event first", opp))
+			s.Transcribe(fmt.Sprintf("%s will implement the event first.", opp))
 			PlayEvent(s, opp, card)
 			s.Redraw(s.Game)
 			ConductOps(s, player, card)
@@ -304,6 +306,7 @@ func PlayOps(s *State, player Aff, card Card) {
 	} else {
 		ConductOps(s, player, card)
 		if card.Id != TheChinaCard {
+			s.Transcribe(fmt.Sprintf("%s to discard.", card))
 			s.Discard.Push(card)
 		}
 	}
@@ -769,6 +772,7 @@ func tryQuagmireBearTrap(s *State, event CardId) {
 	// select card and roll
 	card := SelectCard(s, s.Phasing, CardBlacklist(TheChinaCard), enoughOps)
 	s.Hands[s.Phasing].Remove(card)
+	s.Transcribe(fmt.Sprintf("%s discards %s.", s.Phasing, card))
 	s.Discard.Push(card)
 	roll := SelectRoll(s)
 	switch roll {

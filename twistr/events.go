@@ -54,6 +54,7 @@ func PlayFiveYearPlan(s *State, player Aff) {
 	if card.Aff == USA {
 		PlayEvent(s, USA, card)
 	} else {
+		s.Transcribe(fmt.Sprintf("%s discarded per Five Year Plan.", card))
 		s.Discard.Push(card)
 	}
 }
@@ -93,6 +94,7 @@ func PlayBlockade(s *State, player Aff) {
 			"discard", "remove") {
 		card := SelectCard(s, USA, CardBlacklist(TheChinaCard), enoughOps)
 		s.Hands[USA].Remove(card)
+		s.Transcribe(fmt.Sprintf("%s discarded for Blockade.", card))
 		s.Discard.Push(card)
 	} else {
 		s.Countries[WGermany].Inf[USA] = 0
@@ -357,7 +359,9 @@ func PlayUNIntervention(s *State, player Aff) {
 		return c.Aff == player.Opp()
 	}
 	card := SelectCard(s, player, opponentEvent, CardBlacklist(TheChinaCard))
-	ConductOps(s, player, PseudoCard(card.Ops))
+	s.Transcribe(fmt.Sprintf("%s plays %s for operations.", player, card))
+	ConductOps(s, player, card)
+	s.Transcribe(fmt.Sprintf("%s to discard.", card))
 	s.Discard.Push(card)
 	if s.Effect(U2Incident) {
 		s.Transcribe("The USSR receives VP due to U2 Incident")
@@ -510,7 +514,6 @@ func PlaySoutheastAsiaScoring(s *State, player Aff) {
 	/* 1 VP each for Control of Burma, Cambodia/Laos, Vietnam, Malaysia,
 	   Indonesia and the Philippines. 2 VP for Control of Thailand; MAY NOT BE
 	   HELD! */
-	// XXX messaging!!!
 	usaCountries := []string{}
 	sovCountries := []string{}
 	for _, c := range []CountryId{Burma, LaosCambodia, Vietnam, Malaysia, Indonesia, Philippines} {
@@ -594,7 +597,7 @@ func PlaySALTNegotiations(s *State, player Aff) {
 		return !c.Scoring()
 	}
 	if "yes" == SelectChoice(s, player,
-		"Choose a card to show to your opponent and add to your hand?",
+		"Choose a card to add to your hand?",
 		"yes", "no") {
 		selected := SelectDiscarded(s, player, notScoring)
 		ShowCard(s, selected, player.Opp())
@@ -728,7 +731,9 @@ func PlayMissileEnvy(s *State, player Aff) {
 	case player, NEU:
 		PlayEvent(s, player, selected)
 	default:
+		s.Transcribe(fmt.Sprintf("%s plays %s for operations.", player, selected))
 		ConductOps(s, player, selected)
+		s.Transcribe(fmt.Sprintf("%s to discard.", selected))
 		s.Discard.Push(selected)
 	}
 	s.TurnEvents[MissileEnvy] = player
@@ -842,7 +847,6 @@ func PlayOPEC(s *State, player Aff) {
 			controlled = append(controlled, s.Countries[cid].Name)
 		}
 	}
-	// XXX messaging (scoring)
 	s.GainVP(SOV, len(controlled))
 }
 
@@ -1019,7 +1023,6 @@ func PlayAllianceForProgress(s *State, player Aff) {
 			controlled = append(controlled, s.Countries[c].Name)
 		}
 	}
-	// XXX messaging
 	s.GainVP(USA, len(controlled))
 }
 
@@ -1248,7 +1251,6 @@ func PlayTerrorism(s *State, player Aff) {
 		return
 	}
 	card := SelectRandomCard(s, opp)
-	// XXX messaging
 	s.Hands[opp].Remove(card)
 	if opp == USA && s.Effect(IranianHostageCrisis) {
 		if len(s.Hands[opp].Cards) == 0 {
@@ -1284,6 +1286,7 @@ func PlayLatinAmericanDebtCrisis(s *State, player Aff) {
 			"Discard a card with >=3 Ops, or double USSR influence in two SAM countries?",
 			"discard", "whatever") {
 		card := SelectCard(s, USA, CardBlacklist(TheChinaCard), enoughOps)
+		s.Transcribe(fmt.Sprintf("%s discarded for Latin American Debt Crisis.", card))
 		s.Discard.Push(card)
 	} else {
 		SelectInfluence(s, player, "Double USSR influence in 2 countries in South America",
