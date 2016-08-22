@@ -810,9 +810,7 @@ func PlayCulturalRevolution(s *State, player Aff) {
 	   to the USSR (face up and available to be played). If the USSR already has
 	   “#6 – The China Card” card, the USSR receives 1 VP. */
 	if s.ChinaCardPlayer == USA {
-		// XXX messaging
-		s.ChinaCardPlayer = SOV
-		s.ChinaCardFaceUp = true
+		s.ChinaCardMove(SOV, true)
 	} else {
 		s.GainVP(SOV, 1)
 	}
@@ -939,8 +937,7 @@ func PlayNixonPlaysTheChinaCard(s *State, player Aff) {
 	   card to the US (face down and unavailable for immediate play). If the US
 	   already has the “#6 – The China Card” card, the US receives 2 VP. */
 	if s.ChinaCardPlayer == SOV {
-		s.ChinaCardPlayer = USA
-		s.ChinaCardFaceUp = false
+		s.ChinaCardMove(USA, false)
 	} else {
 		s.GainVP(USA, 2)
 	}
@@ -983,8 +980,7 @@ func PlayUssuriRiverSkirmish(s *State, player Aff) {
 	   “#6 – The China Card” card, add a total of 4 US Influence to any countries
 	   in Asia (adding no more than 2 Influence per country). */
 	if s.ChinaCardPlayer == SOV {
-		s.ChinaCardPlayer = USA
-		s.ChinaCardFaceUp = true
+		s.ChinaCardMove(USA, true)
 	} else {
 		SelectInfluence(s, player, "Add a total of 4 influence to countries in Central or South America",
 			PlusInf(USA, 1), 4,

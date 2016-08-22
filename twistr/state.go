@@ -166,8 +166,17 @@ func (s *State) ChinaCardPlayed() {
 	if s.ChinaCardPlayer == USA {
 		s.Cancel(FormosanResolution)
 	}
-	s.ChinaCardPlayer = s.ChinaCardPlayer.Opp()
-	s.ChinaCardFaceUp = false
+	s.ChinaCardMove(s.ChinaCardPlayer.Opp(), false)
+}
+
+func (s *State) ChinaCardMove(to Aff, faceUp bool) {
+	s.ChinaCardPlayer = to
+	s.ChinaCardFaceUp = faceUp
+	if faceUp {
+		s.Transcribe(fmt.Sprintf("%s receives The China Card, face down.", to))
+	} else {
+		s.Transcribe(fmt.Sprintf("%s receives The China Card, face up.", to))
+	}
 }
 
 func (s *State) GainVP(player Aff, n int) {

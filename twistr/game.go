@@ -258,7 +258,6 @@ func PlayCard(s *State, player Aff, card Card) (pk PlayKind) {
 		PlayEvent(s, player, card)
 	}
 	if card.Id == TheChinaCard {
-		s.Transcribe(fmt.Sprintf("%s receives the China Card, face down.", player.Opp()))
 		s.ChinaCardPlayed()
 	}
 	if s.Effect(FlowerPower) && player == USA && card.IsWar() && pk != SPACE && !card.Prevented(s.Game) {
