@@ -27,11 +27,14 @@ func (m Mod) String() string {
 }
 
 func ModSummary(ms []Mod) string {
+	if len(ms) == 0 {
+		return ""
+	}
 	ss := make([]string, len(ms))
 	for i, m := range ms {
 		ss[i] = m.String()
 	}
-	return strings.Join(ss, " ")
+	return " " + strings.Join(ss, " ")
 }
 
 func TotalMod(ms []Mod) (total int) {

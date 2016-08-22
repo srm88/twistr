@@ -139,6 +139,17 @@ func NewState(ui UI, aofPath string, game *Game) (*State, error) {
 	return s, nil
 }
 
+func (s *State) SetDefcon(n int) {
+	switch {
+	case n > s.Defcon:
+		s.ImproveDefcon(n - s.Defcon)
+	case n < s.Defcon:
+		s.DegradeDefcon(s.Defcon - n)
+	default:
+		s.Transcribe(fmt.Sprintf("Defcon remains %d.", s.Defcon))
+	}
+}
+
 func (s *State) ImproveDefcon(n int) {
 	newDefcon := Min(s.Defcon+n, 5)
 	s.Transcribe(fmt.Sprintf("Defcon improves by %d, now at %d.", newDefcon-s.Defcon, newDefcon))
