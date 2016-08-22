@@ -389,21 +389,21 @@ func PlayEvent(s *State, player Aff, card Card) {
 		default:
 			implementer = player
 		}
-		s.Transcribe(fmt.Sprintf("%s implements %s", implementer, card))
+		s.Transcribe(fmt.Sprintf("%s implements %s.", implementer, card))
 		card.Impl(s, implementer)
 	} else {
-		s.Transcribe(fmt.Sprintf("%s cannot be played as an event", card))
+		s.Transcribe(fmt.Sprintf("%s cannot be played as an event.", card))
 	}
 	switch {
 	case card.Id == MissileEnvy:
 		s.Hands[player.Opp()].Push(Cards[MissileEnvy])
-		s.Transcribe(fmt.Sprintf("%s to %s hand", card, player.Opp()))
+		s.Transcribe(fmt.Sprintf("%s to %s hand.", card, player.Opp()))
 	case !prevented && card.Star:
 		s.Removed.Push(card)
-		s.Transcribe(fmt.Sprintf("%s removed", card))
+		s.Transcribe(fmt.Sprintf("%s removed.", card))
 	default:
 		s.Discard.Push(card)
-		s.Transcribe(fmt.Sprintf("%s to discard", card))
+		s.Transcribe(fmt.Sprintf("%s to discard.", card))
 	}
 }
 

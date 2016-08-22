@@ -1225,8 +1225,8 @@ func PlayIranianHostageCrisis(s *State, player Aff) {
 	   Event requires the US to discard 2 cards, instead of 1 card, if the “#92 –
 	   Terrorism” Event is played. */
 	iran := s.Countries[Iran]
-	iran.Inf[USA] = 0
-	iran.Inf[SOV] += 2
+	zeroInf(s, iran, USA)
+	plusInf(s, iran, SOV, 2)
 	s.Events[IranianHostageCrisis] = player
 }
 
@@ -1234,14 +1234,15 @@ func PlayTheIronLady(s *State, player Aff) {
 	/* Add 1 USSR Influence to Argentina and remove all USSR Influence from the
 	   United Kingdom. The US receives 1 VP. This Event prevents the “#7 –
 	   Socialist Governments” card from being played as an Event. */
-	s.Countries[Argentina].Inf[SOV] += 1
-	s.Countries[UK].Inf[SOV] = 0
+	plusInf(s, s.Countries[Argentina], SOV, 1)
+	zeroInf(s, s.Countries[UK], SOV)
 	s.GainVP(USA, 1)
 	s.Events[TheIronLady] = player
 }
 
 func PlayReaganBombsLibya(s *State, player Aff) {
 	/* The US receives 1 VP for every 2 USSR Influence in Libya. */
+	s.Transcribe("The US gains VP for each 2 USSR influence in Libya.")
 	s.GainVP(USA, s.Countries[Libya].Inf[SOV]/2)
 }
 
@@ -1250,6 +1251,7 @@ func PlayStarWars(s *State, player Aff) {
 	   to look through the discard pile, pick any 1 non-scoring card and play it
 	   immediately as an Event. */
 	if s.SpaceRace[USA] <= s.SpaceRace[SOV] {
+		s.Transcribe("The US is not ahead on the Space Race.")
 		return
 	}
 	// Limit choice to playable events
@@ -1261,6 +1263,8 @@ func PlayStarWars(s *State, player Aff) {
 		CardBlacklist(AsiaScoring, EuropeScoring,
 			MiddleEastScoring, CentralAmericaScoring, SouthAmericaScoring,
 			SoutheastAsiaScoring, AfricaScoring))
+	s.Discard.Remove(card)
+	s.Transcribe(fmt.Sprintf("%s picks %s from the discard pile.", player, card))
 	PlayEvent(s, player, card)
 }
 
@@ -1290,7 +1294,7 @@ func PlayTheReformer(s *State, player Aff) {
 func PlayMarineBarracksBombing(s *State, player Aff) {
 	/* Remove all US Influence in Lebanon and remove a total of 2 US Influence
 	   from any countries in the Middle East. */
-	s.Countries[Lebanon].Inf[USA] = 0
+	zeroInf(s, s.Countries[Lebanon], USA)
 	SelectInfluence(s, player, "Remove 2 US influence from the Middle East",
 		LessInf(USA, 1), 2,
 		InRegion(MiddleEast), HasInfluence(USA))
@@ -1303,7 +1307,10 @@ func PlaySovietsShootDownKAL007(s *State, player Aff) {
 	s.DegradeDefcon(1)
 	s.GainVP(USA, 2)
 	if s.Countries[SKorea].Controlled() == USA {
+		s.Transcribe(fmt.Sprintf("The US may place influence or make realignment rolls with %s.", Cards[SovietsShootDownKAL007]))
 		ConductOps(s, player, Cards[SovietsShootDownKAL007], INFLUENCE, REALIGN)
+	} else {
+		s.Transcribe("South Korea is not US controlled.")
 	}
 }
 
@@ -1314,7 +1321,10 @@ func PlayGlasnost(s *State, player Aff) {
 	s.ImproveDefcon(1)
 	s.GainVP(SOV, 2)
 	if s.Effect(TheReformer) {
+		s.Transcribe(fmt.Sprintf("The USSR may place influence or make realignment rolls with %s.", Cards[Glasnost]))
 		ConductOps(s, player, Cards[Glasnost], REALIGN, INFLUENCE)
+	} else {
+		s.Transcribe("The Reformer Event has not been played.")
 	}
 }
 
@@ -1323,7 +1333,7 @@ func PlayOrtegaElectedInNicaragua(s *State, player Aff) {
 	   Attempt, using this card’s Operations value, in a country adjacent to
 	   Nicaragua. */
 	nicaragua := s.Countries[Nicaragua]
-	nicaragua.Inf[USA] = 0
+	zeroInf(s, nicaragua, USA)
 	adjToNicaragua := func(c *Country) error {
 		for _, neighbor := range nicaragua.AdjCountries {
 			if neighbor.Id == c.Id {
@@ -1342,15 +1352,18 @@ func PlayTerrorism(s *State, player Aff) {
 	   player (if applicable) must randomly discard 2 cards from their hand. */
 	opp := player.Opp()
 	if len(s.Hands[opp].Cards) == 0 {
+		s.Transcribe(fmt.Sprintf("%s has no cards in their hand.", opp))
 		return
 	}
 	card := SelectRandomCard(s, opp)
+	s.Transcribe(fmt.Sprintf("%s is discarded from %s hand.", card, opp))
 	s.Hands[opp].Remove(card)
 	if opp == USA && s.Effect(IranianHostageCrisis) {
 		if len(s.Hands[opp].Cards) == 0 {
 			return
 		}
 		card := SelectRandomCard(s, opp)
+		s.Transcribe(fmt.Sprintf("%s is additionally discarded from %s hand (Iranian Hostage Crisis).", card, opp))
 		s.Hands[opp].Remove(card)
 	}
 }
@@ -1368,6 +1381,7 @@ func PlayChernobyl(s *State, player Aff) {
 	region := SelectRegion(s, player, "Choose a region where USSR is blocked from influencing for the turn")
 	s.TurnEvents[Chernobyl] = player
 	s.ChernobylRegion = region
+	s.Transcribe(fmt.Sprintf("The USSR may not add Influence using Operations points to %s for the remainder of the turn.", region))
 }
 
 func PlayLatinAmericanDebtCrisis(s *State, player Aff) {
@@ -1394,12 +1408,11 @@ func PlayTearDownThisWall(s *State, player Aff) {
 	/* Add 3 US Influence to East Germany. The US may make free Coup Attempts or
 	   Realignment rolls in Europe using the Operations value of this card. This
 	   Event prevents / cancels the effect(s) of the “#55 – Willy Brandt” Event. */
-	s.Countries[EGermany].Inf[USA] += 3
+	plusInf(s, s.Countries[EGermany], USA, 3)
+	s.Transcribe(fmt.Sprintf("The US may make free coup attempts or realignment rolls with %s.", Cards[TearDownThisWall]))
 	ConductOpsFree(s, player, Cards[TearDownThisWall], COUP, REALIGN)
 	s.Events[TearDownThisWall] = player
-	if s.Effect(WillyBrandt) {
-		s.Cancel(WillyBrandt)
-	}
+	s.Cancel(WillyBrandt)
 }
 
 func PlayAnEvilEmpire(s *State, player Aff) {
@@ -1407,9 +1420,7 @@ func PlayAnEvilEmpire(s *State, player Aff) {
 	   “#59 – Flower Power” Event. */
 	s.GainVP(USA, 1)
 	s.Events[AnEvilEmpire] = player
-	if s.Effect(FlowerPower) {
-		s.Cancel(FlowerPower)
-	}
+	s.Cancel(FlowerPower)
 }
 
 func PlayAldrichAmesRemix(s *State, player Aff) {
@@ -1435,15 +1446,18 @@ func PlayWargames(s *State, player Aff) {
 	/* If the DEFCON level is 2, the player may immediately end the game after
 	   giving their opponent 6 VP. How about a nice game of chess? */
 	if "yes" == SelectChoice(s, player, "Give opponent 6 VP and end the game?", "yes", "no") {
+		s.Transcribe(fmt.Sprintf("%s gives their opponent 6 VP and ends the game.", player))
 		s.GainVP(player.Opp(), 6)
 		// XXX: game end, writeme
+	} else {
+		s.Transcribe(fmt.Sprintf("%s chooses to not end the game.", player))
 	}
 }
 
 func PlaySolidarity(s *State, player Aff) {
 	/* Add 3 US Influence to Poland. This card requires prior play of the “#68 –
 	   John Paul II Elected Pope” Event in order to be played as an Event. */
-	s.Countries[Poland].Inf[USA] += 3
+	plusInf(s, s.Countries[Poland], USA, 3)
 }
 
 func PlayIranIraqWar(s *State, player Aff) {
@@ -1483,6 +1497,6 @@ func PlayYuriAndSamantha(s *State, player Aff) {
 func PlayAWACSSaleToSaudis(s *State, player Aff) {
 	/* Add 2 US Influence to Saudi Arabia. This Event prevents the “#56 – Muslim
 	   Revolution” card from being played as an Event. */
-	s.Countries[SaudiArabia].Inf[USA] += 2
+	plusInf(s, s.Countries[SaudiArabia], USA, 2)
 	s.Events[AWACSSaleToSaudis] = player
 }
