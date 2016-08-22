@@ -121,6 +121,7 @@ func opsMods(s *State, player Aff, card Card, countries []*Country) (mods []Mod)
 
 // Coup
 func Coup(s *State, player Aff, card Card, c *Country, free bool) (success bool) {
+	s.Transcribe(fmt.Sprintf("%s coups %s.", player, c))
 	if s.Effect(CubanMissileCrisis, player.Opp()) {
 		if !CancelCubanMissileCrisis(s, player) {
 			s.Transcribe(fmt.Sprintf("%s perturbs the delicate balance of the Cuban missile crisis!", player))
@@ -142,6 +143,11 @@ func Coup(s *State, player Aff, card Card, c *Country, free bool) (success bool)
 func coup(s *State, player Aff, ops int, roll int, target *Country, free bool) (removedInfluence bool) {
 	mods := coupMods(s, player, target)
 	delta := roll + TotalMod(mods) + ops - (target.Stability * 2)
+	if len(mods) > 0 {
+		s.Transcribe(fmt.Sprintf("Result: %d +%d (ops) %s -%d (2x stability).", roll, ops, ModSummary(mods), 2*target.Stability))
+	} else {
+		s.Transcribe(fmt.Sprintf("Result: %d +%d (ops) -%d (2x stability).", roll, ops, 2*target.Stability))
+	}
 	removedInfluence = delta > 0
 	if removedInfluence {
 		oppCurInf := target.Inf[player.Opp()]
@@ -149,6 +155,12 @@ func coup(s *State, player Aff, ops int, roll int, target *Country, free bool) (
 		gained := delta - removed
 		target.Inf[player] += gained
 		target.Inf[player.Opp()] -= removed
+		s.Transcribe(fmt.Sprintf("%s influence reduced by %d, now %d.", removed, target.Inf[player.Opp()]))
+		if gained > 0 {
+			s.Transcribe(fmt.Sprintf("%s influence increased by %d, now %d.", gained, target.Inf[player]))
+		}
+	} else {
+		s.Transcribe("No influence removed.")
 	}
 	if target.Battleground {
 		if s.Effect(NuclearSubs) && player == USA {
