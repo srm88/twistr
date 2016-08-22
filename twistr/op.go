@@ -155,9 +155,9 @@ func coup(s *State, player Aff, ops int, roll int, target *Country, free bool) (
 		gained := delta - removed
 		target.Inf[player] += gained
 		target.Inf[player.Opp()] -= removed
-		s.Transcribe(fmt.Sprintf("%s influence reduced by %d, now %d.", removed, target.Inf[player.Opp()]))
+		s.Transcribe(fmt.Sprintf("%s %s influence  reduced by %d, now %d.", target, player.Opp(), removed, target.Inf[player.Opp()]))
 		if gained > 0 {
-			s.Transcribe(fmt.Sprintf("%s influence increased by %d, now %d.", gained, target.Inf[player]))
+			s.Transcribe(fmt.Sprintf("%s %s influence increased by %d, now %d.", target, player, gained, target.Inf[player]))
 		}
 	} else {
 		s.Transcribe("No influence removed.")
