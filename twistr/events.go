@@ -225,7 +225,7 @@ func PlayCapturedNaziScientist(s *State, player Aff) {
 func PlayTrumanDoctrine(s *State, player Aff) {
 	/* Remove all USSR Influence from a single uncontrolled country in Europe.  */
 	// XXX what if there are no options?
-	SelectInfluence(s, player, "1 country",
+	SelectInfluence(s, player, "Remove all USSR influence from an uncontrolled country in Europe",
 		ZeroInf(SOV), 1,
 		InRegion(Europe), ControlledBy(NEU), HasInfluence(SOV))
 }
@@ -276,7 +276,7 @@ func PlayNATO(s *State, player Aff) {
 func PlayIndependentReds(s *State, player Aff) {
 	/* Add US Influence to either Yugoslavia, Romania, Bulgaria, Hungary, or
 	   Czechoslovakia so that it equals the USSR Influence in that country.  */
-	SelectOneInfluence(s, player, "Choose a country in W Europe",
+	SelectOneInfluence(s, player, "Choose either Yugoslavia, Romania, Bulgaria, Hungary, or Czechoslovakia",
 		MatchInf(SOV, USA),
 		InCountries(Yugoslavia, Romania, Bulgaria, Hungary, Czechoslovakia))
 }

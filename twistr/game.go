@@ -145,15 +145,15 @@ func Turn(s *State) {
 			return
 		}
 		if !sovDone {
-			s.Redraw(s.Game)
 			s.Transcribe(fmt.Sprintf("= %s AR %d.", SOV, s.AR))
 			s.Phasing = SOV
+			s.Redraw(s.Game)
 			Action(s)
 		}
 		if !usaDone {
-			s.Redraw(s.Game)
 			s.Transcribe(fmt.Sprintf("= %s AR %d.", USA, s.AR))
 			s.Phasing = USA
+			s.Redraw(s.Game)
 			Action(s)
 		}
 		s.AR++
