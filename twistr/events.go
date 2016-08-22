@@ -1128,8 +1128,8 @@ func PlayOneSmallStep(s *State, player Aff) {
 	if _, ok := s.SREvents[srb.SideEffect]; ok {
 		delete(s.SREvents, srb.SideEffect)
 	}
-	s.SpaceRace[player] += 2
-	s.Transcribe(fmt.Sprintf("%s advances to %d on the Space Race.", player, s.SpaceRace[player]))
+	// XXX clunky: srb.Enter increments the player's space race counter ...
+	s.SpaceRace[player]++
 	srb, _ = nextSRBox(s, player)
 	srb.Enter(s, player)
 }

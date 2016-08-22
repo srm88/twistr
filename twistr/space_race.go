@@ -12,6 +12,23 @@ const (
 	ExtraAR
 )
 
+func (s SpaceId) String() string {
+	switch s {
+	case NoAbility:
+		return ""
+	case TwoSpace:
+		return "play 2 Space Race cards per turn"
+	case OppHeadlineFirst:
+		return "choose & show headline card after opponent"
+	case DiscardHeld:
+		return "discard 1 held card"
+	case ExtraAR:
+		return "take 8 Action Rounds"
+	default:
+		return "?"
+	}
+}
+
 type SRBox struct {
 	MaxRoll    int
 	OpsNeeded  int
@@ -61,20 +78,26 @@ func nextSRBox(s *State, player Aff) (srb SRBox, err error) {
 }
 
 func (srb SRBox) Enter(s *State, player Aff) {
-	pos := s.SpaceRace[player]
+	pos := 1 + s.SpaceRace[player]
 	oppPos := s.SpaceRace[player.Opp()]
 
-	if pos+1 > oppPos {
+	s.Transcribe(fmt.Sprintf("%s advances to %d on the Space Race.", player, pos))
+	if pos > oppPos {
 		s.GainVP(player, srb.FirstVP)
 	} else {
 		s.GainVP(player, srb.SecondVP)
 	}
 
 	if _, ok := s.SREvents[srb.SideEffect]; ok {
+		if srb.SideEffect != NoAbility {
+			s.Transcribe(fmt.Sprintf("%s may no longer %s.", player.Opp(), srb.SideEffect.String()))
+		}
 		delete(s.SREvents, srb.SideEffect)
 	} else {
+		if srb.SideEffect != NoAbility {
+			s.Transcribe(fmt.Sprintf("%s may now %s.", player, srb.SideEffect.String()))
+		}
 		s.SREvents[srb.SideEffect] = player
 	}
-
 	s.SpaceRace[player]++
 }
