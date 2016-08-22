@@ -250,7 +250,9 @@ func (s *Game) GainVP(player Aff, n int) {
 	switch player {
 	case USA:
 		s.VP += n
+		s.Transcribe(fmt.Sprintf("USA gains %d VP, now at %d.", n, s.VP))
 	case SOV:
 		s.VP -= n
+		s.Transcribe(fmt.Sprintf("USSR gains %d VP, now at %d.", n, s.VP))
 	}
 }
