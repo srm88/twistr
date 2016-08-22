@@ -139,10 +139,45 @@ func NewState(ui UI, aofPath string, game *Game) (*State, error) {
 	return s, nil
 }
 
+func (s *State) ImproveDefcon(n int) {
+	newDefcon := Min(s.Defcon+n, 5)
+	s.Transcribe(fmt.Sprintf("Defcon improves by %d, now at %d.", newDefcon-s.Defcon, newDefcon))
+	s.Defcon = newDefcon
+}
+
 func (s *State) DegradeDefcon(n int) {
 	s.Defcon -= n
 	if s.Defcon < 2 {
 		ThermoNuclearWar(s, s.Phasing)
+	} else {
+		s.Transcribe(fmt.Sprintf("Defcon degrades by %d, now at %d.", n, s.Defcon))
+	}
+
+}
+
+// Cancel ends an event.
+func (s *State) Cancel(event CardId) {
+	s.Transcribe(fmt.Sprintf("%s is canceled.", Cards[event]))
+	delete(s.Events, event)
+	delete(s.TurnEvents, event)
+}
+
+func (s *State) ChinaCardPlayed() {
+	if s.ChinaCardPlayer == USA {
+		s.Cancel(FormosanResolution)
+	}
+	s.ChinaCardPlayer = s.ChinaCardPlayer.Opp()
+	s.ChinaCardFaceUp = false
+}
+
+func (s *State) GainVP(player Aff, n int) {
+	switch player {
+	case USA:
+		s.VP += n
+		s.Transcribe(fmt.Sprintf("USA gains %d VP, now at %d.", n, s.VP))
+	case SOV:
+		s.VP -= n
+		s.Transcribe(fmt.Sprintf("USSR gains %d VP, now at %d.", n, s.VP))
 	}
 }
 
@@ -194,10 +229,6 @@ func NewGame() *Game {
 	}
 }
 
-func (s *Game) ImproveDefcon(n int) {
-	s.Defcon = Min(s.Defcon+n, 5)
-}
-
 func (s *Game) Era() Era {
 	switch {
 	case s.Turn < 4:
@@ -225,34 +256,7 @@ func (s *Game) Effect(which CardId, player ...Aff) bool {
 	return ok && (len(player) == 0 || player[0] == aff)
 }
 
-// Cancel ends an event.
-func (s *Game) Cancel(event CardId) {
-	// XXX: this would clobber NorthSeaOil, which registers both a turn-
-	// and permanent event.
-	delete(s.Events, event)
-	delete(s.TurnEvents, event)
-}
-
 // CancelTurnEvents cancels all turn-based events currently in effect.
 func (s *Game) CancelTurnEvents() {
 	s.TurnEvents = make(map[CardId]Aff)
-}
-
-func (s *Game) ChinaCardPlayed() {
-	if s.ChinaCardPlayer == USA {
-		s.Cancel(FormosanResolution)
-	}
-	s.ChinaCardPlayer = s.ChinaCardPlayer.Opp()
-	s.ChinaCardFaceUp = false
-}
-
-func (s *Game) GainVP(player Aff, n int) {
-	switch player {
-	case USA:
-		s.VP += n
-		s.Transcribe(fmt.Sprintf("USA gains %d VP, now at %d.", n, s.VP))
-	case SOV:
-		s.VP -= n
-		s.Transcribe(fmt.Sprintf("USSR gains %d VP, now at %d.", n, s.VP))
-	}
 }
