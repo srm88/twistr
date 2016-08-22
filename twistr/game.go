@@ -70,8 +70,7 @@ func Start(s *State) {
 }
 
 func ThermoNuclearWar(s *State, caused Aff) {
-	// XXX writeme
-	panic("Thermonuclear war!")
+	AutoWin(s, caused.Opp(), fmt.Sprintf("thermonuclear war caused by %s", caused))
 }
 
 func ShuffleIn(s *State, cards []Card) {
@@ -794,7 +793,14 @@ func PseudoCard(ops int) Card {
 
 func AutoWin(s *State, player Aff, why string) {
 	s.Transcribe(fmt.Sprintf("%s wins the game due to %s.", player, why))
-	// XXX finish
+	Finish(s, player)
+}
+
+func Finish(s *State, victor Aff) {
+	// XXX
+	for {
+		s.UI.Solicit(victor, fmt.Sprintf("Okay %s won", victor), nil)
+	}
 }
 
 func Score(s *State, player Aff, region Region) {

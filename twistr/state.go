@@ -188,6 +188,11 @@ func (s *State) GainVP(player Aff, n int) {
 		s.VP -= n
 		s.Transcribe(fmt.Sprintf("USSR gains %d VP, now at %d.", n, s.VP))
 	}
+	if s.VP == 20 {
+		AutoWin(s, USA, "20 VP")
+	} else if s.VP == -20 {
+		AutoWin(s, SOV, "20 VP")
+	}
 }
 
 type Game struct {
