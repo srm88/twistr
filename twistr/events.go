@@ -47,9 +47,11 @@ func PlayFiveYearPlan(s *State, player Aff) {
 	   or an Event applicable to both players, then the card must be discarded
 	   without triggering the Event.  */
 	if len(s.Hands[SOV].Cards) == 0 {
+		s.Transcribe("USSR has no card to discard.")
 		return
 	}
 	card := SelectRandomCard(s, SOV)
+	s.Transcribe(fmt.Sprintf("%s selected.", card))
 	s.Hands[SOV].Remove(card)
 	if card.Aff == USA {
 		PlayEvent(s, USA, card)
@@ -72,8 +74,8 @@ func PlayFidel(s *State, player Aff) {
 	/* Remove all US Influence from Cuba. USSR adds sufficient Influence in Cuba
 	   for Control.  */
 	cuba := s.Countries[Cuba]
-	cuba.Inf[USA] = 0
-	cuba.Inf[SOV] = cuba.Stability
+	zeroInf(s, cuba, USA)
+	plusInf(s, cuba, SOV, cuba.Stability)
 }
 
 func PlayVietnamRevolts(s *State, player Aff) {
@@ -81,7 +83,7 @@ func PlayVietnamRevolts(s *State, player Aff) {
 	   receives +1 Operations to the Operations value of a card that uses all its
 	   Operations in Southeast Asia.  */
 	s.Events[VietnamRevolts] = player
-	s.Countries[Vietnam].Inf[SOV] += 2
+	plusInf(s, s.Countries[Vietnam], SOV, 2)
 }
 
 func PlayBlockade(s *State, player Aff) {
@@ -94,10 +96,10 @@ func PlayBlockade(s *State, player Aff) {
 			"discard", "remove") {
 		card := SelectCard(s, USA, CardBlacklist(TheChinaCard), enoughOps)
 		s.Hands[USA].Remove(card)
-		s.Transcribe(fmt.Sprintf("%s discarded for Blockade.", card))
+		s.Transcribe(fmt.Sprintf("US discards %s for Blockade.", card))
 		s.Discard.Push(card)
 	} else {
-		s.Countries[WGermany].Inf[USA] = 0
+		zeroInf(s, s.Countries[WGermany], USA)
 	}
 }
 
@@ -111,11 +113,19 @@ func PlayKoreanWar(s *State, player Aff) {
 	roll := SelectRoll(s)
 	skorea := s.Countries[SKorea]
 	mod := skorea.NumControlledNeighbors(USA)
+	if mod > 0 {
+		s.Transcribe(fmt.Sprintf("%s rolls %d.", player, roll))
+	} else {
+		s.Transcribe(fmt.Sprintf("%s rolls %d -%d (US controlled adjacent).", player, roll, mod))
+	}
 	switch roll - mod {
 	case 4, 5, 6:
+		s.Transcribe("Korean War succeeds.")
 		s.GainVP(SOV, 2)
-		skorea.Inf[SOV] += skorea.Inf[USA]
-		skorea.Inf[USA] = 0
+		plusInf(s, skorea, SOV, skorea.Inf[USA])
+		zeroInf(s, skorea, USA)
+	default:
+		s.Transcribe("Korean War fails.")
 	}
 }
 
@@ -137,15 +147,25 @@ func PlayArabIsraeliWar(s *State, player Aff) {
 	s.MilOps[SOV] += 2
 	roll := SelectRoll(s)
 	israel := s.Countries[Israel]
-	mod := israel.NumControlledNeighbors(USA)
+	mods := []Mod{
+		{-israel.NumControlledNeighbors(USA), "US controlled adjacent"}}
 	if israel.Controlled() == USA {
-		mod += 1
+		mods = append(mods, Mod{-1, "US control of Israel"})
 	}
-	switch roll - mod {
+	mod := TotalMod(mods)
+	if mod > 0 {
+		s.Transcribe(fmt.Sprintf("%s rolls %d.", player, roll))
+	} else {
+		s.Transcribe(fmt.Sprintf("%s rolls %d %s.", player, roll, ModSummary(mods)))
+	}
+	switch roll + mod {
 	case 4, 5, 6:
+		s.Transcribe("Arab-Israeli War succeeds.")
 		s.GainVP(SOV, 2)
-		israel.Inf[SOV] += israel.Inf[USA]
-		israel.Inf[USA] = 0
+		plusInf(s, israel, SOV, israel.Inf[USA])
+		zeroInf(s, israel, USA)
+	default:
+		s.Transcribe("Arab-Israeli War fails.")
 	}
 }
 
@@ -275,11 +295,19 @@ func PlayIndoPakistaniWar(s *State, player Aff) {
 	s.MilOps[SOV] += 2
 	roll := SelectRoll(s)
 	mod := c.NumControlledNeighbors(player.Opp())
+	if mod > 0 {
+		s.Transcribe(fmt.Sprintf("%s rolls %d.", player, roll))
+	} else {
+		s.Transcribe(fmt.Sprintf("%s rolls %d -%d (%s controlled adjacent).", player, roll, mod, player.Opp()))
+	}
 	switch roll - mod {
 	case 4, 5, 6:
+		s.Transcribe("Indo-Pakistani War succeeds.")
 		s.GainVP(player, 2)
-		c.Inf[player] += c.Inf[player.Opp()]
-		c.Inf[player.Opp()] = 0
+		plusInf(s, c, player, c.Inf[player.Opp()])
+		zeroInf(s, c, player.Opp())
+	default:
+		s.Transcribe("Indo-Pakistani War fails.")
 	}
 }
 
@@ -496,11 +524,19 @@ func PlayBrushWar(s *State, player Aff) {
 	s.MilOps[player] += 3
 	roll := SelectRoll(s)
 	mod := c.NumControlledNeighbors(player.Opp())
+	if mod > 0 {
+		s.Transcribe(fmt.Sprintf("%s rolls %d.", player, roll))
+	} else {
+		s.Transcribe(fmt.Sprintf("%s rolls %d -%d (%s controlled adjacent).", player, roll, mod, player.Opp()))
+	}
 	switch roll - mod {
 	case 3, 4, 5, 6:
+		s.Transcribe("Brush War succeeds.")
 		s.GainVP(player, 1)
-		c.Inf[player] += c.Inf[player.Opp()]
-		c.Inf[player.Opp()] = 0
+		plusInf(s, c, player, c.Inf[player.Opp()])
+		zeroInf(s, c, player.Opp())
+	default:
+		s.Transcribe("Brush War fails.")
 	}
 }
 
@@ -1364,11 +1400,19 @@ func PlayIranIraqWar(s *State, player Aff) {
 	s.MilOps[player] += 2
 	roll := SelectRoll(s)
 	mod := c.NumControlledNeighbors(player.Opp())
+	if mod > 0 {
+		s.Transcribe(fmt.Sprintf("%s rolls %d.", player, roll))
+	} else {
+		s.Transcribe(fmt.Sprintf("%s rolls %d -%d (%s controlled adjacent).", player, roll, mod, player.Opp()))
+	}
 	switch roll - mod {
 	case 4, 5, 6:
+		s.Transcribe("Iran-Iraq War succeeds.")
 		s.GainVP(player, 2)
-		c.Inf[player] += c.Inf[player.Opp()]
-		c.Inf[player.Opp()] = 0
+		plusInf(s, c, player, c.Inf[player.Opp()])
+		zeroInf(s, c, player.Opp())
+	default:
+		s.Transcribe("Iran-Iraq War fails.")
 	}
 }
 

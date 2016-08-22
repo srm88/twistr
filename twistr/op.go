@@ -244,42 +244,66 @@ func japanProtected(s *State, player Aff, t *Country) bool {
 
 type countryChange func(*State, *Country)
 
+func plusInf(s *State, c *Country, aff Aff, n int) {
+	c.Inf[aff] += n
+	s.Transcribe(fmt.Sprintf("%s influence in %s +%d, now %d.", aff, c, n, c.Inf[aff]))
+}
+
+func lessInf(s *State, c *Country, aff Aff, n int) {
+	c.Inf[aff] = Max(0, c.Inf[aff]-n)
+	s.Transcribe(fmt.Sprintf("%s influence in %s -%d, now %d.", aff, c, n, c.Inf[aff]))
+}
+
+func doubleInf(s *State, c *Country, aff Aff) {
+	if c.Inf[aff] > 0 {
+		s.Transcribe(fmt.Sprintf("%s influence doubled in %s, now %d.", aff, c, c.Inf[aff]))
+	}
+	c.Inf[aff] *= 2
+}
+
+func zeroInf(s *State, c *Country, aff Aff) {
+	if c.Inf[aff] > 0 {
+		s.Transcribe(fmt.Sprintf("All %s influence in %s removed.", aff, c))
+	}
+	c.Inf[aff] = 0
+}
+
+func matchInf(s *State, c *Country, toMatch, toReceive Aff) {
+	if c.Inf[toReceive] >= c.Inf[toMatch] {
+		s.Transcribe(fmt.Sprintf("%s already matches %s influence in %s.", toReceive, toMatch, c))
+		return
+	}
+	c.Inf[toReceive] = c.Inf[toMatch]
+	s.Transcribe(fmt.Sprintf("%s matches %s influence in %s, now %d.", toReceive, toMatch, c, c.Inf[toReceive]))
+}
+
 func PlusInf(aff Aff, n int) countryChange {
 	return func(s *State, c *Country) {
-		c.Inf[aff] += n
-		s.Transcribe(fmt.Sprintf("%s influence in %s +%d, now %d.", aff, c, n, c.Inf[aff]))
+		plusInf(s, c, aff, n)
 	}
 }
 
 func LessInf(aff Aff, n int) countryChange {
 	return func(s *State, c *Country) {
-		c.Inf[aff] = Max(0, c.Inf[aff]-n)
-		s.Transcribe(fmt.Sprintf("%s influence in %s -%d, now %d.", aff, c, n, c.Inf[aff]))
+		lessInf(s, c, aff, n)
 	}
 }
 
 func DoubleInf(aff Aff) countryChange {
 	return func(s *State, c *Country) {
-		c.Inf[aff] *= 2
-		s.Transcribe(fmt.Sprintf("%s influence doubled in %s, now %d.", aff, c, c.Inf[aff]))
+		doubleInf(s, c, aff)
 	}
 }
 
 func ZeroInf(aff Aff) countryChange {
 	return func(s *State, c *Country) {
-		c.Inf[aff] = 0
-		s.Transcribe(fmt.Sprintf("All %s influence in %s removed.", aff, c))
+		zeroInf(s, c, aff)
 	}
 }
 
 func MatchInf(toMatch, toReceive Aff) countryChange {
 	return func(s *State, c *Country) {
-		if c.Inf[toReceive] >= c.Inf[toMatch] {
-			s.Transcribe(fmt.Sprintf("%s already matches %s influence in %s.", toReceive, toMatch, c))
-			return
-		}
-		c.Inf[toReceive] = c.Inf[toMatch]
-		s.Transcribe(fmt.Sprintf("%s matches %s influence in %s, now %d.", toReceive, toMatch, c, c.Inf[toReceive]))
+		matchInf(s, c, toMatch, toReceive)
 	}
 }
 
