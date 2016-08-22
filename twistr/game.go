@@ -749,6 +749,46 @@ func SelectRegion(s *State, player Aff, message string) (r Region) {
 	return
 }
 
+func CancelCubanMissileCrisis(s *State, player Aff) bool {
+	if player == SOV {
+		if "yes" != SelectChoice(s, player, "Remove 2 influence from Cuba to cancel cuban missile crisis?", "yes", "no") {
+			return false
+		}
+		// We ask the player before checking if they even can remove influence
+		// to give them a chance to undo their choice to coup ...
+		if s.Countries[Cuba].Inf[player] < 2 {
+			s.UI.Message(player, "You do not have enough influence in Cuba.")
+			return false
+		}
+		s.Countries[Cuba].Inf[player] -= 2
+		s.Transcribe("USSR cancels Cuban Missile Crisis by removing 2 USSR influence in Cuba")
+		s.Cancel(CubanMissileCrisis)
+		return true
+	} else {
+		if "yes" != SelectChoice(s, player, "Remove 2 influence from Turkey or West Germany to cancel cuban missile crisis?", "yes", "no") {
+			return false
+		}
+		wgermanyEnough := s.Countries[Turkey].Inf[player] >= 2
+		turkeyEnough := s.Countries[Turkey].Inf[player] >= 2
+		var choice *Country
+		switch {
+		case wgermanyEnough && turkeyEnough:
+			choice = SelectCountry(s, player, "Turkey or West Germany?", WGermany, Turkey)
+		case wgermanyEnough:
+			choice = s.Countries[WGermany]
+		case turkeyEnough:
+			choice = s.Countries[Turkey]
+		default:
+			s.UI.Message(player, "You do not have enough influence in Cuba.")
+			return false
+		}
+		choice.Inf[player] -= 2
+		s.Transcribe(fmt.Sprintf("USA cancels Cuban Missile Crisis by removing 2 US influence in %s", choice))
+		s.Cancel(CubanMissileCrisis)
+		return true
+	}
+}
+
 // PseudoCard returns a card struct that can be used for events with text like
 // "then the player may conduct ops as if they played an N ops card"
 func PseudoCard(ops int) Card {

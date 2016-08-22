@@ -142,8 +142,10 @@ func opsMods(s *State, player Aff, card Card, countries []*Country) (mods []Mod)
 // Coup
 func Coup(s *State, player Aff, card Card, c *Country, free bool) (success bool) {
 	if s.Effect(CubanMissileCrisis, player.Opp()) {
-		s.Transcribe(fmt.Sprintf("%s perturbs the delicate balance of the Cuban missile crisis!", player))
-		ThermoNuclearWar(s, player)
+		if !CancelCubanMissileCrisis(s, player) {
+			s.Transcribe(fmt.Sprintf("%s perturbs the delicate balance of the Cuban missile crisis!", player))
+			ThermoNuclearWar(s, player)
+		}
 	}
 	if s.Effect(YuriAndSamantha) && player == USA {
 		s.Transcribe("The USSR gains VP for Yuri And Samantha")
