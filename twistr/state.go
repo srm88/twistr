@@ -157,7 +157,9 @@ func (s *State) DegradeDefcon(n int) {
 
 // Cancel ends an event.
 func (s *State) Cancel(event CardId) {
-	s.Transcribe(fmt.Sprintf("%s is canceled.", Cards[event]))
+	if s.Effect(event) {
+		s.Transcribe(fmt.Sprintf("%s is canceled.", Cards[event]))
+	}
 	delete(s.Events, event)
 	delete(s.TurnEvents, event)
 }

@@ -22,7 +22,6 @@ func NewLogMode(messages []string) *LogMode {
 		lines:   []string{},
 		columns: 100,
 		rows:    30,
-		start:   0,
 	}
 	for _, msg := range messages {
 		wrapped := wordWrap(msg, m.columns)
@@ -32,6 +31,7 @@ func NewLogMode(messages []string) *LogMode {
 		}
 		m.lines = append(m.lines, wrapped...)
 	}
+	m.start = len(m.lines) - m.rows
 	return m
 }
 
