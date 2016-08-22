@@ -285,7 +285,6 @@ func PlayContainment(s *State, player Aff) {
 	/* All Operations cards played by the US, for the remainder of this turn,
 	   receive +1 to their Operations value (to a maximum of 4 Operations per
 	   card).  */
-	// XXX turn-duration events #14
 	s.TurnEvents[Containment] = player
 }
 

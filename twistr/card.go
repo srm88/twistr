@@ -23,6 +23,15 @@ func (c Card) Scoring() bool {
 	return c.Ops == 0
 }
 
+func (c Card) IsWar() bool {
+	switch c.Id {
+	case ArabIsraeliWar, KoreanWar, BrushWar, IndoPakistaniWar, IranIraqWar:
+		return true
+	default:
+		return false
+	}
+}
+
 func (c Card) ScoringRegion() Region {
 	switch c.Id {
 	case AsiaScoring:

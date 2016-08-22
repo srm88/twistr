@@ -103,111 +103,6 @@ func ShowCard(s *State, c Card, to Aff) {
 	s.Redraw(s.Game)
 }
 
-func SelectShuffle(s *State, d *Deck) (cardOrder []Card) {
-	// Duplicates what GetOrLog does. It doesn't make sense to reuse GetOrLog
-	// because this will never ask for user input.
-	if s.ReadInto(&cardOrder) {
-		return
-	}
-	cardOrder = d.Shuffle()
-	s.Log(&cardOrder)
-	return
-}
-
-// Return whether the card is an acceptable choice.
-type cardFilter func(Card) bool
-
-func ExceedsOps(minOps int, s *State, player Aff) cardFilter {
-	return func(c Card) bool {
-		return ComputeCardOps(s, player, c, nil) > minOps
-	}
-}
-
-func passesFilters(c Card, filters []cardFilter) bool {
-	for _, filter := range filters {
-		if !filter(c) {
-			return false
-		}
-	}
-	return true
-}
-
-func SelectCard(s *State, player Aff, filters ...cardFilter) Card {
-	canPlayChina := s.ChinaCardPlayer == player && s.ChinaCardFaceUp
-	return selectCardFrom(s, player, s.Hands[player].Cards, canPlayChina, filters...)
-}
-
-func hasInHand(s *State, player Aff, filters ...cardFilter) bool {
-	for _, c := range s.Hands[player].Cards {
-		if passesFilters(c, filters) {
-			return true
-		}
-	}
-	return false
-}
-
-func SelectDiscarded(s *State, player Aff, filters ...cardFilter) Card {
-	return selectCardFrom(s, player, s.Discard.Cards, false, filters...)
-}
-
-func selectCardFrom(s *State, player Aff, from []Card, includeChina bool, filters ...cardFilter) (card Card) {
-	choices := []string{}
-	for _, c := range from {
-		if !passesFilters(c, filters) {
-			continue
-		}
-		choices = append(choices, c.Ref())
-	}
-	if includeChina && passesFilters(Cards[TheChinaCard], filters) {
-		choices = append(choices, Cards[TheChinaCard].Ref())
-	}
-	GetOrLog(s, player, &card, "Choose a card", choices...)
-	return
-}
-
-func SelectSomeCards(s *State, player Aff, message string, cards []Card) (selected []Card) {
-	cardnames := []string{}
-	cardSet := make(map[CardId]bool)
-	for _, c := range cards {
-		cardnames = append(cardnames, c.Ref())
-		cardSet[c.Id] = true
-	}
-	message = fmt.Sprintf("%s: %s", message, strings.Join(cardnames, ", "))
-	prefix := ""
-retry:
-	GetOrLog(s, player, &selected, prefix+message)
-	for _, c := range selected {
-		if !cardSet[c.Id] {
-			prefix = "Invalid choice. "
-			goto retry
-		}
-	}
-	return
-}
-
-func SelectChoice(s *State, player Aff, message string, choices ...string) (choice string) {
-	GetOrLog(s, player, &choice, message, choices...)
-	return
-}
-
-func GetOrLog(s *State, player Aff, thing interface{}, message string, choices ...string) {
-	if s.ReadInto(thing) {
-		return
-	}
-	GetInput(s, player, thing, message, choices...)
-	s.Log(thing)
-}
-
-func SelectRandomCard(s *State, player Aff) (card Card) {
-	if s.ReadInto(&card) {
-		return
-	}
-	n := rng.Intn(len(s.Hands[player].Cards))
-	card = s.Hands[player].Cards[n]
-	s.Log(&card)
-	return
-}
-
 func actionsThisTurn(s *State, player Aff) int {
 	_, active := s.TurnEvents[NorthSeaOil]
 	switch {
@@ -348,61 +243,6 @@ func Action(s *State) {
 	s.Commit()
 }
 
-func DoNorad(s *State) {
-	s.Transcribe("The USA will add 1 influence to a US-influenced country per NORAD.")
-	SelectOneInfluence(s, USA, "1 influence to country containing US influence",
-		PlusInf(USA, 1),
-		HasInfluence(USA))
-}
-
-func TryQuagmire(s *State) {
-	tryQuagmireBearTrap(s, Quagmire)
-}
-
-func TryBearTrap(s *State) {
-	tryQuagmireBearTrap(s, BearTrap)
-}
-
-func tryQuagmireBearTrap(s *State, event CardId) {
-	s.Transcribe(fmt.Sprintf("%s is in %s.", s.Phasing, Cards[event]))
-	enoughOps := ExceedsOps(1, s, s.Phasing)
-	// Can't discard? Play only scoring cards.
-	if !hasInHand(s, s.Phasing, enoughOps) {
-		onlyScoring := func(c Card) bool {
-			return c.Scoring()
-		}
-		if !hasInHand(s, s.Phasing, onlyScoring) {
-			s.Transcribe(fmt.Sprintf("%s cannot escape the %s and has no scoring cards.", s.Phasing, Cards[event]))
-			return
-		}
-		s.Transcribe(fmt.Sprintf("%s cannot escape the %s and can only play scoring cards.", s.Phasing, Cards[event]))
-		card := SelectCard(s, s.Phasing, onlyScoring)
-		PlayCard(s, s.Phasing, card)
-		return
-	}
-	// select card and roll
-	card := SelectCard(s, s.Phasing, CardBlacklist(TheChinaCard), enoughOps)
-	s.Hands[s.Phasing].Remove(card)
-	s.Discard.Push(card)
-	roll := SelectRoll(s)
-	switch roll {
-	case 1, 2, 3, 4:
-		s.Transcribe(fmt.Sprintf("%s is free of the %s.", s.Phasing, Cards[event]))
-		s.Cancel(event)
-	default:
-		s.Transcribe(fmt.Sprintf("%s is still trapped in the %s.", s.Phasing, Cards[event]))
-	}
-}
-
-func warCard(card Card) bool {
-	switch card.Id {
-	case ArabIsraeliWar, KoreanWar, BrushWar, IndoPakistaniWar, IranIraqWar:
-		return true
-	default:
-		return false
-	}
-}
-
 func PlayCard(s *State, player Aff, card Card) (pk PlayKind) {
 	// Safe to remove a card that isn't actually in the hand
 	s.Hands[player].Remove(card)
@@ -419,7 +259,7 @@ func PlayCard(s *State, player Aff, card Card) (pk PlayKind) {
 		s.Transcribe(fmt.Sprintf("%s receives the China Card, face down.", player.Opp()))
 		s.ChinaCardPlayed()
 	}
-	if s.Effect(FlowerPower) && player == USA && warCard(card) && pk != SPACE && !card.Prevented(s.Game) {
+	if s.Effect(FlowerPower) && player == USA && card.IsWar() && pk != SPACE && !card.Prevented(s.Game) {
 		s.Transcribe("The USSR gains VP due to flower power.")
 		s.GainVP(SOV, 2)
 	}
@@ -442,15 +282,6 @@ func PlaySpace(s *State, player Aff, card Card) {
 	if card.Id != TheChinaCard {
 		s.Discard.Push(card)
 	}
-}
-
-func SelectRoll(s *State) (roll int) {
-	if s.ReadInto(&roll) {
-		return
-	}
-	roll = Roll()
-	s.Log(roll)
-	return
 }
 
 func PlayOps(s *State, player Aff, card Card) {
@@ -498,7 +329,6 @@ func conductOps(s *State, player Aff, card Card, free bool, kinds []OpsKind) {
 }
 
 func OpRealign(s *State, player Aff, card Card, free bool) {
-	// XXX Something here is breaking on replay NOPE It's selectroll
 	selectInfluence(s, player, fmt.Sprintf("Realigns with %s (%d)", card.Name, ComputeCardOps(s, player, card, nil)),
 		func(c *Country) {
 			Realign(s, player, c)
@@ -619,6 +449,120 @@ func SelectOps(s *State, player Aff, card Card, kinds ...OpsKind) (o OpsKind) {
 		}
 	}
 	GetOrLog(s, player, &o, message, choices...)
+	return
+}
+
+func SelectShuffle(s *State, d *Deck) (cardOrder []Card) {
+	// Duplicates what GetOrLog does. It doesn't make sense to reuse GetOrLog
+	// because this will never ask for user input.
+	if s.ReadInto(&cardOrder) {
+		return
+	}
+	cardOrder = d.Shuffle()
+	s.Log(&cardOrder)
+	return
+}
+
+// Return whether the card is an acceptable choice.
+type cardFilter func(Card) bool
+
+func ExceedsOps(minOps int, s *State, player Aff) cardFilter {
+	return func(c Card) bool {
+		return ComputeCardOps(s, player, c, nil) > minOps
+	}
+}
+
+func passesFilters(c Card, filters []cardFilter) bool {
+	for _, filter := range filters {
+		if !filter(c) {
+			return false
+		}
+	}
+	return true
+}
+
+func SelectCard(s *State, player Aff, filters ...cardFilter) Card {
+	canPlayChina := s.ChinaCardPlayer == player && s.ChinaCardFaceUp
+	return selectCardFrom(s, player, s.Hands[player].Cards, canPlayChina, filters...)
+}
+
+func hasInHand(s *State, player Aff, filters ...cardFilter) bool {
+	for _, c := range s.Hands[player].Cards {
+		if passesFilters(c, filters) {
+			return true
+		}
+	}
+	return false
+}
+
+func SelectDiscarded(s *State, player Aff, filters ...cardFilter) Card {
+	return selectCardFrom(s, player, s.Discard.Cards, false, filters...)
+}
+
+func selectCardFrom(s *State, player Aff, from []Card, includeChina bool, filters ...cardFilter) (card Card) {
+	choices := []string{}
+	for _, c := range from {
+		if !passesFilters(c, filters) {
+			continue
+		}
+		choices = append(choices, c.Ref())
+	}
+	if includeChina && passesFilters(Cards[TheChinaCard], filters) {
+		choices = append(choices, Cards[TheChinaCard].Ref())
+	}
+	GetOrLog(s, player, &card, "Choose a card", choices...)
+	return
+}
+
+func SelectSomeCards(s *State, player Aff, message string, cards []Card) (selected []Card) {
+	cardnames := []string{}
+	cardSet := make(map[CardId]bool)
+	for _, c := range cards {
+		cardnames = append(cardnames, c.Ref())
+		cardSet[c.Id] = true
+	}
+	message = fmt.Sprintf("%s: %s", message, strings.Join(cardnames, ", "))
+	prefix := ""
+retry:
+	GetOrLog(s, player, &selected, prefix+message)
+	for _, c := range selected {
+		if !cardSet[c.Id] {
+			prefix = "Invalid choice. "
+			goto retry
+		}
+	}
+	return
+}
+
+func SelectChoice(s *State, player Aff, message string, choices ...string) (choice string) {
+	GetOrLog(s, player, &choice, message, choices...)
+	return
+}
+
+func GetOrLog(s *State, player Aff, thing interface{}, message string, choices ...string) {
+	if s.ReadInto(thing) {
+		return
+	}
+	GetInput(s, player, thing, message, choices...)
+	s.Log(thing)
+}
+
+func SelectRandomCard(s *State, player Aff) (card Card) {
+	if s.ReadInto(&card) {
+		return
+	}
+	n := rng.Intn(len(s.Hands[player].Cards))
+	card = s.Hands[player].Cards[n]
+	s.Log(&card)
+	return
+}
+
+func SelectRoll(s *State) (roll int) {
+	if s.ReadInto(&roll) {
+		return
+	}
+	roll = Roll()
+	s.Log(roll)
 	return
 }
 
@@ -749,6 +693,7 @@ func SelectRegion(s *State, player Aff, message string) (r Region) {
 	return
 }
 
+// XXX misc
 func CancelCubanMissileCrisis(s *State, player Aff) bool {
 	if player == SOV {
 		if "yes" != SelectChoice(s, player, "Remove 2 influence from Cuba to cancel cuban missile crisis?", "yes", "no") {
@@ -786,6 +731,52 @@ func CancelCubanMissileCrisis(s *State, player Aff) bool {
 		s.Transcribe(fmt.Sprintf("USA cancels Cuban Missile Crisis by removing 2 US influence in %s", choice))
 		s.Cancel(CubanMissileCrisis)
 		return true
+	}
+}
+
+func DoNorad(s *State) {
+	s.Transcribe("The USA will add 1 influence to a US-influenced country per NORAD.")
+	SelectOneInfluence(s, USA, "1 influence to country containing US influence",
+		PlusInf(USA, 1),
+		HasInfluence(USA))
+}
+
+func TryQuagmire(s *State) {
+	tryQuagmireBearTrap(s, Quagmire)
+}
+
+func TryBearTrap(s *State) {
+	tryQuagmireBearTrap(s, BearTrap)
+}
+
+func tryQuagmireBearTrap(s *State, event CardId) {
+	s.Transcribe(fmt.Sprintf("%s is in %s.", s.Phasing, Cards[event]))
+	enoughOps := ExceedsOps(1, s, s.Phasing)
+	// Can't discard? Play only scoring cards.
+	if !hasInHand(s, s.Phasing, enoughOps) {
+		onlyScoring := func(c Card) bool {
+			return c.Scoring()
+		}
+		if !hasInHand(s, s.Phasing, onlyScoring) {
+			s.Transcribe(fmt.Sprintf("%s cannot escape the %s and has no scoring cards.", s.Phasing, Cards[event]))
+			return
+		}
+		s.Transcribe(fmt.Sprintf("%s cannot escape the %s and can only play scoring cards.", s.Phasing, Cards[event]))
+		card := SelectCard(s, s.Phasing, onlyScoring)
+		PlayCard(s, s.Phasing, card)
+		return
+	}
+	// select card and roll
+	card := SelectCard(s, s.Phasing, CardBlacklist(TheChinaCard), enoughOps)
+	s.Hands[s.Phasing].Remove(card)
+	s.Discard.Push(card)
+	roll := SelectRoll(s)
+	switch roll {
+	case 1, 2, 3, 4:
+		s.Transcribe(fmt.Sprintf("%s is free of the %s.", s.Phasing, Cards[event]))
+		s.Cancel(event)
+	default:
+		s.Transcribe(fmt.Sprintf("%s is still trapped in the %s.", s.Phasing, Cards[event]))
 	}
 }
 
