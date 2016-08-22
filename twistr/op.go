@@ -249,7 +249,21 @@ func plusInf(s *State, c *Country, aff Aff, n int) {
 	s.Transcribe(fmt.Sprintf("%s influence in %s +%d, now %d.", aff, c, n, c.Inf[aff]))
 }
 
+func setInf(s *State, c *Country, aff Aff, to int) {
+	added := to - c.Inf[aff]
+	if added <= 0 {
+		s.Transcribe(fmt.Sprintf("%s influence in %s is at %d.", aff, c, to))
+		return
+	}
+	s.Transcribe(fmt.Sprintf("%s influence in %s +%d, now %d.", aff, c, added))
+	c.Inf[aff] = to
+}
+
 func lessInf(s *State, c *Country, aff Aff, n int) {
+	if c.Inf[aff] == 0 {
+		s.Transcribe(fmt.Sprintf("%s influence in %s is at 0.", aff, c))
+		return
+	}
 	c.Inf[aff] = Max(0, c.Inf[aff]-n)
 	s.Transcribe(fmt.Sprintf("%s influence in %s -%d, now %d.", aff, c, n, c.Inf[aff]))
 }

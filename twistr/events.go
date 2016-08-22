@@ -75,7 +75,7 @@ func PlayFidel(s *State, player Aff) {
 	   for Control.  */
 	cuba := s.Countries[Cuba]
 	zeroInf(s, cuba, USA)
-	plusInf(s, cuba, SOV, cuba.Stability)
+	setInf(s, cuba, SOV, cuba.Stability)
 }
 
 func PlayVietnamRevolts(s *State, player Aff) {
@@ -133,8 +133,8 @@ func PlayRomanianAbdication(s *State, player Aff) {
 	/* Remove all US Influence from Romania. The USSR adds sufficient Influence
 	   to Romania for Control.  */
 	romania := s.Countries[Romania]
-	romania.Inf[USA] = 0
-	romania.Inf[SOV] = romania.Stability
+	zeroInf(s, romania, USA)
+	setInf(s, romania, SOV, romania.Stability)
 }
 
 func PlayArabIsraeliWar(s *State, player Aff) {
@@ -181,9 +181,9 @@ func PlayNasser(s *State, player Aff) {
 	/* Add 2 USSR Influence to Egypt. The US removes half, rounded up, of its
 	   Influence from Egypt.  */
 	egypt := s.Countries[Egypt]
-	egypt.Inf[SOV] += 2
+	plusInf(s, egypt, SOV, 2)
 	loss := egypt.Inf[USA] / 2
-	egypt.Inf[USA] -= loss
+	lessInf(s, egypt, USA, loss)
 }
 
 func PlayWarsawPactFormed(s *State, player Aff) {
@@ -195,10 +195,12 @@ func PlayWarsawPactFormed(s *State, player Aff) {
 	s.Events[WarsawPactFormed] = player
 	switch SelectChoice(s, player, "Remove US influence or add USSR influence?", "remove", "add") {
 	case "remove":
+		s.Transcribe("USSR will remove US influence in Eastern Europe.")
 		SelectInfluence(s, player, "4 countries to lose all US influence",
 			ZeroInf(USA), 4,
 			MaxPerCountry(1), InRegion(EastEurope), HasInfluence(USA))
 	case "add":
+		s.Transcribe("USSR will add USSR influence in Eastern Europe.")
 		SelectInfluence(s, player, "5 influence",
 			PlusInf(SOV, 1), 5,
 			MaxPerCountry(2), InRegion(EastEurope))
@@ -210,8 +212,8 @@ func PlayDeGaulleLeadsFrance(s *State, player Aff) {
 	   Event cancels the effect(s) of the “#21 – NATO” Event for France only.  */
 	s.Events[DeGaulleLeadsFrance] = player
 	france := s.Countries[France]
-	france.Inf[USA] = Max(0, france.Inf[USA]-2)
-	france.Inf[SOV] += 1
+	lessInf(s, france, USA, 2)
+	plusInf(s, france, SOV, 1)
 }
 
 func PlayCapturedNaziScientist(s *State, player Aff) {
@@ -222,6 +224,7 @@ func PlayCapturedNaziScientist(s *State, player Aff) {
 
 func PlayTrumanDoctrine(s *State, player Aff) {
 	/* Remove all USSR Influence from a single uncontrolled country in Europe.  */
+	// XXX what if there are no options?
 	SelectInfluence(s, player, "1 country",
 		ZeroInf(SOV), 1,
 		InRegion(Europe), ControlledBy(NEU), HasInfluence(SOV))
@@ -237,6 +240,7 @@ func PlayOlympicGames(s *State, player Aff) {
 	choice := SelectChoice(s, player.Opp(), "Participate or boycott Olympics?", "participate", "boycott")
 	switch choice {
 	case "participate":
+		s.Transcribe(fmt.Sprintf("%s participates in the Olympics.", player.Opp()))
 		rolls := [2]int{0, 0}
 		tied := true
 		for tied {
@@ -245,6 +249,8 @@ func PlayOlympicGames(s *State, player Aff) {
 			rolls[player] += 2
 			tied = rolls[USA] == rolls[SOV]
 		}
+		s.Transcribe(fmt.Sprintf("US rolls %d +2.", rolls[USA]))
+		s.Transcribe(fmt.Sprintf("USSR rolls %d.", rolls[SOV]))
 		switch {
 		case rolls[USA] > rolls[SOV]:
 			s.GainVP(USA, 2)
@@ -252,6 +258,7 @@ func PlayOlympicGames(s *State, player Aff) {
 			s.GainVP(SOV, 2)
 		}
 	case "boycott":
+		s.Transcribe(fmt.Sprintf("%s boycotts the Olympics.", player.Opp()))
 		s.DegradeDefcon(1)
 		ConductOps(s, player, PseudoCard(4))
 	}
@@ -330,7 +337,7 @@ func PlayUSJapanMutualDefensePact(s *State, player Aff) {
 	   make Coup Attempts or Realignment rolls against Japan.  */
 	japan := s.Countries[Japan]
 	toControl := japan.Stability + japan.Inf[SOV]
-	japan.Inf[USA] = Max(japan.Inf[USA], toControl)
+	setInf(s, japan, USA, Max(japan.Inf[USA], toControl))
 	s.Events[USJapanMutualDefensePact] = player
 }
 
@@ -396,7 +403,6 @@ func PlayUNIntervention(s *State, player Aff) {
 		s.Transcribe("The USSR receives VP due to U2 Incident")
 		s.GainVP(SOV, 1)
 	}
-
 }
 
 func PlayDeStalinization(s *State, player Aff) {
@@ -441,6 +447,7 @@ func PlayDefectors(s *State, player Aff) {
 	// Can't address this if we're saying the event is always implemented by
 	// the card's affiliated player ...
 	if s.Phasing == SOV && s.AR > 0 {
+		s.Transcribe("US gains VP due to Defectors.")
 		s.GainVP(USA, 1)
 	}
 }
