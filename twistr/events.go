@@ -82,7 +82,7 @@ func PlayVietnamRevolts(s *State, player Aff) {
 	/* Add 2 USSR Influence to Vietnam. For the remainder of the turn, the USSR
 	   receives +1 Operations to the Operations value of a card that uses all its
 	   Operations in Southeast Asia.  */
-	s.Events[VietnamRevolts] = player
+	s.Event(VietnamRevolts, player)
 	plusInf(s, s.Countries[Vietnam], SOV, 2)
 }
 
@@ -192,7 +192,7 @@ func PlayWarsawPactFormed(s *State, player Aff) {
 	   Influence per country). This Event allows the “#21 – NATO” card to be
 	   played as an Event.  */
 
-	s.Events[WarsawPactFormed] = player
+	s.Event(WarsawPactFormed, player)
 	switch SelectChoice(s, player, "Remove US influence or add USSR influence?", "remove", "add") {
 	case "remove":
 		s.Transcribe("USSR will remove US influence in Eastern Europe.")
@@ -210,7 +210,7 @@ func PlayWarsawPactFormed(s *State, player Aff) {
 func PlayDeGaulleLeadsFrance(s *State, player Aff) {
 	/* Remove 2 US Influence from France and add 1 USSR Influence to France. This
 	   Event cancels the effect(s) of the “#21 – NATO” Event for France only.  */
-	s.Events[DeGaulleLeadsFrance] = player
+	s.Event(DeGaulleLeadsFrance, player)
 	france := s.Countries[France]
 	lessInf(s, france, USA, 2)
 	plusInf(s, france, SOV, 1)
@@ -271,7 +271,7 @@ func PlayNATO(s *State, player Aff) {
 	   be attacked by play of the “#36 – Brush War” Event. This card requires
 	   prior play of either the “#16 – Warsaw Pact Formed” or “#23 – Marshall
 	   Plan” Event(s) in order to be played as an Event.  */
-	s.Events[NATO] = player
+	s.Event(NATO, player)
 }
 
 func PlayIndependentReds(s *State, player Aff) {
@@ -289,7 +289,7 @@ func PlayMarshallPlan(s *State, player Aff) {
 	SelectInfluence(s, player, "Choose 7 non-USSR controlled countries",
 		PlusInf(USA, 1), 7,
 		MaxPerCountry(1), InRegion(WestEurope), NotControlledBy(SOV))
-	s.Events[MarshallPlan] = player
+	s.Event(MarshallPlan, player)
 }
 
 func PlayIndoPakistaniWar(s *State, player Aff) {
@@ -324,7 +324,7 @@ func PlayContainment(s *State, player Aff) {
 	/* All Operations cards played by the US, for the remainder of this turn,
 	   receive +1 to their Operations value (to a maximum of 4 Operations per
 	   card).  */
-	s.TurnEvents[Containment] = player
+	s.TurnEvent(Containment, player)
 }
 
 func PlayCIACreated(s *State, player Aff) {
@@ -341,7 +341,7 @@ func PlayUSJapanMutualDefensePact(s *State, player Aff) {
 	japan := s.Countries[Japan]
 	toControl := japan.Stability + japan.Inf[SOV]
 	setInf(s, japan, USA, Max(japan.Inf[USA], toControl))
-	s.Events[USJapanMutualDefensePact] = player
+	s.Event(USJapanMutualDefensePact, player)
 }
 
 func PlaySuezCrisis(s *State, player Aff) {
@@ -385,7 +385,7 @@ func PlayRedScarePurge(s *State, player Aff) {
 	/* All Operations cards played by the opponent, for the remainder of this
 	   turn, receive -1 to their Operations value (to a minimum value of 1
 	   Operations point).  */
-	s.TurnEvents[RedScarePurge] = player
+	s.TurnEvent(RedScarePurge, player)
 }
 
 func PlayUNIntervention(s *State, player Aff) {
@@ -437,7 +437,7 @@ func PlayFormosanResolution(s *State, player Aff) {
 	   Battleground country, for scoring purposes only, if Taiwan is US
 	   controlled when the Asia Scoring Card is played. This Event is cancelled
 	   after the US has played the “#6 – The China Card” card.  */
-	s.Events[FormosanResolution] = player
+	s.Event(FormosanResolution, player)
 }
 
 func PlayDefectors(s *State, player Aff) {
@@ -508,7 +508,7 @@ func PlayNORAD(s *State, player Aff) {
 	   end of each Action Round, if Canada is US-controlled and the DEFCON level
 	   moved to 2 during that Action Round. This Event is canceled by the “#42 –
 	   Quagmire” Event. */
-	s.Events[NORAD] = player
+	s.Event(NORAD, player)
 }
 
 /*
@@ -614,7 +614,7 @@ func PlayCubanMissileCrisis(s *State, player Aff) {
 	   if the USSR removes 2 Influence from Cuba or the US removes 2 Influence from
 	   West Germany or Turkey. */
 	s.SetDefcon(2)
-	s.TurnEvents[CubanMissileCrisis] = player
+	s.TurnEvent(CubanMissileCrisis, player)
 }
 
 func PlayNuclearSubs(s *State, player Aff) {
@@ -622,7 +622,7 @@ func PlayNuclearSubs(s *State, player Aff) {
 	   remainder of this turn, do not degrade the DEFCON level. This card’s Event
 	   does not apply to any Event that would affect the DEFCON level (ex. the
 	   “#40 – Cuban Missile Crisis” Event). */
-	s.TurnEvents[NuclearSubs] = player
+	s.TurnEvent(NuclearSubs, player)
 }
 
 func PlayQuagmire(s *State, player Aff) {
@@ -632,7 +632,7 @@ func PlayQuagmire(s *State, player Aff) {
 	   If the US is unable to discard an Operations card, it must play all of its
 	   scoring cards and then skip each action round for the rest of the turn. This
 	   Event cancels the effect(s) of the “#106 – NORAD” Event (if applicable). */
-	s.Events[Quagmire] = player
+	s.Event(Quagmire, player)
 	s.Cancel(NORAD)
 }
 
@@ -642,7 +642,7 @@ func PlaySALTNegotiations(s *State, player Aff) {
 	   Event may look through the discard pile, pick any 1 non-scoring card, reveal
 	   it to their opponent and then place the drawn card into their hand. */
 	s.ImproveDefcon(2)
-	s.TurnEvents[SALTNegotiations] = player
+	s.TurnEvent(SALTNegotiations, player)
 	notScoring := func(c Card) bool {
 		return !c.Scoring()
 	}
@@ -663,7 +663,7 @@ func PlayBearTrap(s *State, player Aff) {
 	   on a die. If the USSR is unable to discard an Operations card, it must play
 	   all of its scoring cards and then skip each action round for the rest of the
 	   turn. */
-	s.Events[BearTrap] = player
+	s.Event(BearTrap, player)
 }
 
 func PlaySummit(s *State, player Aff) {
@@ -796,6 +796,8 @@ func PlayWeWillBuryYou(s *State, player Aff) {
 	/* Degrade the DEFCON level by 1. Unless the #32 UN Intervention card is
 	   played as an Event on the US’s next action round, the USSR receives 3 VP.  */
 	s.DegradeDefcon(1)
+	// Don't do the generic event message
+	s.Transcribe("Unless UN Intervention is played as an Event on the US' next action round, the USSR gains 3 VP.")
 	s.Events[WeWillBuryYou] = player
 }
 
@@ -803,7 +805,7 @@ func PlayBrezhnevDoctrine(s *State, player Aff) {
 	/* All Operations cards played by the USSR, for the remainder of this turn,
 	   receive +1 to their Operations value (to a maximum of 4 Operations per
 	   card). */
-	s.TurnEvents[BrezhnevDoctrine] = player
+	s.TurnEvent(BrezhnevDoctrine, player)
 }
 
 func PlayPortugueseEmpireCrumbles(s *State, player Aff) {
@@ -847,7 +849,7 @@ func PlayWillyBrandt(s *State, player Aff) {
 	   cancels the effect(s) of the “#21 – NATO” Event for West Germany only. This
 	   Event is prevented / canceled by the “#96 – Tear Down this Wall” Event. */
 	s.GainVP(SOV, 1)
-	s.Events[WillyBrandt] = player
+	s.Event(WillyBrandt, player)
 	plusInf(s, s.Countries[WGermany], SOV, 1)
 }
 
@@ -886,7 +888,7 @@ func PlayFlowerPower(s *State, player Aff) {
 	   Korean War, Brush War, Indo-Pakistani War, Iran-Iraq War), used for
 	   Operations or an Event, after this card is played. This Event is prevented /
 	   canceled by the “#97 – ‘An Evil Empire’” Event. */
-	s.Events[FlowerPower] = player
+	s.Event(FlowerPower, player)
 }
 
 func PlayU2Incident(s *State, player Aff) {
@@ -894,7 +896,7 @@ func PlayU2Incident(s *State, player Aff) {
 	   later this turn, either by the US or the USSR, the USSR receives an
 	   additional 1 VP. */
 	s.GainVP(SOV, 1)
-	s.TurnEvents[U2Incident] = player
+	s.TurnEvent(U2Incident, player)
 }
 
 func PlayOPEC(s *State, player Aff) {
@@ -946,7 +948,7 @@ func PlayCampDavidAccords(s *State, player Aff) {
 	plusInf(s, s.Countries[Jordan], USA, 1)
 	plusInf(s, s.Countries[Egypt], USA, 1)
 	s.GainVP(USA, 1)
-	s.Events[CampDavidAccords] = player
+	s.Event(CampDavidAccords, player)
 }
 
 func PlayPuppetGovernments(s *State, player Aff) {
@@ -990,7 +992,7 @@ func PlayJohnPaulIIElectedPope(s *State, player Aff) {
 	c := s.Countries[Poland]
 	lessInf(s, c, SOV, 2)
 	plusInf(s, c, USA, 1)
-	s.Events[JohnPaulIIElectedPope] = player
+	s.Event(JohnPaulIIElectedPope, player)
 }
 
 func PlayLatinAmericanDeathSquads(s *State, player Aff) {
@@ -998,7 +1000,7 @@ func PlayLatinAmericanDeathSquads(s *State, player Aff) {
 	   for the remainder of this turn, receive +1 to their die roll. All of the
 	   opponent’s Coup Attempts in Central and South America, for the remainder of
 	   this turn, receive -1 to their die roll. */
-	s.Events[LatinAmericanDeathSquads] = player
+	s.Event(LatinAmericanDeathSquads, player)
 }
 
 func PlayOASFounded(s *State, player Aff) {
@@ -1031,7 +1033,7 @@ func PlayShuttleDiplomacy(s *State, player Aff) {
 	/* If this card’s Event is in effect, subtract (-1) a Battleground country
 	   from the USSR total and then discard this card during the next scoring of
 	   the Middle East or Asia (which ever comes first). */
-	s.Events[ShuttleDiplomacy] = player
+	s.Event(ShuttleDiplomacy, player)
 }
 
 func PlayTheVoiceOfAmerica(s *State, player Aff) {
@@ -1227,7 +1229,7 @@ func PlayIranianHostageCrisis(s *State, player Aff) {
 	iran := s.Countries[Iran]
 	zeroInf(s, iran, USA)
 	plusInf(s, iran, SOV, 2)
-	s.Events[IranianHostageCrisis] = player
+	s.Event(IranianHostageCrisis, player)
 }
 
 func PlayTheIronLady(s *State, player Aff) {
@@ -1237,7 +1239,7 @@ func PlayTheIronLady(s *State, player Aff) {
 	plusInf(s, s.Countries[Argentina], SOV, 1)
 	zeroInf(s, s.Countries[UK], SOV)
 	s.GainVP(USA, 1)
-	s.Events[TheIronLady] = player
+	s.Event(TheIronLady, player)
 }
 
 func PlayReaganBombsLibya(s *State, player Aff) {
@@ -1273,15 +1275,17 @@ func PlayNorthSeaOil(s *State, player Aff) {
 	   Event prevents the “#61 – OPEC” card from being played as an Event. */
 	// Turn event handles the 8 action rounds, permanent event handles
 	// preventing OPEC
+	// Don't message the turn event.
 	s.TurnEvents[NorthSeaOil] = player
-	s.Events[NorthSeaOil] = player
+	s.Event(NorthSeaOil, player)
+	s.Transcribe("The US may play 8 cards for this turn only.")
 }
 
 func PlayTheReformer(s *State, player Aff) {
 	/* Add 4 USSR Influence to Europe (adding no more than 2 Influence per
 	   country). If the USSR is ahead of the US in VP, 6 Influence may be added to
 	   Europe instead. The USSR may no longer make Coup Attempts in Europe. */
-	s.Events[TheReformer] = player
+	s.Event(TheReformer, player)
 	n := 4
 	if s.VP < 0 {
 		n = 6
@@ -1371,7 +1375,7 @@ func PlayTerrorism(s *State, player Aff) {
 func PlayIranContraScandal(s *State, player Aff) {
 	/* All US Realignment rolls, for the remainder of this turn, receive -1 to
 	   their die roll. */
-	s.TurnEvents[IranContraScandal] = player
+	s.TurnEvent(IranContraScandal, player)
 }
 
 func PlayChernobyl(s *State, player Aff) {
@@ -1379,6 +1383,7 @@ func PlayChernobyl(s *State, player Aff) {
 	   remainder of the turn, the USSR cannot add Influence to using Operations
 	   points. */
 	region := SelectRegion(s, player, "Choose a region where USSR is blocked from influencing for the turn")
+	// Don't use the generic event message here
 	s.TurnEvents[Chernobyl] = player
 	s.ChernobylRegion = region
 	s.Transcribe(fmt.Sprintf("The USSR may not add Influence using Operations points to %s for the remainder of the turn.", region))
@@ -1411,7 +1416,7 @@ func PlayTearDownThisWall(s *State, player Aff) {
 	plusInf(s, s.Countries[EGermany], USA, 3)
 	s.Transcribe(fmt.Sprintf("The US may make free coup attempts or realignment rolls with %s.", Cards[TearDownThisWall]))
 	ConductOpsFree(s, player, Cards[TearDownThisWall], COUP, REALIGN)
-	s.Events[TearDownThisWall] = player
+	s.Event(TearDownThisWall, player)
 	s.Cancel(WillyBrandt)
 }
 
@@ -1419,7 +1424,7 @@ func PlayAnEvilEmpire(s *State, player Aff) {
 	/* The US receives 1 VP. This Event prevents / cancels the effect(s) of the
 	   “#59 – Flower Power” Event. */
 	s.GainVP(USA, 1)
-	s.Events[AnEvilEmpire] = player
+	s.Event(AnEvilEmpire, player)
 	s.Cancel(FlowerPower)
 }
 
@@ -1491,12 +1496,12 @@ func PlayIranIraqWar(s *State, player Aff) {
 func PlayYuriAndSamantha(s *State, player Aff) {
 	/* The USSR receives 1 VP for each US Coup Attempt performed during the
 	   remainder of the Turn. */
-	s.TurnEvents[YuriAndSamantha] = player
+	s.TurnEvent(YuriAndSamantha, player)
 }
 
 func PlayAWACSSaleToSaudis(s *State, player Aff) {
 	/* Add 2 US Influence to Saudi Arabia. This Event prevents the “#56 – Muslim
 	   Revolution” card from being played as an Event. */
 	plusInf(s, s.Countries[SaudiArabia], USA, 2)
-	s.Events[AWACSSaleToSaudis] = player
+	s.Event(AWACSSaleToSaudis, player)
 }

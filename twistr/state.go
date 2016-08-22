@@ -166,6 +166,16 @@ func (s *State) DegradeDefcon(n int) {
 
 }
 
+func (s *State) TurnEvent(event CardId, player Aff) {
+	s.Transcribe(fmt.Sprintf("%s is in effect for the remainder of the turn."))
+	s.TurnEvents[event] = player
+}
+
+func (s *State) Event(event CardId, player Aff) {
+	s.Transcribe(fmt.Sprintf("%s is now in effect."))
+	s.Events[event] = player
+}
+
 // Cancel ends an event.
 func (s *State) Cancel(event CardId) {
 	if s.Effect(event) {

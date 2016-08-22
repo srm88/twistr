@@ -195,7 +195,7 @@ func discardHeldCard(s *State, player Aff) {
 	}
 	card := SelectCard(s, player, CardBlacklist(TheChinaCard))
 	s.Hands[player].Remove(card)
-	s.Transcribe(fmt.Sprintf("%s discards held card, %s.", player, card))
+	s.Transcribe(fmt.Sprintf("%s discards held card %s.", player, card))
 	s.Discard.Push(card)
 }
 
