@@ -181,7 +181,7 @@ func coup(s *State, player Aff, ops int, roll int, target *Country, free bool) (
 		}
 	}
 	if !free {
-		s.MilOps[player] += ops
+		s.AddMilOps(player, ops)
 	}
 	return
 }

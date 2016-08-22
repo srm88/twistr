@@ -109,7 +109,6 @@ func PlayKoreanWar(s *State, player Aff) {
 	   modified die roll of 4-6, the USSR receives 2 VP and replaces all US
 	   Influence in South Korea with USSR Influence. The USSR adds 2 to its
 	   Military Operations Track.  */
-	s.MilOps[SOV] += 2
 	roll := SelectRoll(s)
 	skorea := s.Countries[SKorea]
 	mod := skorea.NumControlledNeighbors(USA)
@@ -127,6 +126,7 @@ func PlayKoreanWar(s *State, player Aff) {
 	default:
 		s.Transcribe("Korean War fails.")
 	}
+	s.AddMilOps(SOV, 2)
 }
 
 func PlayRomanianAbdication(s *State, player Aff) {
@@ -144,7 +144,6 @@ func PlayArabIsraeliWar(s *State, player Aff) {
 	   receives 2 VP and replaces all US Influence in Israel with USSR Influence.
 	   The USSR adds 2 to its Military Operations Track. This Event cannot be
 	   used after the “#65 – Camp David Accords” Event has been played.  */
-	s.MilOps[SOV] += 2
 	roll := SelectRoll(s)
 	israel := s.Countries[Israel]
 	mods := []Mod{
@@ -167,6 +166,7 @@ func PlayArabIsraeliWar(s *State, player Aff) {
 	default:
 		s.Transcribe("Arab-Israeli War fails.")
 	}
+	s.AddMilOps(SOV, 2)
 }
 
 func PlayComecon(s *State, player Aff) {
@@ -301,7 +301,6 @@ func PlayIndoPakistaniWar(s *State, player Aff) {
 	   its Military Operations Track.  */
 	c := SelectCountry(s, player, "Choose who gets invaded", India, Pakistan)
 	s.Transcribe(fmt.Sprintf("%s will be invaded.", c))
-	s.MilOps[SOV] += 2
 	roll := SelectRoll(s)
 	mod := c.NumControlledNeighbors(player.Opp())
 	if mod > 0 {
@@ -318,6 +317,7 @@ func PlayIndoPakistaniWar(s *State, player Aff) {
 	default:
 		s.Transcribe("Indo-Pakistani War fails.")
 	}
+	s.AddMilOps(player, 2)
 }
 
 func PlayContainment(s *State, player Aff) {
@@ -532,7 +532,6 @@ func PlayBrushWar(s *State, player Aff) {
 		NoOp,
 		stabLTE)
 	s.Transcribe(fmt.Sprintf("%s will be attacked.", c))
-	s.MilOps[player] += 3
 	roll := SelectRoll(s)
 	mod := c.NumControlledNeighbors(player.Opp())
 	if mod > 0 {
@@ -549,6 +548,7 @@ func PlayBrushWar(s *State, player Aff) {
 	default:
 		s.Transcribe("Brush War fails.")
 	}
+	s.AddMilOps(player, 3)
 }
 
 func PlayCentralAmericaScoring(s *State, player Aff) {
@@ -714,9 +714,8 @@ func PlayHowILearnedToStopWorrying(s *State, player Aff) {
 	   Military Operations Track. */
 	choice := SelectChoice(s, player, "Set DEFCON.", "1", "2", "3", "4", "5")
 	newDefcon, _ := strconv.Atoi(choice)
-	// XXX transcribe milops
-	s.MilOps[player] += 5
 	s.SetDefcon(newDefcon)
+	s.AddMilOps(player, 5)
 }
 
 func PlayJunta(s *State, player Aff) {
@@ -1474,7 +1473,6 @@ func PlayIranIraqWar(s *State, player Aff) {
 	   Operations Track. */
 	c := SelectCountry(s, player, "Choose who gets invaded", Iraq, Iran)
 	s.Transcribe(fmt.Sprintf("%s will be invaded.", c))
-	s.MilOps[player] += 2
 	roll := SelectRoll(s)
 	mod := c.NumControlledNeighbors(player.Opp())
 	if mod > 0 {
@@ -1491,6 +1489,7 @@ func PlayIranIraqWar(s *State, player Aff) {
 	default:
 		s.Transcribe("Iran-Iraq War fails.")
 	}
+	s.AddMilOps(player, 2)
 }
 
 func PlayYuriAndSamantha(s *State, player Aff) {

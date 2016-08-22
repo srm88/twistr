@@ -218,6 +218,11 @@ func (s *State) GainVP(player Aff, n int) {
 	}
 }
 
+func (s *State) AddMilOps(player Aff, n int) {
+	s.MilOps[player] += n
+	s.Transcribe(fmt.Sprintf("%s adds %d to its Military Operations track.", player, n))
+}
+
 type Game struct {
 	Transcript      []string
 	VP              int
