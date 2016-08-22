@@ -9,6 +9,21 @@ const (
 	Control
 )
 
+func (s ScoreLevel) Name() string {
+	switch s {
+	case Nothing:
+		return "nothing"
+	case Presence:
+		return "presence"
+	case Domination:
+		return "domination"
+	case Control:
+		return "control"
+	default:
+		return "?"
+	}
+}
+
 const WIN int = -1
 
 func VPAward(level ScoreLevel, r Region) int {

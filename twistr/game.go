@@ -792,6 +792,44 @@ func PseudoCard(ops int) Card {
 	}
 }
 
+func AutoWin(s *State, player Aff, why string) {
+	s.Transcribe(fmt.Sprintf("%s wins the game due to %s.", player, why))
+	// XXX finish
+}
+
 func Score(s *State, player Aff, region Region) {
-	// XXX writeme (#17)
+	sr := ScoreRegion(s.Game, region)
+	if VPAward(sr.Levels[USA], region) == WIN {
+		AutoWin(s, USA, "control of Europe")
+		return
+	}
+	if VPAward(sr.Levels[SOV], region) == WIN {
+		AutoWin(s, SOV, "control of Europe")
+		return
+	}
+	mods := [2][]Mod{{}, {}}
+	tally := func(aff Aff) {
+		level := sr.Levels[aff]
+		if level != Nothing {
+			mods[aff] = append(mods[aff], Mod{VPAward(level, region), level.Name()})
+		}
+		mods[aff] = append(mods[aff], Mod{len(sr.Battlegrounds[aff]), "battlegrounds"})
+		mods[aff] = append(mods[aff], Mod{len(sr.AdjSuper[aff]), "next-to-super"})
+	}
+	tally(USA)
+	tally(SOV)
+	usaScore := TotalMod(mods[USA])
+	sovScore := TotalMod(mods[SOV])
+	s.Transcribe(fmt.Sprintf("US scores %d: %s.", usaScore, ModSummary(mods[USA])))
+	if sr.ShuttleDiplomacyNullified != nil {
+		s.Transcribe(fmt.Sprintf("USSR scores %d: %s (-1 battleground due to Shuttle Diplomacy).", sovScore, ModSummary(mods[SOV])))
+	} else {
+		s.Transcribe(fmt.Sprintf("USSR scores %d: %s.", sovScore, ModSummary(mods[SOV])))
+	}
+	switch {
+	case usaScore > sovScore:
+		s.GainVP(USA, usaScore-sovScore)
+	case sovScore > usaScore:
+		s.GainVP(SOV, sovScore-usaScore)
+	}
 }

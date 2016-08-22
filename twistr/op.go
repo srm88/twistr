@@ -5,26 +5,6 @@ import "log"
 
 // All WIP. Maybe obliterate it.
 
-type Mod struct {
-	Diff int
-	Name string
-}
-
-func (m Mod) String() string {
-	if m.Diff >= 0 {
-		return fmt.Sprintf("%s +%d", m.Name, m.Diff)
-	} else {
-		return fmt.Sprintf("%s %d", m.Name, m.Diff)
-	}
-}
-
-func TotalMod(ms []Mod) (total int) {
-	for _, m := range ms {
-		total += m.Diff
-	}
-	return total
-}
-
 // Realignment
 func Realign(s *State, player Aff, c *Country) {
 	rollUsa := SelectRoll(s)
