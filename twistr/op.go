@@ -9,6 +9,7 @@ import "log"
 func Realign(s *State, player Aff, c *Country) {
 	rollUsa := SelectRoll(s)
 	rollSov := SelectRoll(s)
+	s.Transcribe(fmt.Sprintf("%s realigns %s.", player, c))
 	realign(s, c, rollUsa, rollSov)
 	s.Commit()
 }
@@ -18,7 +19,7 @@ func realignMods(target Country) (modsUsa []Mod, modsSov []Mod) {
 	case target.Inf[USA] > target.Inf[SOV]:
 		modsUsa = append(modsUsa, Mod{1, "US influence"})
 	case target.Inf[SOV] > target.Inf[USA]:
-		modsSov = append(modsSov, Mod{1, "SOV influence"})
+		modsSov = append(modsSov, Mod{1, "USSR influence"})
 	}
 	usaAdj, sovAdj := 0, 0
 	for _, neighbor := range target.AdjCountries {
@@ -34,7 +35,7 @@ func realignMods(target Country) (modsUsa []Mod, modsSov []Mod) {
 		modsUsa = append(modsUsa, Mod{usaAdj, "US controlled adjacent"})
 	}
 	if sovAdj > 0 {
-		modsSov = append(modsSov, Mod{sovAdj, "SOV controlled adjacent"})
+		modsSov = append(modsSov, Mod{sovAdj, "USSR controlled adjacent"})
 	}
 	return
 }
@@ -43,6 +44,16 @@ func realign(s *State, target *Country, rollUSA, rollSOV int) {
 	modsUsa, modsSov := realignMods(*target)
 	if s.Effect(IranContraScandal) {
 		modsUsa = append(modsUsa, Mod{-1, "Iran-Contra Scandal"})
+	}
+	if len(modsUsa) > 0 {
+		s.Transcribe(fmt.Sprintf("US rolls %d %s.", rollUSA, ModSummary(modsUsa)))
+	} else {
+		s.Transcribe(fmt.Sprintf("US rolls %d.", rollUSA))
+	}
+	if len(modsSov) > 0 {
+		s.Transcribe(fmt.Sprintf("USSR rolls %d %s.", rollSOV, ModSummary(modsSov)))
+	} else {
+		s.Transcribe(fmt.Sprintf("USSR rolls %d.", rollSOV))
 	}
 	rollUSA += TotalMod(modsUsa)
 	rollSOV += TotalMod(modsSov)
@@ -58,7 +69,7 @@ func realign(s *State, target *Country, rollUSA, rollSOV int) {
 	if initUSA > target.Inf[USA] {
 		s.Transcribe(fmt.Sprintf("%d US influence removed", initUSA-target.Inf[USA]))
 	} else if initSOV > target.Inf[SOV] {
-		s.Transcribe(fmt.Sprintf("%d soviet influence removed", initSOV-target.Inf[SOV]))
+		s.Transcribe(fmt.Sprintf("%d USSR influence removed", initSOV-target.Inf[SOV]))
 	} else {
 		s.Transcribe("No influence removed")
 	}
@@ -155,7 +166,7 @@ func coup(s *State, player Aff, ops int, roll int, target *Country, free bool) (
 		gained := delta - removed
 		target.Inf[player] += gained
 		target.Inf[player.Opp()] -= removed
-		s.Transcribe(fmt.Sprintf("%s %s influence  reduced by %d, now %d.", target, player.Opp(), removed, target.Inf[player.Opp()]))
+		s.Transcribe(fmt.Sprintf("%s %s influence reduced by %d, now %d.", target, player.Opp(), removed, target.Inf[player.Opp()]))
 		if gained > 0 {
 			s.Transcribe(fmt.Sprintf("%s %s influence increased by %d, now %d.", target, player, gained, target.Inf[player]))
 		}

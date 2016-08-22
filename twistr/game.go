@@ -134,7 +134,6 @@ func Turn(s *State) {
 	s.AR = 0
 	Headline(s)
 	s.AR = 1
-	s.Redraw(s.Game)
 	var usaCap, sovCap int
 	usaDone, sovDone := false, false
 	for {
@@ -146,11 +145,13 @@ func Turn(s *State) {
 			return
 		}
 		if !sovDone {
+			s.Redraw(s.Game)
 			s.Transcribe(fmt.Sprintf("= %s AR %d.", SOV, s.AR))
 			s.Phasing = SOV
 			Action(s)
 		}
 		if !usaDone {
+			s.Redraw(s.Game)
 			s.Transcribe(fmt.Sprintf("= %s AR %d.", USA, s.AR))
 			s.Phasing = USA
 			Action(s)
@@ -211,6 +212,7 @@ func EndTurn(s *State) {
 	s.AR = 1
 	s.TurnEvents = make(map[CardId]Aff)
 	s.ChernobylRegion = Region{}
+	s.Redraw(s.Game)
 }
 
 func Action(s *State) {
