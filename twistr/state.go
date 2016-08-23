@@ -167,12 +167,12 @@ func (s *State) DegradeDefcon(n int) {
 }
 
 func (s *State) TurnEvent(event CardId, player Aff) {
-	s.Transcribe(fmt.Sprintf("%s is in effect for the remainder of the turn."))
+	s.Transcribe(fmt.Sprintf("%s is in effect for the remainder of the turn.", Cards[event]))
 	s.TurnEvents[event] = player
 }
 
 func (s *State) Event(event CardId, player Aff) {
-	s.Transcribe(fmt.Sprintf("%s is now in effect."))
+	s.Transcribe(fmt.Sprintf("%s is now in effect.", Cards[event]))
 	s.Events[event] = player
 }
 

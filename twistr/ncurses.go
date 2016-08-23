@@ -40,7 +40,7 @@ SLV 1 - HND 2 - NIC 1               MAR 3 - ALG 2-TUN 2   GRC 2    LBN 1 - SYR 2
           CHL 3   PRY 2    /                         /     \      |       :                         THA 2 - VNM 1   |
             :       :     /                         /   ZWE 1 - SEA 1                                 :       :    /
              \    /   \  /                     AGO 1      :       :                                   \       _ IDN 1
-             ARG 2 -- URY 2                      :        |                                          MYS 2 --'    :  
+             ARG 2 -- URY 2                      :        |           X:      EUR ASI MDE            MYS 2 --'    :
                :        :                        \    _ BWA 2    DEFCON  | 5 | 4 | 3 | 2 | X |         :   \
                                                 ZAF 3     :      MilOps  | 5 | 4 | 3 | 2 | 1 | 0 |          \ AUS 4
        Action Round:                              :                      | 5 | 4 | 3 | 2 | 1 | 0 |              :  `
@@ -345,9 +345,11 @@ func (nc *NCursesUI) Redraw(g *Game) {
 	} else {
 		phasingColor = C_SovControl
 	}
-	nc.ColorOn(phasingColor)
-	nc.MovePrint(arPos.Y, arPos.X, fmt.Sprintf("%2d", g.AR))
-	nc.ColorOff(phasingColor)
+	if g.AR > 0 {
+		nc.ColorOn(phasingColor)
+		nc.MovePrint(arPos.Y, arPos.X, fmt.Sprintf("%2d", g.AR))
+		nc.ColorOff(phasingColor)
+	}
 	nc.Refresh()
 	nc.Move(37, 0)
 }

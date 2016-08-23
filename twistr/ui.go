@@ -111,6 +111,8 @@ func modal(s *State, command string) bool {
 	who := s.Phasing
 	cmd, args := parseCommand(command)
 	switch cmd {
+	case "help":
+		s.UI.Message(who, "Commands: 'undo' 'hand' 'log' 'spacerace' 'board' 'card <card>'")
 	case "hand":
 		ShowHand(s, s.Phasing, s.Phasing, true)
 	case "log":
@@ -139,7 +141,7 @@ func modal(s *State, command string) bool {
 		s.History.Dump()
 	case "undo":
 		if !s.CanUndo() {
-			// XXX message = "Cannot undo."
+			s.UI.Message(who, "Cannot undo the last action.")
 			return true
 		}
 		s.Undo()
