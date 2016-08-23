@@ -90,6 +90,12 @@ func (r *History) ShowCards(cs []Card) {
 	}
 }
 
+func (r *History) ShowSpaceRace(sr [2]int) {
+	if !r.InReplay() {
+		r.wrapped.ShowSpaceRace(sr)
+	}
+}
+
 func (r *History) Redraw(g *Game) {
 	// XXX this is preventing redraw of anything when starting game up
 	if !r.InReplay() {

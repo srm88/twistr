@@ -35,18 +35,19 @@ type SRBox struct {
 	FirstVP    int
 	SecondVP   int
 	SideEffect SpaceId
+	Name       string
 }
 
 var SRTrack []SRBox = []SRBox{
-	SRBox{0, 0, 0, 0, NoAbility},
-	SRBox{3, 2, 2, 1, NoAbility},
-	SRBox{4, 2, 0, 0, TwoSpace},
-	SRBox{3, 2, 2, 0, NoAbility},
-	SRBox{4, 2, 0, 0, OppHeadlineFirst},
-	SRBox{3, 3, 3, 1, NoAbility},
-	SRBox{4, 3, 0, 0, DiscardHeld},
-	SRBox{3, 3, 4, 2, NoAbility},
-	SRBox{2, 4, 2, 0, ExtraAR},
+	SRBox{0, 0, 0, 0, NoAbility, "Start"},
+	SRBox{3, 2, 2, 1, NoAbility, "Earth Satellite"},
+	SRBox{4, 2, 0, 0, TwoSpace, "Animal in Space"},
+	SRBox{3, 2, 2, 0, NoAbility, "Man in Space"},
+	SRBox{4, 2, 0, 0, OppHeadlineFirst, "Man in Earth Orbit"},
+	SRBox{3, 3, 3, 1, NoAbility, "Lunar Orbit"},
+	SRBox{4, 3, 0, 0, DiscardHeld, "Eagle/Bear has Landed"},
+	SRBox{3, 3, 4, 2, NoAbility, "Space Shuttle"},
+	SRBox{2, 4, 2, 0, ExtraAR, "Space Station"},
 }
 
 func CanAdvance(s *State, player Aff, ops int) bool {

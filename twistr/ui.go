@@ -43,7 +43,7 @@ func (m *LogMode) Display(ui UI) Mode {
 func (m *LogMode) Command(raw string) bool {
 	switch raw {
 	case "next":
-		if m.start+m.rows <= len(m.lines) {
+		if m.start+m.rows < len(m.lines) {
 			m.start += m.rows
 		}
 		return true
@@ -51,6 +51,23 @@ func (m *LogMode) Command(raw string) bool {
 		m.start = Max(0, m.start-m.rows)
 		return true
 	}
+	return false
+}
+
+type SpaceMode struct {
+	spaceRace [2]int
+}
+
+func NewSpaceMode(sr [2]int) *SpaceMode {
+	return &SpaceMode{sr}
+}
+
+func (m *SpaceMode) Display(ui UI) Mode {
+	ui.ShowSpaceRace(m.spaceRace)
+	return m
+}
+
+func (m *SpaceMode) Command(raw string) bool {
 	return false
 }
 
@@ -98,6 +115,9 @@ func modal(s *State, command string) bool {
 		ShowHand(s, s.Phasing, s.Phasing, true)
 	case "log":
 		s.Enter(NewLogMode(s.Game.Transcript))
+		s.Redraw(s.Game)
+	case "spacerace":
+		s.Enter(NewSpaceMode(s.Game.SpaceRace))
 		s.Redraw(s.Game)
 	case "board":
 		s.Enter(nil)
@@ -169,6 +189,7 @@ type UI interface {
 	Message(player Aff, message string)
 	ShowMessages([]string)
 	ShowCards([]Card)
+	ShowSpaceRace([2]int)
 	// Inconsistent. Doesn't always use game -- other modes have their own
 	// state instead of relying on parameter.
 	Redraw(*Game)
