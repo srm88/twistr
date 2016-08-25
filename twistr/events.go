@@ -16,20 +16,22 @@ func PlayAsiaScoring(s *State, player Aff) {
 	/* Presence: 3; Domination: 7; Control: 9; +1 VP per controlled Battleground
 	country in Region; +1 VP per country controlled that is adjacent to enemy
 	superpower; MAY NOT BE HELD!  */
-	score(s, player, Asia)
+	Score(s, player, Asia)
+	s.Cancel(ShuttleDiplomacy)
 }
 
 func PlayEuropeScoring(s *State, player Aff) {
 	/* Presence: 3; Domination: 7; Control: Automatic Victory; +1 VP per
 	controlled Battleground country in Region; +1 VP per country controlled that
 	is adjacent to enemy superpower; MAY NOT BE HELD!  */
-	score(s, player, Europe)
+	Score(s, player, Europe)
 }
 
 func PlayMiddleEastScoring(s *State, player Aff) {
 	/* Presence: 3; Domination: 5; Control: 7; +1 VP per controlled Battleground
 	country in Region; MAY NOT BE HELD!  */
-	score(s, player, MiddleEast)
+	Score(s, player, MiddleEast)
+	s.Cancel(ShuttleDiplomacy)
 }
 
 func PlayDuckAndCover(s *State, player Aff) {
@@ -45,13 +47,16 @@ func PlayFiveYearPlan(s *State, player Aff) {
 	   or an Event applicable to both players, then the card must be discarded
 	   without triggering the Event.  */
 	if len(s.Hands[SOV].Cards) == 0 {
+		s.Transcribe("USSR has no card to discard.")
 		return
 	}
 	card := SelectRandomCard(s, SOV)
+	s.Transcribe(fmt.Sprintf("%s selected.", card))
 	s.Hands[SOV].Remove(card)
 	if card.Aff == USA {
 		PlayEvent(s, USA, card)
 	} else {
+		s.Transcribe(fmt.Sprintf("%s discarded per Five Year Plan.", card))
 		s.Discard.Push(card)
 	}
 }
@@ -60,42 +65,41 @@ func PlaySocialistGovernments(s *State, player Aff) {
 	/* Remove a total of 3 US Influence from any countries in Western Europe
 	   (removing no more than 2 Influence per country). This Event cannot be used
 	   after the “#83 – The Iron Lady” Event has been played.  */
-	cs := SelectInfluenceForce(s, player, func() ([]*Country, error) {
-		return SelectNInfluence(s, player,
-			"Remove 3 US influence (no more than 2 per country)", 3,
-			MaxPerCountry(2), InRegion(WestEurope), CanRemove(*s, USA))
-	})
-	RemoveInfluence(s, USA, cs)
+	SelectInfluence(s, player, "Remove 3 US influence (no more than 2 per country)",
+		LessInf(USA, 1), 3,
+		MaxPerCountry(2), InRegion(WestEurope), HasInfluence(USA))
 }
 
 func PlayFidel(s *State, player Aff) {
 	/* Remove all US Influence from Cuba. USSR adds sufficient Influence in Cuba
 	   for Control.  */
 	cuba := s.Countries[Cuba]
-	cuba.Inf[USA] = 0
-	cuba.Inf[SOV] = cuba.Stability
+	zeroInf(s, cuba, USA)
+	setInf(s, cuba, SOV, cuba.Stability)
 }
 
 func PlayVietnamRevolts(s *State, player Aff) {
 	/* Add 2 USSR Influence to Vietnam. For the remainder of the turn, the USSR
 	   receives +1 Operations to the Operations value of a card that uses all its
 	   Operations in Southeast Asia.  */
-	s.Events[VietnamRevolts] = player
-	s.Countries[Vietnam].Inf[SOV] += 2
+	s.Event(VietnamRevolts, player)
+	plusInf(s, s.Countries[Vietnam], SOV, 2)
 }
 
 func PlayBlockade(s *State, player Aff) {
 	/* Unless the US immediately discards a card with an Operations value of 3 or
 	   more, remove all US Influence from West Germany.  */
-	if hasInHand(s, USA, ExceedsOps(2)) &&
+	enoughOps := ExceedsOps(2, s, USA)
+	if hasInHand(s, USA, enoughOps) &&
 		"discard" == SelectChoice(s, USA,
 			"Discard a card with >=3 Ops, or remove all influence from West Germany?",
 			"discard", "remove") {
-		card := SelectCard(s, USA, CardBlacklist(TheChinaCard), ExceedsOps(2))
+		card := SelectCard(s, USA, CardBlacklist(TheChinaCard), enoughOps)
 		s.Hands[USA].Remove(card)
+		s.Transcribe(fmt.Sprintf("US discards %s for Blockade.", card))
 		s.Discard.Push(card)
 	} else {
-		s.Countries[WGermany].Inf[USA] = 0
+		zeroInf(s, s.Countries[WGermany], USA)
 	}
 }
 
@@ -105,24 +109,32 @@ func PlayKoreanWar(s *State, player Aff) {
 	   modified die roll of 4-6, the USSR receives 2 VP and replaces all US
 	   Influence in South Korea with USSR Influence. The USSR adds 2 to its
 	   Military Operations Track.  */
-	s.MilOps[SOV] += 2
 	roll := SelectRoll(s, player)
 	skorea := s.Countries[SKorea]
 	mod := skorea.NumControlledNeighbors(USA)
+	if mod > 0 {
+		s.Transcribe(fmt.Sprintf("%s rolls %d.", player, roll))
+	} else {
+		s.Transcribe(fmt.Sprintf("%s rolls %d -%d (US controlled adjacent).", player, roll, mod))
+	}
 	switch roll - mod {
 	case 4, 5, 6:
+		s.Transcribe("Korean War succeeds.")
 		s.GainVP(SOV, 2)
-		skorea.Inf[SOV] += skorea.Inf[USA]
-		skorea.Inf[USA] = 0
+		plusInf(s, skorea, SOV, skorea.Inf[USA])
+		zeroInf(s, skorea, USA)
+	default:
+		s.Transcribe("Korean War fails.")
 	}
+	s.AddMilOps(SOV, 2)
 }
 
 func PlayRomanianAbdication(s *State, player Aff) {
 	/* Remove all US Influence from Romania. The USSR adds sufficient Influence
 	   to Romania for Control.  */
 	romania := s.Countries[Romania]
-	romania.Inf[USA] = 0
-	romania.Inf[SOV] = romania.Stability
+	zeroInf(s, romania, USA)
+	setInf(s, romania, SOV, romania.Stability)
 }
 
 func PlayArabIsraeliWar(s *State, player Aff) {
@@ -132,39 +144,46 @@ func PlayArabIsraeliWar(s *State, player Aff) {
 	   receives 2 VP and replaces all US Influence in Israel with USSR Influence.
 	   The USSR adds 2 to its Military Operations Track. This Event cannot be
 	   used after the “#65 – Camp David Accords” Event has been played.  */
-	s.MilOps[SOV] += 2
 	roll := SelectRoll(s, player)
 	israel := s.Countries[Israel]
-	mod := israel.NumControlledNeighbors(USA)
+	mods := []Mod{
+		{-israel.NumControlledNeighbors(USA), "US controlled adjacent"}}
 	if israel.Controlled() == USA {
-		mod += 1
+		mods = append(mods, Mod{-1, "US control of Israel"})
 	}
-	switch roll - mod {
+	mod := TotalMod(mods)
+	if mod > 0 {
+		s.Transcribe(fmt.Sprintf("%s rolls %d.", player, roll))
+	} else {
+		s.Transcribe(fmt.Sprintf("%s rolls %d %s.", player, roll, ModSummary(mods)))
+	}
+	switch roll + mod {
 	case 4, 5, 6:
+		s.Transcribe("Arab-Israeli War succeeds.")
 		s.GainVP(SOV, 2)
-		israel.Inf[SOV] += israel.Inf[USA]
-		israel.Inf[USA] = 0
+		plusInf(s, israel, SOV, israel.Inf[USA])
+		zeroInf(s, israel, USA)
+	default:
+		s.Transcribe("Arab-Israeli War fails.")
 	}
+	s.AddMilOps(SOV, 2)
 }
 
 func PlayComecon(s *State, player Aff) {
 	/* Add 1 USSR Influence to each of 4 non-US controlled countries of Eastern
 	   Europe.  */
-	cs := SelectInfluenceForce(s, player, func() ([]*Country, error) {
-		return SelectNInfluence(s, player,
-			"Choose 4 non-US controlled countries", 4,
-			MaxPerCountry(1), InRegion(EastEurope), NotControlledBy(USA))
-	})
-	PlaceInfluence(s, SOV, cs)
+	SelectInfluence(s, player, "Choose 4 non-US controlled countries",
+		PlusInf(SOV, 1), 4,
+		MaxPerCountry(1), InRegion(EastEurope), NotControlledBy(USA))
 }
 
 func PlayNasser(s *State, player Aff) {
 	/* Add 2 USSR Influence to Egypt. The US removes half, rounded up, of its
 	   Influence from Egypt.  */
 	egypt := s.Countries[Egypt]
-	egypt.Inf[SOV] += 2
+	plusInf(s, egypt, SOV, 2)
 	loss := egypt.Inf[USA] / 2
-	egypt.Inf[USA] -= loss
+	lessInf(s, egypt, USA, loss)
 }
 
 func PlayWarsawPactFormed(s *State, player Aff) {
@@ -173,33 +192,28 @@ func PlayWarsawPactFormed(s *State, player Aff) {
 	   Influence per country). This Event allows the “#21 – NATO” card to be
 	   played as an Event.  */
 
-	s.Events[WarsawPactFormed] = player
+	s.Event(WarsawPactFormed, player)
 	switch SelectChoice(s, player, "Remove US influence or add USSR influence?", "remove", "add") {
 	case "remove":
-		cs := SelectInfluenceForce(s, player, func() ([]*Country, error) {
-			return SelectNInfluence(s, player,
-				"4 countries to lose all US influence", 4,
-				MaxPerCountry(1), InRegion(EastEurope), CanRemove(*s, USA))
-		})
-		for _, c := range cs {
-			c.Inf[USA] = 0
-		}
+		s.Transcribe("USSR will remove US influence in Eastern Europe.")
+		SelectInfluence(s, player, "4 countries to lose all US influence",
+			ZeroInf(USA), 4,
+			MaxPerCountry(1), InRegion(EastEurope), HasInfluence(USA))
 	case "add":
-		cs := SelectInfluenceForce(s, player, func() ([]*Country, error) {
-			return SelectExactlyNInfluence(s, player, "5 influence", 5,
-				MaxPerCountry(2), InRegion(EastEurope))
-		})
-		PlaceInfluence(s, SOV, cs)
+		s.Transcribe("USSR will add USSR influence in Eastern Europe.")
+		SelectInfluence(s, player, "5 influence",
+			PlusInf(SOV, 1), 5,
+			MaxPerCountry(2), InRegion(EastEurope))
 	}
 }
 
 func PlayDeGaulleLeadsFrance(s *State, player Aff) {
 	/* Remove 2 US Influence from France and add 1 USSR Influence to France. This
 	   Event cancels the effect(s) of the “#21 – NATO” Event for France only.  */
-	s.Events[DeGaulleLeadsFrance] = player
+	s.Event(DeGaulleLeadsFrance, player)
 	france := s.Countries[France]
-	france.Inf[USA] = Max(0, france.Inf[USA]-2)
-	france.Inf[SOV] += 1
+	lessInf(s, france, USA, 2)
+	plusInf(s, france, SOV, 1)
 }
 
 func PlayCapturedNaziScientist(s *State, player Aff) {
@@ -210,14 +224,10 @@ func PlayCapturedNaziScientist(s *State, player Aff) {
 
 func PlayTrumanDoctrine(s *State, player Aff) {
 	/* Remove all USSR Influence from a single uncontrolled country in Europe.  */
-	cs := SelectInfluenceForce(s, player, func() ([]*Country, error) {
-		return SelectNInfluence(s, player, "1 country", 1,
-			InRegion(Europe), ControlledBy(NEU))
-	})
-	if len(cs) == 0 {
-		return
-	}
-	cs[0].Inf[SOV] = 0
+	// XXX what if there are no options?
+	SelectInfluence(s, player, "Remove all USSR influence from an uncontrolled country in Europe",
+		ZeroInf(SOV), 1,
+		InRegion(Europe), ControlledBy(NEU), HasInfluence(SOV))
 }
 
 func PlayOlympicGames(s *State, player Aff) {
@@ -230,6 +240,7 @@ func PlayOlympicGames(s *State, player Aff) {
 	choice := SelectChoice(s, player.Opp(), "Participate or boycott Olympics?", "participate", "boycott")
 	switch choice {
 	case "participate":
+		s.Transcribe(fmt.Sprintf("%s participates in the Olympics.", player.Opp()))
 		rolls := [2]int{0, 0}
 		tied := true
 		for tied {
@@ -238,6 +249,8 @@ func PlayOlympicGames(s *State, player Aff) {
 			rolls[player] += 2
 			tied = rolls[USA] == rolls[SOV]
 		}
+		s.Transcribe(fmt.Sprintf("US rolls %d +2.", rolls[USA]))
+		s.Transcribe(fmt.Sprintf("USSR rolls %d.", rolls[SOV]))
 		switch {
 		case rolls[USA] > rolls[SOV]:
 			s.GainVP(USA, 2)
@@ -245,7 +258,9 @@ func PlayOlympicGames(s *State, player Aff) {
 			s.GainVP(SOV, 2)
 		}
 	case "boycott":
+		s.Transcribe(fmt.Sprintf("%s boycotts the Olympics.", player.Opp()))
 		s.DegradeDefcon(1)
+		s.Transcribe(fmt.Sprintf("%s conducts operations.", player))
 		ConductOps(s, player, PseudoCard(4))
 	}
 }
@@ -256,29 +271,25 @@ func PlayNATO(s *State, player Aff) {
 	   be attacked by play of the “#36 – Brush War” Event. This card requires
 	   prior play of either the “#16 – Warsaw Pact Formed” or “#23 – Marshall
 	   Plan” Event(s) in order to be played as an Event.  */
-	s.Events[NATO] = player
+	s.Event(NATO, player)
 }
 
 func PlayIndependentReds(s *State, player Aff) {
 	/* Add US Influence to either Yugoslavia, Romania, Bulgaria, Hungary, or
 	   Czechoslovakia so that it equals the USSR Influence in that country.  */
-	c := SelectCountry(s, player, "Choose a country to match USSR influence",
-		Yugoslavia, Romania, Bulgaria,
-		Hungary, Czechoslovakia)
-	c.Inf[USA] = Max(c.Inf[USA], c.Inf[SOV])
+	SelectOneInfluence(s, player, "Choose either Yugoslavia, Romania, Bulgaria, Hungary, or Czechoslovakia",
+		MatchInf(SOV, USA),
+		InCountries(Yugoslavia, Romania, Bulgaria, Hungary, Czechoslovakia))
 }
 
 func PlayMarshallPlan(s *State, player Aff) {
 	/* Add 1 US Influence to each of any 7 non-USSR controlled countries in
 	   Western Europe. This Event allows the “#21 – NATO” card to be played as an
 	   Event.  */
-	cs := SelectInfluenceForce(s, player, func() ([]*Country, error) {
-		return SelectExactlyNInfluence(s, player,
-			"Choose 7 non-USSR controlled countries", 7,
-			MaxPerCountry(1), InRegion(WestEurope), NotControlledBy(SOV))
-	})
-	PlaceInfluence(s, USA, cs)
-	s.Events[MarshallPlan] = player
+	SelectInfluence(s, player, "Choose 7 non-USSR controlled countries",
+		PlusInf(USA, 1), 7,
+		MaxPerCountry(1), InRegion(WestEurope), NotControlledBy(SOV))
+	s.Event(MarshallPlan, player)
 }
 
 func PlayIndoPakistaniWar(s *State, player Aff) {
@@ -289,29 +300,38 @@ func PlayIndoPakistaniWar(s *State, player Aff) {
 	   Influence in the target country with their Influence. The player adds 2 to
 	   its Military Operations Track.  */
 	c := SelectCountry(s, player, "Choose who gets invaded", India, Pakistan)
-	s.MilOps[SOV] += 2
+	s.Transcribe(fmt.Sprintf("%s will be invaded.", c))
 	roll := SelectRoll(s, player)
 	mod := c.NumControlledNeighbors(player.Opp())
+	if mod > 0 {
+		s.Transcribe(fmt.Sprintf("%s rolls %d.", player, roll))
+	} else {
+		s.Transcribe(fmt.Sprintf("%s rolls %d -%d (%s controlled adjacent).", player, roll, mod, player.Opp()))
+	}
 	switch roll - mod {
 	case 4, 5, 6:
+		s.Transcribe("Indo-Pakistani War succeeds.")
 		s.GainVP(player, 2)
-		c.Inf[player] += c.Inf[player.Opp()]
-		c.Inf[player.Opp()] = 0
+		plusInf(s, c, player, c.Inf[player.Opp()])
+		zeroInf(s, c, player.Opp())
+	default:
+		s.Transcribe("Indo-Pakistani War fails.")
 	}
+	s.AddMilOps(player, 2)
 }
 
 func PlayContainment(s *State, player Aff) {
 	/* All Operations cards played by the US, for the remainder of this turn,
 	   receive +1 to their Operations value (to a maximum of 4 Operations per
 	   card).  */
-	// XXX turn-duration events #14
-	s.TurnEvents[Containment] = player
+	s.TurnEvent(Containment, player)
 }
 
 func PlayCIACreated(s *State, player Aff) {
 	/* The USSR reveals their hand of cards for this turn. The US may use the
 	   Operations value of this card to conduct Operations.  */
 	ShowHand(s, SOV, USA)
+	s.Transcribe(fmt.Sprintf("%s conducts operations with %s.", player, Cards[CIACreated]))
 	ConductOps(s, player, PseudoCard(1))
 }
 
@@ -320,8 +340,8 @@ func PlayUSJapanMutualDefensePact(s *State, player Aff) {
 	   make Coup Attempts or Realignment rolls against Japan.  */
 	japan := s.Countries[Japan]
 	toControl := japan.Stability + japan.Inf[SOV]
-	japan.Inf[USA] = Max(japan.Inf[USA], toControl)
-	s.Events[USJapanMutualDefensePact] = player
+	setInf(s, japan, USA, Max(japan.Inf[USA], toControl))
+	s.Event(USJapanMutualDefensePact, player)
 }
 
 func PlaySuezCrisis(s *State, player Aff) {
@@ -335,46 +355,37 @@ func PlaySuezCrisis(s *State, player Aff) {
 			return errors.New("Choose only France, UK, Israel")
 		}
 	}
-	cs := SelectInfluenceForce(s, player, func() ([]*Country, error) {
-		return SelectNInfluence(s, player,
-			"Remove 4 from France, UK, Israel", 4,
-			MaxPerCountry(2), franceIsraelOrUK)
-	})
-	RemoveInfluence(s, USA, cs)
+	SelectInfluence(s, player, "Remove 4 from France, UK, Israel",
+		LessInf(USA, 1), 4,
+		MaxPerCountry(2), HasInfluence(USA), franceIsraelOrUK)
 }
 
 func PlayEastEuropeanUnrest(s *State, player Aff) {
 	/* Early or Mid War: Remove 1 USSR Influence from 3 countries in Eastern
 	   Europe. Late War: Remove 2 USSR Influence from 3 countries in Eastern
 	   Europe.  */
-	cs := SelectInfluenceForce(s, player, func() ([]*Country, error) {
-		return SelectNInfluence(s, player,
-			"Choose 3 countries in E Europe", 3,
-			MaxPerCountry(1), InRegion(EastEurope), CanRemove(*s, SOV))
-	})
-	RemoveInfluence(s, SOV, cs)
+	reduction := 1
 	if s.Era() == Late {
-		RemoveInfluence(s, SOV, cs)
+		reduction = 2
 	}
+	SelectInfluence(s, player, "Choose 3 countries in E Europe",
+		LessInf(SOV, reduction), 3,
+		MaxPerCountry(1), InRegion(EastEurope), HasInfluence(SOV))
 }
 
 func PlayDecolonization(s *State, player Aff) {
 	/* Add 1 USSR Influence to each of any 4 countries in Africa and/or Southeast
 	   Asia.  */
-	cs := SelectInfluenceForce(s, player, func() ([]*Country, error) {
-		return SelectExactlyNInfluence(s, player,
-			"Choose 4 countries in Africa or SE Asia", 4,
-			MaxPerCountry(1), InRegion(Africa, SoutheastAsia))
-	})
-	PlaceInfluence(s, SOV, cs)
+	SelectInfluence(s, player, "Choose 4 countries in Africa or SE Asia",
+		PlusInf(SOV, 1), 4,
+		MaxPerCountry(1), InRegion(Africa, SoutheastAsia))
 }
 
 func PlayRedScarePurge(s *State, player Aff) {
 	/* All Operations cards played by the opponent, for the remainder of this
 	   turn, receive -1 to their Operations value (to a minimum value of 1
 	   Operations point).  */
-	// XXX turn-duration events #14
-	s.TurnEvents[RedScarePurge] = player
+	s.TurnEvent(RedScarePurge, player)
 }
 
 func PlayUNIntervention(s *State, player Aff) {
@@ -382,35 +393,36 @@ func PlayUNIntervention(s *State, player Aff) {
 	   associated Event. The opponent’s associated Event is canceled but you may
 	   use the Operations value of the opponent’s card to conduct Operations.
 	   This Event cannot be played during the Headline Phase.  */
-	// XXX: opponent's event
-	card := SelectCard(s, player)
+	opponentEvent := func(c Card) bool {
+		return c.Aff == player.Opp()
+	}
+	card := SelectCard(s, player, opponentEvent, CardBlacklist(TheChinaCard))
+	s.Transcribe(fmt.Sprintf("%s conducts operations with %s.", player, card))
+	s.Hands[player].Remove(card)
 	ConductOps(s, player, card)
+	s.Transcribe(fmt.Sprintf("%s to discard.", card))
 	s.Discard.Push(card)
+	if s.Effect(U2Incident) {
+		s.Transcribe("The USSR receives VP due to U2 Incident")
+		s.GainVP(SOV, 1)
+	}
 }
 
 func PlayDeStalinization(s *State, player Aff) {
 	/* The USSR may reallocate up to a total of 4 Influence from one or more
 	   countries to any non-US controlled countries (adding no more than 2
 	   Influence per country).  */
-	from := SelectInfluenceForce(s, player, func() ([]*Country, error) {
-		return SelectNInfluence(s, player,
-			"Choose 4 influence to relocate", 4,
-			CanRemove(*s, SOV))
-	})
+	from := SelectInfluence(s, player, "Choose 4 influence to relocate",
+		LessInf(SOV, 1), 4, HasInfluence(SOV))
 	if len(from) == 0 {
 		return
 	}
 	// Note that this does permit the SOV player to remove more influence than
 	// she is allowed to place; she'd be unable to place all of them and be
-	// forced to lose however many were unplacable.
-	// Should fix with decision txns.
-	to := SelectInfluenceForce(s, player, func() ([]*Country, error) {
-		return SelectNInfluence(s, player,
-			fmt.Sprintf("Relocate %d influence to non-US controlled countries", len(from)), len(from),
-			MaxPerCountry(2), NotControlledBy(USA))
-	})
-	RemoveInfluence(s, SOV, from)
-	PlaceInfluence(s, SOV, to)
+	// forced to lose however many were unplacable. Rely on 'undo'.
+	SelectInfluence(s, player, fmt.Sprintf("Relocate %d influence to non-US controlled countries", len(from)),
+		PlusInf(SOV, 1), len(from),
+		MaxPerCountry(2), NotControlledBy(USA))
 }
 
 func PlayNuclearTestBan(s *State, player Aff) {
@@ -425,7 +437,7 @@ func PlayFormosanResolution(s *State, player Aff) {
 	   Battleground country, for scoring purposes only, if Taiwan is US
 	   controlled when the Asia Scoring Card is played. This Event is cancelled
 	   after the US has played the “#6 – The China Card” card.  */
-	s.Events[FormosanResolution] = player
+	s.Event(FormosanResolution, player)
 }
 
 func PlayDefectors(s *State, player Aff) {
@@ -433,7 +445,14 @@ func PlayDefectors(s *State, player Aff) {
 	   USSR Headline Event (including a scoring card). The canceled card is
 	   placed into the discard pile. If this card is played by the USSR during
 	   its action round, the US gains 1 VP.  */
-	s.GainVP(USA, 1)
+	// XXX: bug here that would allow US to play defectors and gain 1VP, e.g.
+	// if soviets play Grain Sales to Soviets.
+	// Can't address this if we're saying the event is always implemented by
+	// the card's affiliated player ...
+	if s.Phasing == SOV && s.AR > 0 {
+		s.Transcribe("US gains VP due to Defectors.")
+		s.GainVP(USA, 1)
+	}
 }
 
 func PlayTheCambridgeFive(s *State, player Aff) {
@@ -448,17 +467,13 @@ func PlayTheCambridgeFive(s *State, player Aff) {
 			regions = append(regions, c.ScoringRegion())
 		}
 	}
-	// XXX should message both
-	s.MessageOne(player, fmt.Sprintf("%s scoring cards: %s\n", USA, strings.Join(scoringCards, ", ")))
+	s.Transcribe(fmt.Sprintf("%s scoring cards: %s\n", USA, strings.Join(scoringCards, ", ")))
 	if len(scoringCards) == 0 {
 		return
 	}
-	cs := SelectInfluenceForce(s, player, func() ([]*Country, error) {
-		return SelectNInfluence(s, player,
-			"Place one influence in one of the regions", 1,
-			InRegion(regions...))
-	})
-	PlaceInfluence(s, SOV, cs)
+	SelectInfluence(s, player, "Place one influence in one of the regions",
+		PlusInf(SOV, 1), 1,
+		InRegion(regions...))
 }
 
 func PlaySpecialRelationship(s *State, player Aff) {
@@ -469,12 +484,9 @@ func PlaySpecialRelationship(s *State, player Aff) {
 	ukControlled := s.Countries[UK].Controlled() == USA
 	switch {
 	case ukControlled && s.Effect(NATO):
-		cs := SelectInfluenceForce(s, player, func() ([]*Country, error) {
-			return SelectExactlyNInfluence(s, player,
-				"Choose a country in W Europe", 1,
-				InRegion(WestEurope))
-		})
-		s.Countries[cs[0].Id].Inf[USA] += 2
+		SelectOneInfluence(s, player, "Choose a country in W Europe",
+			PlusInf(USA, 2),
+			InRegion(WestEurope))
 		s.GainVP(USA, 2)
 	case ukControlled:
 		nextToUK := func(c *Country) error {
@@ -485,12 +497,9 @@ func PlaySpecialRelationship(s *State, player Aff) {
 			}
 			return fmt.Errorf("%s not adjacent to UK", c)
 		}
-		cs := SelectInfluenceForce(s, player, func() ([]*Country, error) {
-			return SelectExactlyNInfluence(s, player,
-				"Choose a country adjacent to the UK", 1,
-				nextToUK)
-		})
-		PlaceInfluence(s, USA, cs)
+		SelectOneInfluence(s, player, "Choose a country adjacent to the UK",
+			PlusInf(USA, 1),
+			nextToUK)
 	}
 }
 
@@ -499,7 +508,7 @@ func PlayNORAD(s *State, player Aff) {
 	   end of each Action Round, if Canada is US-controlled and the DEFCON level
 	   moved to 2 during that Action Round. This Event is canceled by the “#42 –
 	   Quagmire” Event. */
-	s.Events[NORAD] = player
+	s.Event(NORAD, player)
 }
 
 /*
@@ -519,53 +528,59 @@ func PlayBrushWar(s *State, player Aff) {
 		}
 		return nil
 	}
-	cs := SelectInfluenceForce(s, player, func() ([]*Country, error) {
-		return SelectExactlyNInfluence(s, player, "1 country", 1,
-			stabLTE)
-	})
-	c := cs[0]
-	s.MilOps[player] += 3
+	c := SelectOneInfluence(s, player, "Country to attack",
+		NoOp,
+		stabLTE)
+	s.Transcribe(fmt.Sprintf("%s will be attacked.", c))
 	roll := SelectRoll(s, player)
 	mod := c.NumControlledNeighbors(player.Opp())
+	if mod > 0 {
+		s.Transcribe(fmt.Sprintf("%s rolls %d.", player, roll))
+	} else {
+		s.Transcribe(fmt.Sprintf("%s rolls %d -%d (%s controlled adjacent).", player, roll, mod, player.Opp()))
+	}
 	switch roll - mod {
 	case 3, 4, 5, 6:
+		s.Transcribe("Brush War succeeds.")
 		s.GainVP(player, 1)
-		c.Inf[player] += c.Inf[player.Opp()]
-		c.Inf[player.Opp()] = 0
+		plusInf(s, c, player, c.Inf[player.Opp()])
+		zeroInf(s, c, player.Opp())
+	default:
+		s.Transcribe("Brush War fails.")
 	}
+	s.AddMilOps(player, 3)
 }
 
 func PlayCentralAmericaScoring(s *State, player Aff) {
 	/* Presence: 1; Domination: 3; Control: 5; +1 VP per controlled Battleground
 	   country in Region; +1 VP per country controlled that is adjacent to enemy
 	   superpower; MAY NOT BE HELD! */
-	score(s, player, CentralAmerica)
+	// XXX are we enforcing may-not-hold scoring card rule?
+	Score(s, player, CentralAmerica)
 }
 
 func PlaySoutheastAsiaScoring(s *State, player Aff) {
 	/* 1 VP each for Control of Burma, Cambodia/Laos, Vietnam, Malaysia,
 	   Indonesia and the Philippines. 2 VP for Control of Thailand; MAY NOT BE
 	   HELD! */
-	// XXX messaging!!!
-	usaCountries := []string{}
-	sovCountries := []string{}
-	for _, c := range []CountryId{Burma, LaosCambodia, Vietnam, Malaysia, Indonesia, Philippines} {
+	usaMods := []Mod{}
+	sovMods := []Mod{}
+	for _, c := range SoutheastAsia.Countries {
+		points := 1
+		if c == Thailand {
+			points = 2
+		}
 		switch s.Countries[c].Controlled() {
 		case USA:
-			usaCountries = append(usaCountries, s.Countries[c].Name)
+			usaMods = append(usaMods, Mod{points, s.Countries[c].Name})
 		case SOV:
-			sovCountries = append(sovCountries, s.Countries[c].Name)
+			sovMods = append(usaMods, Mod{points, s.Countries[c].Name})
 		}
 	}
-	thai := s.Countries[Thailand].Controlled()
-	usaScore := len(usaCountries)
-	sovScore := len(usaCountries)
-	switch thai {
-	case USA:
-		usaScore += 2
-	case SOV:
-		sovScore += 2
-	}
+	usaScore := TotalMod(usaMods)
+	sovScore := TotalMod(sovMods)
+	s.Transcribe(fmt.Sprintf("US scores %d: %s.", usaScore, ModSummary(usaMods)))
+	s.Transcribe(fmt.Sprintf("USSR scores %d: %s.", sovScore, ModSummary(sovMods)))
 	switch {
 	case usaScore > sovScore:
 		s.GainVP(USA, usaScore-sovScore)
@@ -584,8 +599,10 @@ func PlayArmsRace(s *State, player Aff) {
 	oppMilOps := s.MilOps[player.Opp()]
 	switch {
 	case playerMilOps > oppMilOps && playerMilOps >= s.Defcon:
+		s.Transcribe(fmt.Sprintf("%s gains VP for exceeding %s Military Operations and meeting requirements.", player, player.Opp()))
 		s.GainVP(player, 3)
 	case playerMilOps > oppMilOps:
+		s.Transcribe(fmt.Sprintf("%s gains VP for exceeding %s Military Operations.", player, player.Opp()))
 		s.GainVP(player, 1)
 	}
 }
@@ -596,8 +613,8 @@ func PlayCubanMissileCrisis(s *State, player Aff) {
 	   opponent will lose the game. This card’s Event may be canceled, at any time,
 	   if the USSR removes 2 Influence from Cuba or the US removes 2 Influence from
 	   West Germany or Turkey. */
-	s.Defcon = 2
-	s.TurnEvents[CubanMissileCrisis] = player
+	s.SetDefcon(2)
+	s.TurnEvent(CubanMissileCrisis, player)
 }
 
 func PlayNuclearSubs(s *State, player Aff) {
@@ -605,7 +622,7 @@ func PlayNuclearSubs(s *State, player Aff) {
 	   remainder of this turn, do not degrade the DEFCON level. This card’s Event
 	   does not apply to any Event that would affect the DEFCON level (ex. the
 	   “#40 – Cuban Missile Crisis” Event). */
-	s.TurnEvents[NuclearSubs] = player
+	s.TurnEvent(NuclearSubs, player)
 }
 
 func PlayQuagmire(s *State, player Aff) {
@@ -615,7 +632,7 @@ func PlayQuagmire(s *State, player Aff) {
 	   If the US is unable to discard an Operations card, it must play all of its
 	   scoring cards and then skip each action round for the rest of the turn. This
 	   Event cancels the effect(s) of the “#106 – NORAD” Event (if applicable). */
-	s.TurnEvents[Quagmire] = player
+	s.Event(Quagmire, player)
 	s.Cancel(NORAD)
 }
 
@@ -625,15 +642,15 @@ func PlaySALTNegotiations(s *State, player Aff) {
 	   Event may look through the discard pile, pick any 1 non-scoring card, reveal
 	   it to their opponent and then place the drawn card into their hand. */
 	s.ImproveDefcon(2)
-	s.TurnEvents[SALTNegotiations] = player
+	s.TurnEvent(SALTNegotiations, player)
 	notScoring := func(c Card) bool {
 		return !c.Scoring()
 	}
 	if "yes" == SelectChoice(s, player,
-		"Choose a card to show to your opponent and add to your hand?",
+		"Choose a card to add to your hand?",
 		"yes", "no") {
 		selected := SelectDiscarded(s, player, notScoring)
-		ShowCard(s, selected, player.Opp())
+		s.Transcribe(fmt.Sprintf("%s adds %s into their hand from the discard pile.", player, selected))
 		s.Discard.Remove(selected)
 		s.Hands[player].Push(selected)
 	}
@@ -646,7 +663,7 @@ func PlayBearTrap(s *State, player Aff) {
 	   on a die. If the USSR is unable to discard an Operations card, it must play
 	   all of its scoring cards and then skip each action round for the rest of the
 	   turn. */
-	s.TurnEvents[BearTrap] = player
+	s.Event(BearTrap, player)
 }
 
 func PlaySummit(s *State, player Aff) {
@@ -656,24 +673,31 @@ func PlaySummit(s *State, player Aff) {
 	   DEFCON level by 1 (do not reroll ties). */
 	playerRoll := SelectRoll(s, player)
 	oppRoll := SelectRoll(s, player.Opp())
+	playerMods, oppMods := []Mod{}, []Mod{}
 	for _, region := range Regions {
-		sr := ScoreRegion(s, region)
+		sr := ScoreRegion(s.Game, region)
 		switch {
 		case sr.Levels[player] == Domination || sr.Levels[player] == Control:
-			playerRoll++
+			playerMods = append(playerMods, Mod{1, region.Name})
 		case sr.Levels[player.Opp()] == Domination || sr.Levels[player.Opp()] == Control:
-			oppRoll++
+			oppMods = append(oppMods, Mod{1, region.Name})
 		}
 	}
-	if playerRoll == oppRoll {
+	s.Transcribe(fmt.Sprintf("%s rolls %d%s.", player, playerRoll, ModSummary(playerMods)))
+	s.Transcribe(fmt.Sprintf("%s rolls %d%s.", player.Opp(), oppRoll, ModSummary(oppMods)))
+	playerRoll += TotalMod(playerMods)
+	oppRoll += TotalMod(oppMods)
+	var winner Aff
+	switch {
+	case playerRoll > oppRoll:
+		winner = player
+	case oppRoll > playerRoll:
+		winner = player.Opp()
+	default:
+		s.Transcribe("Tie.")
 		return
 	}
-	var winner Aff
-	if playerRoll > oppRoll {
-		winner = player
-	} else {
-		winner = player.Opp()
-	}
+	s.Transcribe(fmt.Sprintf("%s wins.", winner))
 	s.GainVP(winner, 2)
 	switch SelectChoice(s, winner,
 		"Degrade or improve DEFCON by one level?",
@@ -690,32 +714,25 @@ func PlayHowILearnedToStopWorrying(s *State, player Aff) {
 	   Military Operations Track. */
 	choice := SelectChoice(s, player, "Set DEFCON.", "1", "2", "3", "4", "5")
 	newDefcon, _ := strconv.Atoi(choice)
-	s.MilOps[player] = 5
-	switch {
-	case newDefcon == s.Defcon:
-		return
-	case newDefcon > s.Defcon:
-		s.ImproveDefcon(newDefcon - s.Defcon)
-	case newDefcon < s.Defcon:
-		s.DegradeDefcon(s.Defcon - newDefcon)
-	}
+	s.SetDefcon(newDefcon)
+	s.AddMilOps(player, 5)
 }
 
 func PlayJunta(s *State, player Aff) {
 	/* Add 2 Influence to a single country in Central or South America. The
 	   player may make free Coup Attempts or Realignment rolls in either Central or
 	   South America using the Operations value of this card. */
-	centralOrSouth := append(SouthAmerica.Countries, CentralAmerica.Countries...)
-	c := SelectCountry(s, player, "Choose a country in Central or South America",
-		centralOrSouth...)
-	c.Inf[player] += 2
+	SelectOneInfluence(s, player, "Choose a country in Central or South America",
+		PlusInf(player, 2),
+		InRegion(SouthAmerica, CentralAmerica))
 	switch SelectChoice(s, player,
 		"Do you want to coup, realign or do nothing in Central/South America?",
 		"coup", "realign", "nothing") {
 	case "coup":
-		DoFreeCoup(s, player, Cards[Junta], centralOrSouth)
+		OpCoup(s, player, Cards[Junta], true,
+			InRegion(SouthAmerica, CentralAmerica))
 	case "realign":
-		OpRealign(s, player, Cards[Junta].Ops)
+		OpRealign(s, player, Cards[Junta], true)
 	}
 }
 
@@ -736,6 +753,7 @@ func PlayKitchenDebates(s *State, player Aff) {
 			usaBG++
 		}
 	}
+	s.Transcribe(fmt.Sprintf("US controls %d battlegrounds. USSR controls %d.", usaBG, sovBG))
 	if usaBG > sovBG {
 		s.GainVP(USA, 2)
 	}
@@ -748,29 +766,37 @@ func PlayMissileEnvy(s *State, player Aff) {
 	   immediately. If it contains an opponent’s Event, use the Operations value
 	   (no Event). The opponent must use this card for Operations during their next
 	   action round. */
-	// XXX: should be a special action (Issue #15)
 	maxOps := 0
 	for _, c := range s.Hands[player.Opp()].Cards {
 		if c.Ops > maxOps {
 			maxOps = c.Ops
 		}
 	}
+	isMaxOpCard := func(c Card) bool {
+		return c.Ops >= maxOps
+	}
 	selected := SelectCard(s, player.Opp(),
-		ExceedsOps(maxOps-1), CardBlacklist(TheChinaCard))
+		isMaxOpCard, CardBlacklist(TheChinaCard))
+	s.Transcribe(fmt.Sprintf("%s exchanges %s for Missile Envy.", player.Opp(), selected))
 	s.Hands[player.Opp()].Remove(selected)
 	switch selected.Aff {
 	case player, NEU:
 		PlayEvent(s, player, selected)
 	default:
+		s.Transcribe(fmt.Sprintf("%s conducts operations with %s.", player, selected))
 		ConductOps(s, player, selected)
+		s.Transcribe(fmt.Sprintf("%s to discard.", selected))
 		s.Discard.Push(selected)
 	}
+	s.TurnEvents[MissileEnvy] = player
 }
 
 func PlayWeWillBuryYou(s *State, player Aff) {
 	/* Degrade the DEFCON level by 1. Unless the #32 UN Intervention card is
 	   played as an Event on the US’s next action round, the USSR receives 3 VP.  */
 	s.DegradeDefcon(1)
+	// Don't do the generic event message
+	s.Transcribe("Unless UN Intervention is played as an Event on the US' next action round, the USSR gains 3 VP.")
 	s.Events[WeWillBuryYou] = player
 }
 
@@ -778,13 +804,13 @@ func PlayBrezhnevDoctrine(s *State, player Aff) {
 	/* All Operations cards played by the USSR, for the remainder of this turn,
 	   receive +1 to their Operations value (to a maximum of 4 Operations per
 	   card). */
-	s.TurnEvents[BrezhnevDoctrine] = player
+	s.TurnEvent(BrezhnevDoctrine, player)
 }
 
 func PlayPortugueseEmpireCrumbles(s *State, player Aff) {
 	/* Add 2 USSR Influence to Angola and the SE African States. */
-	Countries[Angola].Inf[SOV] += 2
-	Countries[SEAfricanStates].Inf[SOV] += 2
+	plusInf(s, s.Countries[Angola], SOV, 2)
+	plusInf(s, s.Countries[SEAfricanStates], SOV, 2)
 }
 
 func PlaySouthAfricanUnrest(s *State, player Aff) {
@@ -795,21 +821,26 @@ func PlaySouthAfricanUnrest(s *State, player Aff) {
 		"Option A: add 2 influence to South Africa, or Option B 1 to South Africa and 2 to an adjacent country?",
 		"a", "b") {
 	case "a":
-		Countries[SouthAfrica].Inf[SOV] += 2
+		plusInf(s, s.Countries[SouthAfrica], SOV, 2)
 	default:
-		adjIds := []CountryId{}
-		for _, c := range Countries[SouthAfrica].AdjCountries {
-			adjIds = append(adjIds, c.Id)
+		plusInf(s, s.Countries[SouthAfrica], SOV, 1)
+		adjToSA := func(c *Country) error {
+			for _, adj := range s.Countries[SouthAfrica].AdjCountries {
+				if adj.Id == c.Id {
+					return nil
+				}
+			}
+			return fmt.Errorf("%s is not adjacent to South Africa", c)
 		}
-		selected := SelectCountry(s, SOV, "Add 2 influence to which country?", adjIds...)
-		Countries[SouthAfrica].Inf[SOV] += 1
-		selected.Inf[SOV] += 2
+		SelectOneInfluence(s, player, "Add 2 influence to a country adjacent to South Africa",
+			PlusInf(SOV, 2),
+			adjToSA)
 	}
 }
 
 func PlayAllende(s *State, player Aff) {
 	/* Add 2 USSR Influence to Chile. */
-	Countries[Chile].Inf[SOV] += 2
+	plusInf(s, s.Countries[Chile], SOV, 2)
 }
 
 func PlayWillyBrandt(s *State, player Aff) {
@@ -817,30 +848,25 @@ func PlayWillyBrandt(s *State, player Aff) {
 	   cancels the effect(s) of the “#21 – NATO” Event for West Germany only. This
 	   Event is prevented / canceled by the “#96 – Tear Down this Wall” Event. */
 	s.GainVP(SOV, 1)
-	s.Events[WillyBrandt] = player
-	Countries[WGermany].Inf[SOV] += 1
+	s.Event(WillyBrandt, player)
+	plusInf(s, s.Countries[WGermany], SOV, 1)
 }
 
 func PlayMuslimRevolution(s *State, player Aff) {
 	/* Remove all US Influence from 2 of the following countries: Sudan, Iran,
 	   Iraq, Egypt, Libya, Saudi Arabia, Syria, Jordan. This Event cannot be used
 	   after the “#110 – AWACS Sale to Saudis” Event has been played. */
-	cs := SelectInfluenceForce(s, player, func() ([]*Country, error) {
-		return SelectNInfluence(s, player,
-			"2 countries to lose all influence", 2,
-			InCountries(Sudan, Iran, Iraq, Egypt, Libya, SaudiArabia, Syria, Jordan),
-			MaxPerCountry(1),
-			CanRemove(*s, USA))
-	})
-	for _, c := range cs {
-		c.Inf[USA] = 0
-	}
+	SelectInfluence(s, player, "2 countries to lose all influence",
+		ZeroInf(USA), 2,
+		InCountries(Sudan, Iran, Iraq, Egypt, Libya, SaudiArabia, Syria, Jordan),
+		MaxPerCountry(1), HasInfluence(USA))
 }
 
 func PlayABMTreaty(s *State, player Aff) {
 	/* Improve the DEFCON level by 1 and then conduct Operations using the
 	   Operations value of this card. */
 	s.ImproveDefcon(1)
+	s.Transcribe(fmt.Sprintf("%s conducts operations with %s.", player, Cards[ABMTreaty]))
 	ConductOps(s, player, PseudoCard(Cards[ABMTreaty].Ops))
 }
 
@@ -849,10 +875,9 @@ func PlayCulturalRevolution(s *State, player Aff) {
 	   to the USSR (face up and available to be played). If the USSR already has
 	   “#6 – The China Card” card, the USSR receives 1 VP. */
 	if s.ChinaCardPlayer == USA {
-		// XXX messaging
-		s.ChinaCardPlayer = SOV
-		s.ChinaCardFaceUp = true
+		s.ChinaCardMove(SOV, true)
 	} else {
+		s.Transcribe("The USSR already has the China Card.")
 		s.GainVP(SOV, 1)
 	}
 }
@@ -862,7 +887,7 @@ func PlayFlowerPower(s *State, player Aff) {
 	   Korean War, Brush War, Indo-Pakistani War, Iran-Iraq War), used for
 	   Operations or an Event, after this card is played. This Event is prevented /
 	   canceled by the “#97 – ‘An Evil Empire’” Event. */
-	s.Events[FlowerPower] = player
+	s.Event(FlowerPower, player)
 }
 
 func PlayU2Incident(s *State, player Aff) {
@@ -870,68 +895,67 @@ func PlayU2Incident(s *State, player Aff) {
 	   later this turn, either by the US or the USSR, the USSR receives an
 	   additional 1 VP. */
 	s.GainVP(SOV, 1)
-	s.TurnEvents[U2Incident] = player
+	s.TurnEvent(U2Incident, player)
 }
 
 func PlayOPEC(s *State, player Aff) {
 	/* The USSR receives 1 VP for Control of each of the following countries:
 	   Egypt, Iran, Libya, Saudi Arabia, Iraq, Gulf States, Venezuela. This Event
 	   cannot be used after the “#86 – North Sea Oil” Event has been played. */
-	controlled := []string{}
+	mods := []Mod{}
 	for _, cid := range []CountryId{Egypt, Iran, Libya, SaudiArabia, GulfStates, Venezuela} {
 		if s.Countries[cid].Controlled() == SOV {
-			controlled = append(controlled, s.Countries[cid].Name)
+			mods = append(mods, Mod{1, s.Countries[cid].Name})
 		}
 	}
-	// XXX messaging (scoring)
-	s.GainVP(SOV, len(controlled))
+	if len(mods) == 0 {
+		s.Transcribe("USSR does not score anything for OPEC.")
+		return
+	}
+	s.Transcribe(fmt.Sprintf("USSR Opec scoring: %s.", ModSummary(mods)))
+	s.GainVP(SOV, TotalMod(mods))
 }
 
 func PlayLoneGunman(s *State, player Aff) {
 	/* The US reveals their hand of cards. The USSR may use the Operations value
 	   of this card to conduct Operations. */
 	ShowHand(s, USA, SOV)
+	s.Transcribe(fmt.Sprintf("%s conducts operations with %s.", player, Cards[LoneGunman]))
 	ConductOps(s, player, PseudoCard(Cards[LoneGunman].Ops))
 }
 
 func PlayColonialRearGuards(s *State, player Aff) {
 	/* Add 1 US Influence to each of any 4 countries in Africa and/or Southeast
 	   Asia. */
-	cs := SelectInfluenceForce(s, player, func() ([]*Country, error) {
-		return SelectExactlyNInfluence(s, player,
-			"Choose 4 countries in Africa and/or Southeast Asia", 4,
-			MaxPerCountry(1), InRegion(Africa, SoutheastAsia))
-	})
-	PlaceInfluence(s, USA, cs)
+	SelectInfluence(s, player, "Choose 4 countries in Africa and/or Southeast Asia",
+		PlusInf(USA, 1), 4,
+		MaxPerCountry(1), InRegion(Africa, SoutheastAsia))
 }
 
 func PlayPanamaCanalReturned(s *State, player Aff) {
 	/* Add 1 US Influence to Panama, Costa Rica and Venezuela.  */
-	s.Countries[Panama].Inf[USA] += 1
-	s.Countries[CostaRica].Inf[USA] += 1
-	s.Countries[Venezuela].Inf[USA] += 1
+	plusInf(s, s.Countries[Panama], USA, 1)
+	plusInf(s, s.Countries[CostaRica], USA, 1)
+	plusInf(s, s.Countries[Venezuela], USA, 1)
 }
 
 func PlayCampDavidAccords(s *State, player Aff) {
 	/* The US receives 1 VP and adds 1 Influence to Israel, Jordan and Egypt.
 	   This Event prevents the “#13 – Arab-Israeli War” card from being played as
 	   an Event. */
-	s.Countries[Israel].Inf[USA] += 1
-	s.Countries[Jordan].Inf[USA] += 1
-	s.Countries[Egypt].Inf[USA] += 1
+	plusInf(s, s.Countries[Israel], USA, 1)
+	plusInf(s, s.Countries[Jordan], USA, 1)
+	plusInf(s, s.Countries[Egypt], USA, 1)
 	s.GainVP(USA, 1)
-	s.Events[CampDavidAccords] = player
+	s.Event(CampDavidAccords, player)
 }
 
 func PlayPuppetGovernments(s *State, player Aff) {
 	/* The US may add 1 Influence to 3 countries that do not contain Influence
 	   from either the US or USSR. */
-	cs := SelectInfluenceForce(s, player, func() ([]*Country, error) {
-		return SelectNInfluence(s, player,
-			"Choose 3 countries with no influence from either power", 3,
-			MaxPerCountry(1), NoInfluence(USA), NoInfluence(SOV))
-	})
-	PlaceInfluence(s, USA, cs)
+	SelectInfluence(s, player, "Choose 3 countries with no influence from either power",
+		PlusInf(USA, 1), 3,
+		MaxPerCountry(1), NoInfluence(USA), NoInfluence(SOV))
 }
 
 func PlayGrainSalesToSoviets(s *State, player Aff) {
@@ -940,14 +964,21 @@ func PlayGrainSalesToSoviets(s *State, player Aff) {
 	   returned, or the USSR has no cards, the US may use the Operations value of
 	   this card to conduct Operations. */
 	if len(s.Hands[SOV].Cards) == 0 {
+		s.Transcribe("The USSR player has no cards.")
+		s.Transcribe(fmt.Sprintf("US conducts operations with %s.", Cards[GrainSalesToSoviets]))
 		ConductOps(s, player, PseudoCard(Cards[GrainSalesToSoviets].Ops))
 	} else {
 		card := SelectRandomCard(s, SOV)
+		s.Transcribe(fmt.Sprintf("The US selects %s from the USSR hand.", card))
 		switch SelectChoice(s, player, "Play this card or return it?",
 			"play", "return") {
 		case "play":
+			s.Transcribe(fmt.Sprintf("US plays %s.", card))
+			s.Hands[SOV].Remove(card)
 			PlayCard(s, player, card)
 		default:
+			s.Transcribe(fmt.Sprintf("US returns %s to the USSR.", card))
+			s.Transcribe(fmt.Sprintf("US conducts operations with %s.", Cards[GrainSalesToSoviets]))
 			ConductOps(s, player, PseudoCard(Cards[GrainSalesToSoviets].Ops))
 		}
 	}
@@ -958,8 +989,9 @@ func PlayJohnPaulIIElectedPope(s *State, player Aff) {
 	   This Event allows the “#101 – Solidarity” card to be played as an Event.
 	*/
 	c := s.Countries[Poland]
-	c.Inf[SOV] = Max(0, c.Inf[SOV]-2)
-	c.Inf[USA] += 1
+	lessInf(s, c, SOV, 2)
+	plusInf(s, c, USA, 1)
+	s.Event(JohnPaulIIElectedPope, player)
 }
 
 func PlayLatinAmericanDeathSquads(s *State, player Aff) {
@@ -967,17 +999,14 @@ func PlayLatinAmericanDeathSquads(s *State, player Aff) {
 	   for the remainder of this turn, receive +1 to their die roll. All of the
 	   opponent’s Coup Attempts in Central and South America, for the remainder of
 	   this turn, receive -1 to their die roll. */
-	s.Events[LatinAmericanDeathSquads] = player
+	s.Event(LatinAmericanDeathSquads, player)
 }
 
 func PlayOASFounded(s *State, player Aff) {
 	/* Add a total of 2 US Influence to any countries in Central or South America. */
-	cs := SelectInfluenceForce(s, player, func() ([]*Country, error) {
-		return SelectNInfluence(s, player,
-			"Add a total of 2 influence to countries in Central or South America", 2,
-			InRegion(CentralAmerica, SouthAmerica))
-	})
-	PlaceInfluence(s, USA, cs)
+	SelectInfluence(s, player, "Add a total of 2 influence to countries in Central or South America",
+		PlusInf(USA, 1), 2,
+		InRegion(CentralAmerica, SouthAmerica))
 }
 
 func PlayNixonPlaysTheChinaCard(s *State, player Aff) {
@@ -985,9 +1014,9 @@ func PlayNixonPlaysTheChinaCard(s *State, player Aff) {
 	   card to the US (face down and unavailable for immediate play). If the US
 	   already has the “#6 – The China Card” card, the US receives 2 VP. */
 	if s.ChinaCardPlayer == SOV {
-		s.ChinaCardPlayer = USA
-		s.ChinaCardFaceUp = false
+		s.ChinaCardMove(USA, false)
 	} else {
+		s.Transcribe("The US already has the China Card.")
 		s.GainVP(USA, 2)
 	}
 }
@@ -995,39 +1024,32 @@ func PlayNixonPlaysTheChinaCard(s *State, player Aff) {
 func PlaySadatExpelsSoviets(s *State, player Aff) {
 	/* Remove all USSR Influence from Egypt and add 1 US Influence to Egypt. */
 	c := s.Countries[Egypt]
-	c.Inf[SOV] = 0
-	c.Inf[USA] += 1
+	zeroInf(s, c, SOV)
+	plusInf(s, c, USA, 1)
 }
 
 func PlayShuttleDiplomacy(s *State, player Aff) {
 	/* If this card’s Event is in effect, subtract (-1) a Battleground country
 	   from the USSR total and then discard this card during the next scoring of
 	   the Middle East or Asia (which ever comes first). */
-	s.Events[ShuttleDiplomacy] = player
+	s.Event(ShuttleDiplomacy, player)
 }
 
 func PlayTheVoiceOfAmerica(s *State, player Aff) {
 	/* Remove 4 USSR Influence from any countries NOT in Europe (removing no
 	   more than 2 Influence per country). */
-	cs := SelectInfluenceForce(s, player, func() ([]*Country, error) {
-		return SelectNInfluence(s, player,
-			"Add a total of 4 influence from countries not in Europe (no more than 2 per country)", 4,
-			InRegion(Asia, Africa, CentralAmerica, SouthAmerica, MiddleEast),
-			MaxPerCountry(2),
-			CanRemove(*s, SOV))
-	})
-	RemoveInfluence(s, SOV, cs)
+	SelectInfluence(s, player, "Remove a total of 4 USSR influence from countries not in Europe (no more than 2 per country)",
+		LessInf(SOV, 1), 4,
+		InRegion(Asia, Africa, CentralAmerica, SouthAmerica, MiddleEast),
+		MaxPerCountry(2), HasInfluence(SOV))
 }
 
 func PlayLiberationTheology(s *State, player Aff) {
 	/* Add a total of 3 USSR Influence to any countries in Central America
 	   (adding no more than 2 Influence per country). */
-	cs := SelectInfluenceForce(s, player, func() ([]*Country, error) {
-		return SelectExactlyNInfluence(s, player,
-			"Add a total of 3 influence (no more than 2 per country) to countries in Central America", 3,
-			InRegion(CentralAmerica), MaxPerCountry(2))
-	})
-	PlaceInfluence(s, SOV, cs)
+	SelectInfluence(s, player, "Add a total of 3 influence (no more than 2 per country) to countries in Central America",
+		PlusInf(SOV, 1), 3,
+		InRegion(CentralAmerica), MaxPerCountry(2))
 }
 
 func PlayUssuriRiverSkirmish(s *State, player Aff) {
@@ -1036,15 +1058,12 @@ func PlayUssuriRiverSkirmish(s *State, player Aff) {
 	   “#6 – The China Card” card, add a total of 4 US Influence to any countries
 	   in Asia (adding no more than 2 Influence per country). */
 	if s.ChinaCardPlayer == SOV {
-		s.ChinaCardPlayer = USA
-		s.ChinaCardFaceUp = true
+		s.ChinaCardMove(USA, true)
 	} else {
-		cs := SelectInfluenceForce(s, player, func() ([]*Country, error) {
-			return SelectExactlyNInfluence(s, player,
-				"Add a total of 4 influence to countries in Central or South America", 4,
-				InRegion(Asia), MaxPerCountry(2))
-		})
-		PlaceInfluence(s, USA, cs)
+		s.Transcribe("The US already has the China Card.")
+		SelectInfluence(s, player, "Add a total of 4 influence to countries in Central or South America",
+			PlusInf(USA, 1), 4,
+			InRegion(Asia), MaxPerCountry(2))
 	}
 }
 
@@ -1061,9 +1080,11 @@ func PlayAskNotWhatYourCountry(s *State, player Aff) {
 		return
 	}
 	for _, c := range toDiscard {
+		s.Transcribe(fmt.Sprintf("US discards %s.", c))
 		s.Hands[USA].Remove(c)
 	}
 	s.Discard.Push(toDiscard...)
+	s.Transcribe(fmt.Sprintf("US draws %d cards.", toDraw))
 	drawn := s.Deck.Draw(toDraw)
 	s.Hands[USA].Push(drawn...)
 	ShowHand(s, USA, USA)
@@ -1073,20 +1094,25 @@ func PlayAllianceForProgress(s *State, player Aff) {
 	/* The US receives 1 VP for each US controlled Battleground country in
 	   Central and South America. */
 	countries := append(CentralAmerica.Countries, SouthAmerica.Countries...)
-	controlled := []string{}
-	for _, c := range countries {
-		if s.Countries[c].Battleground && s.Countries[c].Controlled() == USA {
-			controlled = append(controlled, s.Countries[c].Name)
+	mods := []Mod{}
+	for _, cId := range countries {
+		c := s.Countries[cId]
+		if c.Battleground && c.Controlled() == USA {
+			mods = append(mods, Mod{1, c.Name})
 		}
 	}
-	// XXX messaging
-	s.GainVP(USA, len(controlled))
+	if len(mods) == 0 {
+		s.Transcribe("US controls no Central or South American battleground countries.")
+		return
+	}
+	s.Transcribe(fmt.Sprintf("US Alliance for Progress scoring: %s", ModSummary(mods)))
+	s.GainVP(USA, TotalMod(mods))
 }
 
 func PlayAfricaScoring(s *State, player Aff) {
 	/* Presence: 1; Domination: 4; Control: 6; +1 VP per controlled Battleground
 	   country in Region; MAY NOT BE HELD! */
-	score(s, player, Africa)
+	Score(s, player, Africa)
 }
 
 func PlayOneSmallStep(s *State, player Aff) {
@@ -1094,13 +1120,15 @@ func PlayOneSmallStep(s *State, player Aff) {
 	   move their marker 2 spaces forward on the Space Race Track. The player
 	   receives VP only from the final space moved into. */
 	if s.SpaceRace[player] >= s.SpaceRace[player.Opp()] {
+		s.Transcribe(fmt.Sprintf("%s is not behind on the Space Race.", player))
 		return
 	}
 	srb, _ := nextSRBox(s, player)
 	if _, ok := s.SREvents[srb.SideEffect]; ok {
 		delete(s.SREvents, srb.SideEffect)
 	}
-	s.SpaceRace[player] += 2
+	// XXX clunky: srb.Enter increments the player's space race counter ...
+	s.SpaceRace[player]++
 	srb, _ = nextSRBox(s, player)
 	srb.Enter(s, player)
 }
@@ -1108,7 +1136,7 @@ func PlayOneSmallStep(s *State, player Aff) {
 func PlaySouthAmericaScoring(s *State, player Aff) {
 	/* Presence: 2; Domination: 5; Control: 6; +1 VP per controlled Battleground
 	   country in Region; MAY NOT BE HELD! */
-	score(s, player, SouthAmerica)
+	Score(s, player, SouthAmerica)
 }
 
 func PlayChe(s *State, player Aff) {
@@ -1117,19 +1145,25 @@ func PlayChe(s *State, player Aff) {
 	   Africa. The USSR may perform a second Coup Attempt, against a different
 	   non-Battleground country in Central America, South America or Africa, if the
 	   first Coup Attempt removed any US Influence from the target country. */
-	// Free coup
-	targets := []CountryId{}
-	allTargets := SouthAmerica.Countries
-	allTargets = append(targets, CentralAmerica.Countries...)
-	allTargets = append(targets, Africa.Countries...)
-	for _, c := range allTargets {
-		if !s.Countries[c].Battleground {
-			targets = append(targets, c)
-		}
+	// They technically don't have to coup. Would always be a "yes" except if
+	// under cuban missile crisis, so, we do need to ask.
+	if "yes" != SelectChoice(s, player, "Perform a Coup attempt with Che?", "yes", "no") {
+		s.Transcribe("USSR elects not to Coup with Che.")
+		return
 	}
-	couped := DoFreeCoup(s, player, Cards[Che], targets)
+	notBg := func(c *Country) error {
+		if c.Battleground {
+			return fmt.Errorf("%s is a battleground", c.Name)
+		}
+		return nil
+	}
+	couped := OpCoup(s, player, Cards[Che], false,
+		InRegion(SouthAmerica, CentralAmerica, Africa),
+		notBg)
 	if couped {
-		DoFreeCoup(s, player, Cards[Che], targets)
+		OpCoup(s, player, Cards[Che], false,
+			InRegion(SouthAmerica, CentralAmerica, Africa),
+			notBg)
 	}
 }
 
@@ -1147,6 +1181,7 @@ func PlayOurManInTehran(s *State, player Aff) {
 		}
 	}
 	if !controlled {
+		s.Transcribe("US controls no Middle East countries.")
 		return
 	}
 	cards := s.Deck.Draw(5)
@@ -1167,13 +1202,16 @@ func PlayOurManInTehran(s *State, player Aff) {
 		}
 	}
 	if len(toDiscard) > 0 {
-		s.MessageOne(SOV, fmt.Sprintf("The following cards to discard: %s\n", strings.Join(discarded, ", ")))
+		for _, c := range toDiscard {
+			s.Transcribe(fmt.Sprintf("US discards %s.", c))
+		}
 	} else {
-		s.MessageOne(SOV, "No cards were discarded.\n")
+		s.Transcribe("No cards are discarded.\n")
 	}
 	s.Discard.Push(toDiscard...)
 	// Return other cards to draw pile and reshuffle
 	s.Deck.Push(backToDraw...)
+	s.Transcribe(fmt.Sprintf("%d cards return to the deck, and it is reshuffled.", len(backToDraw)))
 	cards = SelectShuffle(s, s.Deck)
 	s.Deck.Reorder(cards)
 }
@@ -1188,23 +1226,24 @@ func PlayIranianHostageCrisis(s *State, player Aff) {
 	   Event requires the US to discard 2 cards, instead of 1 card, if the “#92 –
 	   Terrorism” Event is played. */
 	iran := s.Countries[Iran]
-	iran.Inf[USA] = 0
-	iran.Inf[SOV] += 2
-	s.Events[IranianHostageCrisis] = player
+	zeroInf(s, iran, USA)
+	plusInf(s, iran, SOV, 2)
+	s.Event(IranianHostageCrisis, player)
 }
 
 func PlayTheIronLady(s *State, player Aff) {
 	/* Add 1 USSR Influence to Argentina and remove all USSR Influence from the
 	   United Kingdom. The US receives 1 VP. This Event prevents the “#7 –
 	   Socialist Governments” card from being played as an Event. */
-	s.Countries[Argentina].Inf[SOV] += 1
-	s.Countries[UK].Inf[SOV] = 0
+	plusInf(s, s.Countries[Argentina], SOV, 1)
+	zeroInf(s, s.Countries[UK], SOV)
 	s.GainVP(USA, 1)
-	s.Events[TheIronLady] = player
+	s.Event(TheIronLady, player)
 }
 
 func PlayReaganBombsLibya(s *State, player Aff) {
 	/* The US receives 1 VP for every 2 USSR Influence in Libya. */
+	s.Transcribe("The US gains VP for each 2 USSR influence in Libya.")
 	s.GainVP(USA, s.Countries[Libya].Inf[SOV]/2)
 }
 
@@ -1213,17 +1252,20 @@ func PlayStarWars(s *State, player Aff) {
 	   to look through the discard pile, pick any 1 non-scoring card and play it
 	   immediately as an Event. */
 	if s.SpaceRace[USA] <= s.SpaceRace[SOV] {
+		s.Transcribe("The US is not ahead on the Space Race.")
 		return
 	}
 	// Limit choice to playable events
 	canPlayEvent := func(c Card) bool {
-		return !c.Prevented(s)
+		return !c.Prevented(s.Game)
 	}
 	card := SelectDiscarded(s, player,
 		canPlayEvent,
 		CardBlacklist(AsiaScoring, EuropeScoring,
 			MiddleEastScoring, CentralAmericaScoring, SouthAmericaScoring,
 			SoutheastAsiaScoring, AfricaScoring))
+	s.Discard.Remove(card)
+	s.Transcribe(fmt.Sprintf("%s picks %s from the discard pile.", player, card))
 	PlayEvent(s, player, card)
 }
 
@@ -1232,37 +1274,33 @@ func PlayNorthSeaOil(s *State, player Aff) {
 	   Event prevents the “#61 – OPEC” card from being played as an Event. */
 	// Turn event handles the 8 action rounds, permanent event handles
 	// preventing OPEC
+	// Don't message the turn event.
 	s.TurnEvents[NorthSeaOil] = player
-	s.Events[NorthSeaOil] = player
+	s.Event(NorthSeaOil, player)
+	s.Transcribe("The US may play 8 cards for this turn only.")
 }
 
 func PlayTheReformer(s *State, player Aff) {
 	/* Add 4 USSR Influence to Europe (adding no more than 2 Influence per
 	   country). If the USSR is ahead of the US in VP, 6 Influence may be added to
 	   Europe instead. The USSR may no longer make Coup Attempts in Europe. */
-	s.Events[TheReformer] = player
+	s.Event(TheReformer, player)
 	n := 4
 	if s.VP < 0 {
 		n = 6
 	}
-	cs := SelectInfluenceForce(s, player, func() ([]*Country, error) {
-		return SelectExactlyNInfluence(s, player,
-			"Add influence in Europe, no more than 2 per country", n,
-			MaxPerCountry(2), InRegion(Europe))
-	})
-	PlaceInfluence(s, player, cs)
+	SelectInfluence(s, player, fmt.Sprintf("Add %d influence in Europe, no more than 2 per country", n),
+		PlusInf(SOV, 1), n,
+		MaxPerCountry(2), InRegion(Europe))
 }
 
 func PlayMarineBarracksBombing(s *State, player Aff) {
 	/* Remove all US Influence in Lebanon and remove a total of 2 US Influence
 	   from any countries in the Middle East. */
-	s.Countries[Lebanon].Inf[USA] = 0
-	cs := SelectInfluenceForce(s, player, func() ([]*Country, error) {
-		return SelectNInfluence(s, player,
-			"Remove 2 US influence from the Middle East", 2,
-			InRegion(MiddleEast), CanRemove(*s, USA))
-	})
-	RemoveInfluence(s, USA, cs)
+	zeroInf(s, s.Countries[Lebanon], USA)
+	SelectInfluence(s, player, "Remove 2 US influence from the Middle East",
+		LessInf(USA, 1), 2,
+		InRegion(MiddleEast), HasInfluence(USA))
 }
 
 func PlaySovietsShootDownKAL007(s *State, player Aff) {
@@ -1272,7 +1310,10 @@ func PlaySovietsShootDownKAL007(s *State, player Aff) {
 	s.DegradeDefcon(1)
 	s.GainVP(USA, 2)
 	if s.Countries[SKorea].Controlled() == USA {
+		s.Transcribe(fmt.Sprintf("The US may place influence or make realignment rolls with %s.", Cards[SovietsShootDownKAL007]))
 		ConductOps(s, player, Cards[SovietsShootDownKAL007], INFLUENCE, REALIGN)
+	} else {
+		s.Transcribe("South Korea is not US controlled.")
 	}
 }
 
@@ -1283,7 +1324,10 @@ func PlayGlasnost(s *State, player Aff) {
 	s.ImproveDefcon(1)
 	s.GainVP(SOV, 2)
 	if s.Effect(TheReformer) {
+		s.Transcribe(fmt.Sprintf("The USSR may place influence or make realignment rolls with %s.", Cards[Glasnost]))
 		ConductOps(s, player, Cards[Glasnost], REALIGN, INFLUENCE)
+	} else {
+		s.Transcribe("The Reformer Event has not been played.")
 	}
 }
 
@@ -1292,12 +1336,17 @@ func PlayOrtegaElectedInNicaragua(s *State, player Aff) {
 	   Attempt, using this card’s Operations value, in a country adjacent to
 	   Nicaragua. */
 	nicaragua := s.Countries[Nicaragua]
-	nicaragua.Inf[USA] = 0
-	adjToNicaragua := make([]CountryId, len(nicaragua.AdjCountries))
-	for i, c := range nicaragua.AdjCountries {
-		adjToNicaragua[i] = c.Id
+	zeroInf(s, nicaragua, USA)
+	adjToNicaragua := func(c *Country) error {
+		for _, neighbor := range nicaragua.AdjCountries {
+			if neighbor.Id == c.Id {
+				return nil
+			}
+		}
+		return fmt.Errorf("%s is not adjacent to Nicaragua", c.Name)
 	}
-	DoFreeCoup(s, player, Cards[OrtegaElectedInNicaragua], adjToNicaragua)
+	OpCoup(s, player, Cards[OrtegaElectedInNicaragua], true,
+		adjToNicaragua)
 }
 
 func PlayTerrorism(s *State, player Aff) {
@@ -1306,16 +1355,18 @@ func PlayTerrorism(s *State, player Aff) {
 	   player (if applicable) must randomly discard 2 cards from their hand. */
 	opp := player.Opp()
 	if len(s.Hands[opp].Cards) == 0 {
+		s.Transcribe(fmt.Sprintf("%s has no cards in their hand.", opp))
 		return
 	}
 	card := SelectRandomCard(s, opp)
-	// XXX messaging
+	s.Transcribe(fmt.Sprintf("%s is discarded from %s hand.", card, opp))
 	s.Hands[opp].Remove(card)
 	if opp == USA && s.Effect(IranianHostageCrisis) {
 		if len(s.Hands[opp].Cards) == 0 {
 			return
 		}
 		card := SelectRandomCard(s, opp)
+		s.Transcribe(fmt.Sprintf("%s is additionally discarded from %s hand (Iranian Hostage Crisis).", card, opp))
 		s.Hands[opp].Remove(card)
 	}
 }
@@ -1323,7 +1374,7 @@ func PlayTerrorism(s *State, player Aff) {
 func PlayIranContraScandal(s *State, player Aff) {
 	/* All US Realignment rolls, for the remainder of this turn, receive -1 to
 	   their die roll. */
-	s.TurnEvents[IranContraScandal] = player
+	s.TurnEvent(IranContraScandal, player)
 }
 
 func PlayChernobyl(s *State, player Aff) {
@@ -1331,29 +1382,29 @@ func PlayChernobyl(s *State, player Aff) {
 	   remainder of the turn, the USSR cannot add Influence to using Operations
 	   points. */
 	region := SelectRegion(s, player, "Choose a region where USSR is blocked from influencing for the turn")
+	// Don't use the generic event message here
 	s.TurnEvents[Chernobyl] = player
 	s.ChernobylRegion = region
+	s.Transcribe(fmt.Sprintf("The USSR may not add Influence using Operations points to %s for the remainder of the turn.", region))
 }
 
 func PlayLatinAmericanDebtCrisis(s *State, player Aff) {
 	/* The US must immediately discard a card with an Operations value of 3 or
 	   more or the USSR may double the amount of USSR Influence in 2 countries in
 	   South America. */
-	if hasInHand(s, USA, ExceedsOps(2)) &&
+	enoughOps := ExceedsOps(2, s, USA)
+	if hasInHand(s, USA, enoughOps) &&
 		"discard" == SelectChoice(s, USA,
 			"Discard a card with >=3 Ops, or double USSR influence in two SAM countries?",
 			"discard", "whatever") {
-		card := SelectCard(s, USA, CardBlacklist(TheChinaCard), ExceedsOps(2))
+		card := SelectCard(s, USA, CardBlacklist(TheChinaCard), enoughOps)
+		s.Hands[USA].Remove(card)
+		s.Transcribe(fmt.Sprintf("%s discarded for Latin American Debt Crisis.", card))
 		s.Discard.Push(card)
 	} else {
-		cs := SelectInfluenceForce(s, player, func() ([]*Country, error) {
-			return SelectNInfluence(s, player,
-				"Double USSR influence in 2 countries in South America", 2,
-				InRegion(SouthAmerica), MaxPerCountry(1), HasInfluence(SOV))
-		})
-		for _, c := range cs {
-			c.Inf[SOV] *= 2
-		}
+		SelectInfluence(s, player, "Double USSR influence in 2 countries in South America",
+			DoubleInf(SOV), 2,
+			InRegion(SouthAmerica), MaxPerCountry(1), HasInfluence(SOV))
 	}
 }
 
@@ -1361,22 +1412,19 @@ func PlayTearDownThisWall(s *State, player Aff) {
 	/* Add 3 US Influence to East Germany. The US may make free Coup Attempts or
 	   Realignment rolls in Europe using the Operations value of this card. This
 	   Event prevents / cancels the effect(s) of the “#55 – Willy Brandt” Event. */
-	s.Countries[EGermany].Inf[USA] += 3
-	ConductOps(s, player, Cards[TearDownThisWall], COUP, REALIGN)
-	s.Events[TearDownThisWall] = player
-	if s.Effect(WillyBrandt) {
-		s.Cancel(WillyBrandt)
-	}
+	plusInf(s, s.Countries[EGermany], USA, 3)
+	s.Transcribe(fmt.Sprintf("The US may make free coup attempts or realignment rolls with %s.", Cards[TearDownThisWall]))
+	ConductOpsFree(s, player, Cards[TearDownThisWall], COUP, REALIGN)
+	s.Event(TearDownThisWall, player)
+	s.Cancel(WillyBrandt)
 }
 
 func PlayAnEvilEmpire(s *State, player Aff) {
 	/* The US receives 1 VP. This Event prevents / cancels the effect(s) of the
 	   “#59 – Flower Power” Event. */
 	s.GainVP(USA, 1)
-	s.Events[AnEvilEmpire] = player
-	if s.Effect(FlowerPower) {
-		s.Cancel(FlowerPower)
-	}
+	s.Event(AnEvilEmpire, player)
+	s.Cancel(FlowerPower)
 }
 
 func PlayAldrichAmesRemix(s *State, player Aff) {
@@ -1385,6 +1433,7 @@ func PlayAldrichAmesRemix(s *State, player Aff) {
 	ShowHand(s, USA, SOV)
 	card := selectCardFrom(s, SOV, s.Hands[USA].Cards, false)
 	s.Hands[USA].Remove(card)
+	s.Transcribe(fmt.Sprintf("%s discarded from US hand for Aldrich Ames Remix.", card))
 	s.Discard.Push(card)
 }
 
@@ -1392,27 +1441,27 @@ func PlayPershingIIDeployed(s *State, player Aff) {
 	/* The USSR receives 1 VP. Remove 1 US Influence from any 3 countries in
 	   Western Europe. */
 	s.GainVP(SOV, 1)
-	cs := SelectInfluenceForce(s, player, func() ([]*Country, error) {
-		return SelectNInfluence(s, player,
-			"Remove 1 US Influence from any 3 countries in W Europe", 3,
-			MaxPerCountry(1), InRegion(WestEurope), CanRemove(*s, USA))
-	})
-	RemoveInfluence(s, USA, cs)
+	SelectInfluence(s, player, "Remove 1 US Influence from any 3 countries in W Europe",
+		LessInf(USA, 1), 3,
+		MaxPerCountry(1), InRegion(WestEurope), HasInfluence(USA))
 }
 
 func PlayWargames(s *State, player Aff) {
 	/* If the DEFCON level is 2, the player may immediately end the game after
 	   giving their opponent 6 VP. How about a nice game of chess? */
 	if "yes" == SelectChoice(s, player, "Give opponent 6 VP and end the game?", "yes", "no") {
+		s.Transcribe(fmt.Sprintf("%s gives their opponent 6 VP and ends the game.", player))
 		s.GainVP(player.Opp(), 6)
 		// XXX: game end, writeme
+	} else {
+		s.Transcribe(fmt.Sprintf("%s chooses to not end the game.", player))
 	}
 }
 
 func PlaySolidarity(s *State, player Aff) {
 	/* Add 3 US Influence to Poland. This card requires prior play of the “#68 –
 	   John Paul II Elected Pope” Event in order to be played as an Event. */
-	s.Countries[Poland].Inf[USA] += 3
+	plusInf(s, s.Countries[Poland], USA, 3)
 }
 
 func PlayIranIraqWar(s *State, player Aff) {
@@ -1423,26 +1472,35 @@ func PlayIranIraqWar(s *State, player Aff) {
 	   target country with their Influence. The player adds 2 to its Military
 	   Operations Track. */
 	c := SelectCountry(s, player, "Choose who gets invaded", Iraq, Iran)
-	s.MilOps[player] += 2
+	s.Transcribe(fmt.Sprintf("%s will be invaded.", c))
 	roll := SelectRoll(s, player)
 	mod := c.NumControlledNeighbors(player.Opp())
+	if mod > 0 {
+		s.Transcribe(fmt.Sprintf("%s rolls %d.", player, roll))
+	} else {
+		s.Transcribe(fmt.Sprintf("%s rolls %d -%d (%s controlled adjacent).", player, roll, mod, player.Opp()))
+	}
 	switch roll - mod {
 	case 4, 5, 6:
+		s.Transcribe("Iran-Iraq War succeeds.")
 		s.GainVP(player, 2)
-		c.Inf[player] += c.Inf[player.Opp()]
-		c.Inf[player.Opp()] = 0
+		plusInf(s, c, player, c.Inf[player.Opp()])
+		zeroInf(s, c, player.Opp())
+	default:
+		s.Transcribe("Iran-Iraq War fails.")
 	}
+	s.AddMilOps(player, 2)
 }
 
 func PlayYuriAndSamantha(s *State, player Aff) {
 	/* The USSR receives 1 VP for each US Coup Attempt performed during the
 	   remainder of the Turn. */
-	s.TurnEvents[YuriAndSamantha] = player
+	s.TurnEvent(YuriAndSamantha, player)
 }
 
 func PlayAWACSSaleToSaudis(s *State, player Aff) {
 	/* Add 2 US Influence to Saudi Arabia. This Event prevents the “#56 – Muslim
 	   Revolution” card from being played as an Event. */
-	s.Countries[SaudiArabia].Inf[USA] += 2
-	s.Events[AWACSSaleToSaudis] = player
+	plusInf(s, s.Countries[SaudiArabia], USA, 2)
+	s.Event(AWACSSaleToSaudis, player)
 }

@@ -7,6 +7,7 @@ type Card struct {
 	Name string
 	Text string
 	Star bool
+	Era  Era
 	Impl func(*State, Aff)
 }
 
@@ -20,6 +21,15 @@ func (c Card) String() string {
 
 func (c Card) Scoring() bool {
 	return c.Ops == 0
+}
+
+func (c Card) IsWar() bool {
+	switch c.Id {
+	case ArabIsraeliWar, KoreanWar, BrushWar, IndoPakistaniWar, IranIraqWar:
+		return true
+	default:
+		return false
+	}
 }
 
 func (c Card) ScoringRegion() Region {
@@ -45,27 +55,27 @@ func (c Card) ScoringRegion() Region {
 
 // Prevented returns whether the card's event is prevented from play. E.g.
 // "Tear Down this Wall" prevents play of Willy Brandt as an event.
-func (c Card) Prevented(s *State) bool {
+func (c Card) Prevented(g *Game) bool {
 	switch {
-	case c.Id == WillyBrandt && s.Effect(TearDownThisWall):
+	case c.Id == WillyBrandt && g.Effect(TearDownThisWall):
 		return true
-	case c.Id == FlowerPower && s.Effect(AnEvilEmpire):
+	case c.Id == FlowerPower && g.Effect(AnEvilEmpire):
 		return true
-	case c.Id == ArabIsraeliWar && s.Effect(CampDavidAccords):
+	case c.Id == ArabIsraeliWar && g.Effect(CampDavidAccords):
 		return true
-	case c.Id == SocialistGovernments && s.Effect(TheIronLady):
+	case c.Id == SocialistGovernments && g.Effect(TheIronLady):
 		return true
-	case c.Id == OPEC && s.Effect(NorthSeaOil):
+	case c.Id == OPEC && g.Effect(NorthSeaOil):
 		return true
-	case c.Id == MuslimRevolution && s.Effect(AWACSSaleToSaudis):
+	case c.Id == MuslimRevolution && g.Effect(AWACSSaleToSaudis):
 		return true
-	case c.Id == NATO && !(s.Effect(MarshallPlan) || s.Effect(WarsawPactFormed)):
+	case c.Id == NATO && !(g.Effect(MarshallPlan) || g.Effect(WarsawPactFormed)):
 		return true
-	case c.Id == Solidarity && !s.Effect(JohnPaulIIElectedPope):
+	case c.Id == Solidarity && !g.Effect(JohnPaulIIElectedPope):
 		return true
-	case c.Id == TheCambridgeFive && s.Era() == Late:
+	case c.Id == TheCambridgeFive && g.Era() == Late:
 		return true
-	case c.Id == Wargames && s.Defcon != 2:
+	case c.Id == Wargames && g.Defcon != 2:
 		return true
 	default:
 		return false
@@ -137,7 +147,7 @@ func (d *Deck) Names() []string {
 }
 
 // Create a cardFilter that rejects specific cards.
-func CardBlacklist(blacklist ...CardId) func(Card) bool {
+func CardBlacklist(blacklist ...CardId) cardFilter {
 	return func(c Card) bool {
 		for _, bad := range blacklist {
 			if bad == c.Id {

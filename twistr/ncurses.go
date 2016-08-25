@@ -14,11 +14,11 @@ const (
         /   :        '-._               /   :    /   :        :      '-.
        /                 '-._          /   DNK 3   EDE 3 - POL 3 --.    '                        Turn:
                              '---- UK  5     :   \   :   \   :      '---  * U.S.S.R. *           VP:
-   * U.S.A. *                         :  \        \ /   | \  /                                   US Mil:
-                                      \   BLX 3 - WDE 4 | CZE 3          /       \               USSR Mil:
-   /       \                           \    :   /   :   |   :           /         \              DEFCON:
-  /        |                            \      /       /    \          /           \             US Space:
-MEX 2     CUB 3                         FRA 3 '   AUT 4 - HUN 3 - ROU 3             \            USSR Space:
+   * U.S.A. *                         :  \        \ /   | \  /                                   US Space:
+                                      \   BLX 3 - WDE 4 | CZE 3          /       \               USSR Space:
+   /       \                           \    :   /   :   |   :           /         \
+  /        |                            \      /       /    \          /           \
+MEX 2     CUB 3                         FRA 3 '   AUT 4 - HUN 3 - ROU 3             \
   :         :                             :   \     :       :   /   :                \
    \        \   \                       /  \   \   /        / .'       \              \                   NKR 3
    GTM 1     \   HTI 1 - DOM 1      ESP 2 -+- ITA 2 ---- YUG 3  BGR 3 - TUR 2          \                    :  
@@ -39,10 +39,10 @@ SLV 1 - HND 2 - NIC 1               MAR 3 - ALG 2-TUN 2   GRC 2    LBN 1 - SYR 2
           CHL 3   PRY 2    /                         /     \      |       :                         THA 2 - VNM 1   |
             :       :     /                         /   ZWE 1 - SEA 1                                 :       :    /
              \    /   \  /                     AGO 1      :       :                                   \       _ IDN 1
-             ARG 2 -- URY 2                      :        |                                          MYS 2 --'    :  
-               :        :                        \    _ BWA 2                                          :   \ 
-                                                ZAF 3     :                                                 \ AUS 4
-       Action Round:                              :                                                             :  `
+             ARG 2 -- URY 2                      :        |           X:      EUR ASI MDE            MYS 2 --'    :
+               :        :                        \    _ BWA 2    DEFCON  | 5 | 4 | 3 | 2 | X |         :   \
+                                                ZAF 3     :      MilOps  | 5 | 4 | 3 | 2 | 1 | 0 |          \ AUS 4
+       Action Round:                              :                      | 5 | 4 | 3 | 2 | 1 | 0 |              :  `
 )
 
 type Pos struct {
@@ -51,14 +51,14 @@ type Pos struct {
 }
 
 var (
-	turnPos      Pos = Pos{2, 109}
-	vpPos        Pos = Pos{3, 109}
-	usaMilOpsPos Pos = Pos{4, 109}
-	sovMilOpsPos Pos = Pos{5, 109}
-	defconPos    Pos = Pos{6, 109}
-	usaSpacePos  Pos = Pos{7, 109}
-	sovSpacePos  Pos = Pos{8, 109}
-	arPos        Pos = Pos{32, 21}
+	turnPos      Pos = Pos{109, 2}
+	vpPos        Pos = Pos{109, 3}
+	usaSpacePos  Pos = Pos{109, 4}
+	sovSpacePos  Pos = Pos{109, 5}
+	arPos        Pos = Pos{21, 32}
+	defconPos    Pos = Pos{74, 30}
+	usaMilOpsPos Pos = Pos{74, 31}
+	sovMilOpsPos Pos = Pos{74, 32}
 )
 
 const (
@@ -78,6 +78,14 @@ const (
 	C_Afr
 	C_Asi
 	C_Sea
+	// Card drawing
+	C_Early
+	C_Mid
+	C_Late
+	C_CardText
+	// Spacerace
+	C_SpaceDefault
+	C_SpaceDetails
 )
 
 var (
@@ -206,6 +214,14 @@ func initColors() {
 	gc.InitPair(C_Afr, gc.C_BLACK, 229)
 	gc.InitPair(C_Asi, gc.C_BLACK, 214)
 	gc.InitPair(C_Sea, gc.C_BLACK, 220)
+
+	gc.InitPair(C_Early, gc.C_WHITE, 38)
+	gc.InitPair(C_Mid, gc.C_WHITE, 25)
+	gc.InitPair(C_Late, gc.C_WHITE, 236)
+	gc.InitPair(C_CardText, gc.C_BLACK, 153)
+
+	gc.InitPair(C_SpaceDefault, 1, gc.C_BLACK)
+	gc.InitPair(C_SpaceDetails, gc.C_WHITE, 0)
 }
 
 type NCursesUI struct {
@@ -215,7 +231,7 @@ type NCursesUI struct {
 func MakeNCursesUI() *NCursesUI {
 	scr, err := gc.Init()
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
+		log.Println(err)
 		os.Exit(1)
 	}
 	if !gc.HasColors() {
@@ -256,11 +272,12 @@ func (nc *NCursesUI) Close() error {
 	return nil
 }
 
-func (nc *NCursesUI) Redraw(s *State) error {
+func (nc *NCursesUI) Redraw(g *Game) {
+	nc.clear()
 	var name, stab, infUsa, infSov int16
 	nc.MovePrint(0, 0, world)
 	for id, extra := range data {
-		country := s.Countries[id]
+		country := g.Countries[id]
 		if country.Battleground {
 			name, stab = C_BattleName, C_BattleStab
 		} else {
@@ -289,34 +306,240 @@ func (nc *NCursesUI) Redraw(s *State) error {
 		nc.AttrOff(gc.A_BOLD)
 	}
 	// Draw game metadata
-	nc.MovePrint(turnPos.X, turnPos.Y, strconv.Itoa(s.Turn))
+	nc.MovePrint(turnPos.Y, turnPos.X, strconv.Itoa(g.Turn))
 	var vp string
 	switch {
-	case s.VP > 0:
-		vp = fmt.Sprintf("US +%d", s.VP)
-	case s.VP < 0:
-		vp = fmt.Sprintf("USSR +%d", -s.VP)
+	case g.VP > 0:
+		vp = fmt.Sprintf("US +%d", g.VP)
+	case g.VP < 0:
+		vp = fmt.Sprintf("USSR +%d", -g.VP)
 	default:
 		vp = "0"
 	}
-	nc.MovePrint(vpPos.X, vpPos.Y, vp)
-	nc.MovePrint(usaMilOpsPos.X, usaMilOpsPos.Y, strconv.Itoa(s.MilOps[USA]))
-	nc.MovePrint(sovMilOpsPos.X, sovMilOpsPos.Y, strconv.Itoa(s.MilOps[SOV]))
-	nc.MovePrint(defconPos.X, defconPos.Y, strconv.Itoa(s.Defcon))
-	nc.MovePrint(usaSpacePos.X, usaSpacePos.Y, strconv.Itoa(s.SpaceRace[USA]))
-	nc.MovePrint(sovSpacePos.X, sovSpacePos.Y, strconv.Itoa(s.SpaceRace[SOV]))
+	nc.MovePrint(vpPos.Y, vpPos.X, vp)
+	nc.MovePrint(usaSpacePos.Y, usaSpacePos.X, strconv.Itoa(g.SpaceRace[USA]))
+	nc.MovePrint(sovSpacePos.Y, sovSpacePos.X, strconv.Itoa(g.SpaceRace[SOV]))
+
+	nc.ColorOn(C_SpaceDefault)
+	nc.MovePrint(defconPos.Y, defconPos.X+(4*(5-g.Defcon)), " @ ")
+	nc.ColorOff(C_SpaceDefault)
+	nc.ColorOn(C_UsaControl)
+	nc.MovePrint(usaMilOpsPos.Y, usaMilOpsPos.X+(4*(5-g.MilOps[USA])), "USA")
+	nc.ColorOff(C_UsaControl)
+	nc.ColorOn(C_SovControl)
+	nc.MovePrint(sovMilOpsPos.Y, sovMilOpsPos.X+(4*(5-g.MilOps[SOV])), "SOV")
+	nc.ColorOff(C_SovControl)
+
 	var phasingColor int16
-	if s.Phasing == USA {
+	if g.Phasing == USA {
 		phasingColor = C_UsaControl
 	} else {
 		phasingColor = C_SovControl
 	}
-	nc.ColorOn(phasingColor)
-	nc.MovePrint(arPos.X, arPos.Y, fmt.Sprintf("%2d", s.AR))
-	nc.ColorOff(phasingColor)
+	if g.AR > 0 {
+		nc.ColorOn(phasingColor)
+		nc.MovePrint(arPos.Y, arPos.X, fmt.Sprintf("%2d", g.AR))
+		nc.ColorOff(phasingColor)
+	}
 	nc.Refresh()
 	nc.Move(37, 0)
-	return nil
+}
+
+func (nc *NCursesUI) clear() {
+	for i := 0; i < maxHeight; i++ {
+		nc.Move(i, 0)
+		nc.ClearToEOL()
+	}
+	nc.Move(37, 0)
+	nc.Refresh()
+}
+
+func (nc *NCursesUI) ShowMessages(messages []string) {
+	nc.clear()
+	start := 0
+	if len(messages) > maxHeight {
+		start = len(messages) - maxHeight
+	}
+	for i, msg := range messages[start:] {
+		nc.MovePrint(i, 0, msg)
+	}
+	nc.Move(37, 0)
+	nc.Refresh()
+}
+
+const (
+	spaceBox = `.----------.
+|          |
+|          |
+|          |
+|          |
+|          |
+|          |
+'----------'`
+	spaceWidth  = 12
+	spaceHeight = 8
+	spaceNameY  = spaceHeight + 1
+	spaceOpsY   = spaceNameY + 3
+)
+
+func (nc *NCursesUI) ShowSpaceRace(positions [2]int) {
+	nc.clear()
+	x := 5
+	y := 2
+	for i, box := range SRTrack {
+		offsetX := i * (spaceWidth + 1)
+		usaHere := positions[USA] == i
+		sovHere := positions[SOV] == i
+		nc.drawSpaceBox(box, usaHere, sovHere, Pos{x + offsetX, y})
+	}
+}
+
+func (nc *NCursesUI) drawSpaceBox(box SRBox, usaHere, sovHere bool, start Pos) {
+	nc.ColorOn(C_SpaceDefault)
+	for i, line := range strings.Split(spaceBox, "\n") {
+		nc.MovePrint(start.Y+i, start.X, line)
+	}
+	nc.ColorOff(C_SpaceDefault)
+	if usaHere {
+		nc.ColorOn(C_UsaControl)
+		nc.MovePrint(start.Y+2, start.X+(spaceWidth-2)/2, "US")
+		nc.ColorOff(C_UsaControl)
+	}
+	if sovHere {
+		nc.ColorOn(C_SovControl)
+		nc.MovePrint(start.Y+4, start.X+(spaceWidth-4)/2, "USSR")
+		nc.ColorOff(C_SovControl)
+	}
+	if box.FirstVP > 0 || box.SecondVP > 0 {
+		nc.ColorOn(C_SpaceDefault)
+		nc.MovePrint(start.Y+(spaceHeight-2), start.X+2, fmt.Sprintf("%d/%d", box.FirstVP, box.SecondVP))
+		nc.ColorOff(C_SpaceDefault)
+	}
+
+	nc.ColorOn(C_SpaceDefault)
+	offsetY := start.Y + spaceNameY
+	for _, line := range wordWrap(box.Name, spaceWidth) {
+		nc.MovePrint(offsetY, start.X, line)
+		offsetY++
+	}
+	nc.ColorOff(C_SpaceDefault)
+	if box.OpsNeeded > 0 {
+		offsetY := start.Y + spaceOpsY
+		nc.ColorOn(C_SpaceDetails)
+		nc.MovePrint(offsetY, start.X, fmt.Sprintf("%d Ops: 1-%d", box.OpsNeeded, box.MaxRoll))
+		offsetY++
+		for _, line := range wordWrap(box.SideEffect.String(), spaceWidth) {
+			nc.MovePrint(offsetY, start.X, line)
+			offsetY++
+		}
+		nc.ColorOff(C_SpaceDetails)
+	}
+}
+
+const (
+	cardWidth   = 35
+	cardsPerRow = 3
+	maxHeight   = 36
+)
+
+type cardRow []Card
+
+func (cr cardRow) Height() int {
+	h := 0
+	for _, c := range cr {
+		height := cardHeight(c)
+		if height > h {
+			h = height
+		}
+	}
+	return h
+}
+
+func cardRows(cards []Card) []cardRow {
+	rows := []cardRow{}
+	for i := 0; i < len(cards); i += cardsPerRow {
+		end := Min(i+cardsPerRow, len(cards))
+		rows = append(rows, cardRow(cards[i:end]))
+	}
+	return rows
+}
+
+func cardHeight(card Card) int {
+	lines := wordWrap(card.Text, cardWidth)
+	return 2 + len(lines)
+}
+
+func (nc *NCursesUI) ShowCards(cards []Card) {
+	nc.clear()
+	x := 5
+	y := 2
+	offsetY := 0
+	rows := cardRows(cards)
+	for _, row := range rows {
+		if offsetY+row.Height() > maxHeight {
+			break
+		}
+
+		for i, c := range row {
+			offsetX := i * (cardWidth + 1)
+			nc.drawCard(c, Pos{x + offsetX, y + offsetY})
+		}
+
+		offsetY += row.Height() + 1
+
+	}
+	nc.Refresh()
+	nc.Move(37, 0)
+}
+
+func (nc *NCursesUI) drawCard(card Card, start Pos) {
+	// Ops
+	var affColor int16
+	switch card.Aff {
+	case USA:
+		affColor = C_UsaControl
+	case SOV:
+		affColor = C_SovControl
+	default:
+		affColor = C_SovInfluence
+	}
+	var opsStr string
+	switch card.Ops {
+	case 0:
+		opsStr = " - "
+	default:
+		opsStr = " " + fmt.Sprintf("%1d", card.Ops) + " "
+	}
+	nc.ColorOn(affColor)
+	nc.MovePrint(start.Y, start.X, opsStr)
+	nc.ColorOff(affColor)
+
+	// War heading
+	var eraColor int16
+	switch card.Era {
+	case Early:
+		eraColor = C_Early
+	case Mid:
+		eraColor = C_Mid
+	default:
+		eraColor = C_Late
+	}
+	nc.ColorOn(eraColor)
+	lineFormat := "%-" + strconv.Itoa(cardWidth-len(opsStr)) + "s"
+	nc.MovePrint(start.Y, start.X+len(opsStr), fmt.Sprintf(lineFormat, card.Era.String()))
+	nc.ColorOff(eraColor)
+
+	// Name
+	lineFormat = "%-" + strconv.Itoa(cardWidth) + "s"
+	nc.AttrOn(gc.A_BOLD)
+	nc.ColorOn(C_CardText)
+	nc.MovePrint(start.Y+1, start.X, fmt.Sprintf(lineFormat, card.Name))
+	nc.AttrOff(gc.A_BOLD)
+	lines := wordWrap(card.Text, cardWidth)
+	for i, line := range lines {
+		nc.MovePrint(start.Y+2+i, start.X, fmt.Sprintf(lineFormat, line))
+	}
+	nc.ColorOff(C_CardText)
 }
 
 // countryColors returns the default coloring for a country, notwithstanding

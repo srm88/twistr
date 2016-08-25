@@ -1,15 +1,234 @@
 package twistr
 
+import (
+	"fmt"
+	"io"
+	"log"
+)
+
 type State struct {
 	UI
+	*Game
+	Mode        Mode
 	Master      bool
 	LocalPlayer Aff
-	Replay      *CmdIn
+	History     *History
 	LinkIn      *CmdIn
-	// Need separate CmdOuts for aof and network, since network needs to only
-	// write local commands, but master needs to write *all* commands to aof.
-	Aof             *CmdOut
-	LinkOut         *CmdOut
+	LinkOut     *CmdOut
+	Aof         io.Writer
+}
+
+// Checkpoint game. User cannot undo past the point this is called.
+func (s *State) Commit() {
+	if s.History.InReplay() {
+		log.Println("Not committing, in replay")
+		return
+	}
+	s.LinkOut.Commit()
+	buffered := s.History.Commit()
+	if len(buffered) > 0 {
+		if _, err := s.Aof.Write(append([]byte(buffered), '\n')); err != nil {
+			log.Fatalf("Failed to flush to aof: %s\n", err.Error())
+		}
+	}
+	s.Redraw(s.Game)
+}
+
+func (s *State) CanUndo() bool {
+	return s.History.CanPop()
+}
+
+func (s *State) Log(thing interface{}) (err error) {
+	if s.History.InReplay() || s.History.Replaying {
+		return nil
+	}
+	var b []byte
+	if b, err = Marshal(thing); err != nil {
+		log.Println(err)
+		return
+	}
+	log.Printf("Logging %s to history+linkout\n", string(b))
+	if _, err = s.History.Write(b); err != nil {
+		log.Println(err)
+	}
+	if _, err = s.LinkOut.Write(b); err != nil {
+		log.Println(err)
+	}
+	return
+}
+
+func (s *State) ReadInto(thing interface{}, fromRemote bool) bool {
+	var ok bool
+	var line string
+	ok, line = s.History.Next()
+	if !ok {
+		if !fromRemote {
+			return false
+		}
+		// Autocommit to preclude deadlock
+		s.Commit()
+		ok, line = s.LinkIn.Next()
+		if !ok {
+			return false
+		}
+		log.Printf("Read %s in from remote. Writing to history\n", line)
+		if _, err := s.History.Write([]byte(line)); err != nil {
+			log.Println(err)
+		}
+	} else {
+		log.Printf("Read %s in from history\n", line)
+	}
+
+	if err := Unmarshal(line, thing); err != nil {
+		log.Printf("Corrupt log! Tried to parse '%s' into %s\n", line, thing)
+		return false
+	}
+	return true
+}
+
+func (s *State) Undo() {
+	s.History.Pop()
+	// Totally reset all state, and replay history.
+	s.Game = NewGame()
+	Start(s)
+}
+
+func (s *State) Close() error {
+	return s.UI.Close()
+}
+
+func (s *State) Redraw(g *Game) {
+	// Careful ...
+	if s.Mode != nil {
+		s.Mode = s.Mode.Display(s.UI)
+	} else {
+		s.UI.Redraw(g)
+	}
+}
+
+func (s *State) Message(msg string) {
+	s.UI.Message(msg)
+}
+
+// Transcribe is used for player-independent, objective, happenings in the
+// game.
+func (s *State) Transcribe(msg string) {
+	s.Game.Transcript = append(s.Game.Transcript, msg)
+	s.UI.Message(msg)
+}
+
+func (s *State) Enter(o Mode) {
+	if s.History.InReplay() {
+		return
+	}
+	s.Mode = o
+}
+
+func NewState(history *History, game *Game, isMaster bool, localPlayer Aff, aof io.Writer) *State {
+	return &State{
+		UI:          history,
+		Mode:        nil,
+		Game:        game,
+		History:     history,
+		Master:      isMaster,
+		LocalPlayer: localPlayer,
+		Aof:         aof,
+	}
+}
+
+func (s *State) SetDefcon(n int) {
+	switch {
+	case n > s.Defcon:
+		s.ImproveDefcon(n - s.Defcon)
+	case n < s.Defcon:
+		s.DegradeDefcon(s.Defcon - n)
+	default:
+		s.Transcribe(fmt.Sprintf("Defcon remains %d.", s.Defcon))
+	}
+}
+
+func (s *State) ImproveDefcon(n int) {
+	newDefcon := Min(s.Defcon+n, 5)
+	s.Transcribe(fmt.Sprintf("Defcon improves by %d, now at %d.", newDefcon-s.Defcon, newDefcon))
+	s.Defcon = newDefcon
+}
+
+func (s *State) DegradeDefcon(n int) {
+	s.Defcon -= n
+	if s.Defcon < 2 {
+		ThermoNuclearWar(s, s.Phasing)
+	} else {
+		s.Transcribe(fmt.Sprintf("Defcon degrades by %d, now at %d.", n, s.Defcon))
+	}
+
+}
+
+func (s *State) TurnEvent(event CardId, player Aff) {
+	s.Transcribe(fmt.Sprintf("%s is in effect for the remainder of the turn.", Cards[event]))
+	s.TurnEvents[event] = player
+}
+
+func (s *State) Event(event CardId, player Aff) {
+	s.Transcribe(fmt.Sprintf("%s is now in effect.", Cards[event]))
+	s.Events[event] = player
+}
+
+// Cancel ends an event.
+func (s *State) Cancel(event CardId) {
+	if s.Effect(event) {
+		s.Transcribe(fmt.Sprintf("%s is canceled.", Cards[event]))
+	}
+	delete(s.Events, event)
+	delete(s.TurnEvents, event)
+}
+
+func (s *State) ChinaCardPlayed() {
+	if s.ChinaCardPlayer == USA {
+		s.Cancel(FormosanResolution)
+	}
+	s.ChinaCardMove(s.ChinaCardPlayer.Opp(), false)
+}
+
+func (s *State) ChinaCardMove(to Aff, faceUp bool) {
+	s.ChinaCardPlayer = to
+	s.ChinaCardFaceUp = faceUp
+	if faceUp {
+		s.Transcribe(fmt.Sprintf("%s receives The China Card, face down.", to))
+	} else {
+		s.Transcribe(fmt.Sprintf("%s receives The China Card, face up.", to))
+	}
+}
+
+func (s *State) GainVP(player Aff, n int) {
+	switch player {
+	case USA:
+		s.VP += n
+		s.Transcribe(fmt.Sprintf("USA gains %d VP, now at %d.", n, s.VP))
+	case SOV:
+		s.VP -= n
+		s.Transcribe(fmt.Sprintf("USSR gains %d VP, now at %d.", n, s.VP))
+	}
+	if s.VP == 20 {
+		AutoWin(s, USA, "20 VP")
+	} else if s.VP == -20 {
+		AutoWin(s, SOV, "20 VP")
+	}
+}
+
+func (s *State) AddMilOps(player Aff, n int) {
+	s.MilOps[player] += n
+	s.Transcribe(fmt.Sprintf("%s adds %d to its Military Operations track.", player, n))
+}
+
+func (s *State) MessageOne(player Aff, message string) error {
+	if player != s.LocalPlayer {
+		return nil
+	}
+	return s.UI.Message(message)
+}
+
+type Game struct {
+	Transcript      []string
 	VP              int
 	Defcon          int
 	MilOps          [2]int
@@ -31,8 +250,10 @@ type State struct {
 	ChernobylRegion Region
 }
 
-func NewState() *State {
-	return &State{
+func NewGame() *Game {
+	resetCountries()
+	return &Game{
+		Transcript:      []string{},
 		VP:              0,
 		Defcon:          5,
 		MilOps:          [2]int{0, 0},
@@ -54,34 +275,7 @@ func NewState() *State {
 	}
 }
 
-// XXX messaging
-func (s *State) MessageOne(player Aff, message string) error {
-	if player != s.LocalPlayer {
-		return nil
-	}
-	return s.UI.Message(message)
-}
-
-func (s *State) Commit() {
-	s.Aof.Flush()
-	s.LinkOut.Flush()
-	Debug("Committed!")
-	s.UI.Redraw(s)
-}
-
-func (s *State) ImproveDefcon(n int) {
-	s.Defcon = Min(s.Defcon+n, 5)
-}
-
-func (s *State) DegradeDefcon(n int) {
-	s.Defcon -= n
-	if s.Defcon < 2 {
-		// XXX writeme
-		panic("Thermonuclear war!")
-	}
-}
-
-func (s *State) Era() Era {
+func (s *Game) Era() Era {
 	switch {
 	case s.Turn < 4:
 		return Early
@@ -92,14 +286,14 @@ func (s *State) Era() Era {
 	}
 }
 
-func (s *State) ActionsPerTurn() int {
+func (s *Game) ActionsPerTurn() int {
 	if s.Era() == Early {
 		return 6
 	}
 	return 7
 }
 
-func (s *State) Effect(which CardId, player ...Aff) bool {
+func (s *Game) Effect(which CardId, player ...Aff) bool {
 	aff, ok := s.Events[which]
 	if ok && (len(player) == 0 || player[0] == aff) {
 		return true
@@ -108,29 +302,7 @@ func (s *State) Effect(which CardId, player ...Aff) bool {
 	return ok && (len(player) == 0 || player[0] == aff)
 }
 
-// Cancel ends an event.
-func (s *State) Cancel(event CardId) {
-	// XXX: this would clobber NorthSeaOil, which registers both a turn-
-	// and permanent event.
-	delete(s.Events, event)
-	delete(s.TurnEvents, event)
-}
-
 // CancelTurnEvents cancels all turn-based events currently in effect.
-func (s *State) CancelTurnEvents() {
+func (s *Game) CancelTurnEvents() {
 	s.TurnEvents = make(map[CardId]Aff)
-}
-
-func (s *State) ChinaCardPlayed() {
-	s.ChinaCardPlayer = s.ChinaCardPlayer.Opp()
-	s.ChinaCardFaceUp = false
-}
-
-func (s *State) GainVP(player Aff, n int) {
-	switch player {
-	case USA:
-		s.VP += n
-	case SOV:
-		s.VP -= n
-	}
 }

@@ -71,6 +71,10 @@ var (
 )
 
 func init() {
+	resetCountries()
+}
+
+func resetCountries() {
 	Countries = make(map[CountryId]*Country)
 	for _, c := range countryTable {
 		Countries[c.Id] = &Country{

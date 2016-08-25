@@ -9,6 +9,21 @@ const (
 	Control
 )
 
+func (s ScoreLevel) Name() string {
+	switch s {
+	case Nothing:
+		return "nothing"
+	case Presence:
+		return "presence"
+	case Domination:
+		return "domination"
+	case Control:
+		return "control"
+	default:
+		return "?"
+	}
+}
+
 const WIN int = -1
 
 func VPAward(level ScoreLevel, r Region) int {
@@ -78,19 +93,27 @@ type ScoreResult struct {
 	Levels        [2]ScoreLevel
 	Battlegrounds [2][]*Country
 	AdjSuper      [2][]*Country
+	// Track separately the country that was nullified by shuttle diplomacy
+	// for messaging.
+	ShuttleDiplomacyNullified *Country
 }
 
-func ScoreRegion(s *State, r Region) ScoreResult {
+func ScoreRegion(g *Game, r Region) ScoreResult {
 	result := ScoreResult{
-		Levels:        [2]ScoreLevel{Nothing, Nothing},
-		Battlegrounds: [2][]*Country{[]*Country{}, []*Country{}},
-		AdjSuper:      [2][]*Country{[]*Country{}, []*Country{}},
+		Levels:                    [2]ScoreLevel{Nothing, Nothing},
+		Battlegrounds:             [2][]*Country{[]*Country{}, []*Country{}},
+		AdjSuper:                  [2][]*Country{[]*Country{}, []*Country{}},
+		ShuttleDiplomacyNullified: nil,
 	}
 	counts := [2]int{0, 0}
 	allBattlegrounds := 0
+	isBattleground := func(c *Country) bool {
+		return (c.Battleground ||
+			(c.Id == Taiwan && g.Effect(FormosanResolution) && c.Controlled() == USA))
+	}
 	for _, cid := range r.Countries {
-		c := s.Countries[cid]
-		if c.Battleground {
+		c := g.Countries[cid]
+		if isBattleground(c) {
 			allBattlegrounds += 1
 		}
 		aff := c.Controlled()
@@ -98,8 +121,13 @@ func ScoreRegion(s *State, r Region) ScoreResult {
 			continue
 		}
 		counts[aff] += 1
-		if c.Battleground {
-			result.Battlegrounds[aff] = append(result.Battlegrounds[aff], c)
+		if isBattleground(c) {
+			if aff == SOV && g.Effect(ShuttleDiplomacy) && (&r == &Asia || &r == &MiddleEast) && result.ShuttleDiplomacyNullified == nil {
+				result.ShuttleDiplomacyNullified = c
+				counts[aff] -= 1
+			} else {
+				result.Battlegrounds[aff] = append(result.Battlegrounds[aff], c)
+			}
 		}
 		if c.AdjSuper == aff.Opp() {
 			result.AdjSuper[aff] = append(result.AdjSuper[aff], c)

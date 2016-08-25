@@ -7,6 +7,7 @@ import (
 	"github.com/srm88/twistr/twistr"
 	"io"
 	"io/ioutil"
+	"log"
 	"net"
 	"os"
 	"os/signal"
@@ -36,42 +37,56 @@ func aofPath() string {
 	return fmt.Sprintf("%s/%s", AofDir, "server.aof")
 }
 
-func setupMaster(aofPath string) error {
+func loadAof(aofPath string) ([]byte, error) {
 	in, err := os.Open(aofPath)
 	if err != nil {
 		if !os.IsNotExist(err) {
-			return err
+			return nil, fmt.Errorf("Error reading existing AOF: %s", err.Error())
 		}
-		in, err = os.OpenFile(aofPath, os.O_CREATE|os.O_RDONLY, 0666)
-		if err != nil {
-			return err
+		return nil, nil
+	} else {
+		b := new(bytes.Buffer)
+		if _, err := io.Copy(b, in); err != nil {
+			return nil, err
 		}
+		if err := in.Close(); err != nil {
+			return nil, err
+		}
+		return b.Bytes(), nil
 	}
-	out, err := os.OpenFile(aofPath, os.O_WRONLY|os.O_APPEND, 0666)
+}
+
+func setupMaster(ui twistr.UI, game *twistr.Game, aofPath string) error {
+	// In
+	var history *twistr.History
+	b, err := loadAof(aofPath)
 	if err != nil {
-		in.Close()
 		return err
 	}
-	state = twistr.NewState()
-	state.Master = true
-	state.Replay = twistr.NewCmdIn(in)
-	state.Aof = twistr.NewCmdOut(out)
-	// XXX hardcode
-	state.LocalPlayer = twistr.SOV
-	closers = append(closers, in, out)
+	if len(b) > 0 {
+		history = twistr.NewHistoryBacklog(ui, string(b))
+	} else {
+		history = twistr.NewHistory(ui)
+	}
+	// Out
+	out, err := os.OpenFile(aofPath, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0666)
+	if err != nil {
+		return err
+	}
+	state = twistr.NewState(history, game, true, twistr.SOV, out)
+	closers = append(closers, out)
 	return nil
 }
 
 // Return writer with which to accept sync'd aof
-func setupSlave() io.Writer {
-	replayBuf := new(bytes.Buffer)
-	state = twistr.NewState()
-	state.Master = false
-	state.Replay = twistr.NewCmdIn(replayBuf)
-	state.Aof = twistr.NewCmdOut(ioutil.Discard)
-	// XXX hardcode
-	state.LocalPlayer = twistr.USA
-	return replayBuf
+func setupSlave(ui twistr.UI, game *twistr.Game, replay string) {
+	var history *twistr.History
+	if len(replay) > 0 {
+		history = twistr.NewHistoryBacklog(ui, replay)
+	} else {
+		history = twistr.NewHistory(ui)
+	}
+	state = twistr.NewState(history, game, false, twistr.USA, ioutil.Discard)
 }
 
 func connectHost() string {
@@ -110,28 +125,70 @@ func secretConnect() (net.Conn, error) {
 	}
 }
 
+func syncAof(aofPath string) {
+	if !serverMode {
+		return
+	}
+	// fails if aof doesn't exist
+	var in io.Reader
+	var err error
+	in, err = os.Open(aofPath)
+	if err != nil {
+		if !os.IsNotExist(err) {
+			panic(fmt.Sprintf("Failed to open aof to sync ... %s\n", err.Error()))
+		}
+		in = new(bytes.Buffer)
+	}
+	secretConn, err := secretConnect()
+	if err != nil {
+		panic(fmt.Sprintf("Failed to accept client conn to sync ... %s\n", err.Error()))
+	}
+	log.Println("Master syncing aof")
+	if _, err := io.Copy(secretConn, in); err != nil {
+		panic(fmt.Sprintf("Failed while sending sync ... %s\n", err.Error()))
+	}
+	secretConn.Close()
+}
+
+func receiveAof() string {
+	if serverMode {
+		return ""
+	}
+	clientReplay := new(bytes.Buffer)
+	secretConn, err := secretConnect()
+	if err != nil {
+		panic(fmt.Sprintf("Failed to dial master to sync ... %s\n", err.Error()))
+	}
+	log.Println("Client receiving aof sync")
+	if _, err := io.Copy(clientReplay, secretConn); err != nil {
+		panic(fmt.Sprintf("Failed while reading sync ... %s\n", err.Error()))
+	}
+	secretConn.Close()
+	return clientReplay.String()
+}
+
 // Temp:
 func main() {
 	flag.Parse()
 
+	game := twistr.NewGame()
 	ui := twistr.MakeNCursesUI()
-	closers = append(closers, ui)
 
+	closers = append(closers, ui)
 	// XXX: revisit 'aof path' and 'is server' for multiple game support
 	serverMode = isServer(ui)
 	path := aofPath()
 
 	var err error
-	var clientReplay io.Writer
 	if serverMode {
-		if err = setupMaster(path); err != nil {
+		syncAof(path)
+		if err = setupMaster(ui, game, path); err != nil {
 			panic(fmt.Sprintf("Failed to start game: %s\n", err.Error()))
 		}
 	} else {
-		clientReplay = setupSlave()
+		syncedAof := receiveAof()
+		setupSlave(ui, game, syncedAof)
 	}
-
-	state.UI = ui
 
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, os.Interrupt, os.Kill)
@@ -162,32 +219,5 @@ func main() {
 	state.LinkIn = twistr.NewCmdIn(conn)
 	state.LinkOut = twistr.NewCmdOut(conn)
 
-	// XXX this all needs to move out of main ...
-	// sync aof to slave
-	if serverMode {
-		in, err := os.Open(path)
-		if err != nil {
-			panic(fmt.Sprintf("Failed to open aof to sync ... %s\n", err.Error()))
-		}
-		secretConn, err := secretConnect()
-		if err != nil {
-			panic(fmt.Sprintf("Failed to accept client conn to sync ... %s\n", err.Error()))
-		}
-		twistr.Debug("Master syncing aof")
-		if _, err := io.Copy(secretConn, in); err != nil {
-			panic(fmt.Sprintf("Failed while sending sync ... %s\n", err.Error()))
-		}
-		secretConn.Close()
-	} else {
-		secretConn, err := secretConnect()
-		if err != nil {
-			panic(fmt.Sprintf("Failed to dial master to sync ... %s\n", err.Error()))
-		}
-		twistr.Debug("Client receiving aof sync")
-		if _, err := io.Copy(clientReplay, secretConn); err != nil {
-			panic(fmt.Sprintf("Failed while reading sync ... %s\n", err.Error()))
-		}
-		secretConn.Close()
-	}
 	twistr.Start(state)
 }

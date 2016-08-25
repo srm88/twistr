@@ -2,6 +2,7 @@ package twistr
 
 import (
 	"fmt"
+	"log"
 	"strings"
 )
 
@@ -15,85 +16,475 @@ import (
 // AskNotWhatYourCountry: discard up to hand, draw replacements
 // OurManInTehran: draw top 5, return or discard, reshuffle
 func Deal(s *State) {
-	// XXX: handle running out of cards and shuffling in discards mid-deal
 	handSize := s.ActionsPerTurn() + 2
-	usDraw := s.Deck.Draw(handSize - len(s.Hands[USA].Cards))
-	s.Hands[USA].Push(usDraw...)
+	needCard := func(player Aff) bool {
+		return len(s.Hands[player].Cards) < handSize
+	}
+	drawIfNeeded := func(player Aff) {
+		if needCard(player) {
+			if len(s.Deck.Cards) == 0 {
+				ShuffleInDiscard(s)
+			}
+			card := s.Deck.Draw(1)[0]
+			s.Hands[player].Push(card)
+		}
+	}
+	for needCard(USA) || needCard(SOV) {
+		drawIfNeeded(USA)
+		drawIfNeeded(SOV)
+	}
 	ShowHand(s, USA, USA)
-	sovDraw := s.Deck.Draw(handSize - len(s.Hands[SOV].Cards))
-	s.Hands[SOV].Push(sovDraw...)
 	ShowHand(s, SOV, SOV)
+}
+
+func ShuffleInDiscard(s *State) {
+	s.Transcribe("Deck empty. Shuffling in discard pile ...")
+	ShuffleIn(s, s.Discard.Draw(len(s.Discard.Cards)))
 }
 
 func Start(s *State) {
 	// Early war cards into the draw deck
-	s.Deck.Push(EarlyWar...)
-	cards := SelectShuffle(s, s.Deck)
-	s.Deck.Reorder(cards)
-	s.Commit()
+	ShuffleIn(s, EarlyWar)
 	Deal(s)
-	s.Commit()
+	s.Redraw(s.Game)
 	// SOV chooses 6 influence in E europe
-	s.Commit()
-	cs := SelectInfluenceForce(s, SOV, func() ([]*Country, error) {
-		return SelectExactlyNInfluence(s, SOV,
-			"6 influence in East Europe", 6,
-			InRegion(EastEurope))
-	})
-	PlaceInfluence(s, SOV, cs)
+	SelectInfluenceExactly(s, SOV, "6 influence in East Europe",
+		PlusInf(SOV, 1), 6, InRegion(EastEurope))
 	s.Commit()
 	// US chooses 7 influence in W europe
-	csUSA := SelectInfluenceForce(s, USA, func() ([]*Country, error) {
-		return SelectExactlyNInfluence(s, USA,
-			"7 influence in West Europe", 7,
-			InRegion(WestEurope))
-	})
-	PlaceInfluence(s, USA, csUSA)
+	SelectInfluenceExactly(s, USA, "7 influence in West Europe",
+		PlusInf(USA, 1), 7, InRegion(WestEurope))
+
 	s.Commit()
-	// Temporary
 	for s.Turn = 1; s.Turn <= 10; s.Turn++ {
+		switch s.Turn {
+		case 4:
+			s.Transcribe("Shuffling in Mid War.")
+			ShuffleIn(s, MidWar)
+		case 8:
+			s.Transcribe("Shuffling in Late War.")
+			ShuffleIn(s, LateWar)
+		}
 		Turn(s)
 		EndTurn(s)
 	}
 }
 
-func ShowHand(s *State, whose, to Aff) {
-	s.MessageOne(to, fmt.Sprintf("%s hand: %s\n", whose, strings.Join(s.Hands[whose].Names(), ", ")))
+func ThermoNuclearWar(s *State, caused Aff) {
+	AutoWin(s, caused.Opp(), fmt.Sprintf("thermonuclear war caused by %s", caused))
+}
+
+func ShuffleIn(s *State, cards []Card) {
+	s.Deck.Push(cards...)
+	order := SelectShuffle(s, s.Deck)
+	s.Deck.Reorder(order)
+	s.Commit()
+}
+
+func ShowHand(s *State, whose, to Aff, showChina ...bool) {
+	cs := []Card{}
+	for _, c := range s.Hands[whose].Cards {
+		cs = append(cs, c)
+	}
+	if len(showChina) > 0 && showChina[0] && s.ChinaCardPlayer == whose && s.ChinaCardFaceUp {
+		cs = append(cs, Cards[TheChinaCard])
+	}
+	s.Enter(NewCardMode(cs))
+	s.Redraw(s.Game)
 }
 
 func ShowDiscard(s *State, to Aff) {
-	s.MessageOne(to, fmt.Sprintf("Discard pile: %s\n", strings.Join(s.Discard.Names(), ", ")))
+	s.Enter(NewCardMode(s.Discard.Cards))
+	s.Redraw(s.Game)
 }
 
 func ShowCard(s *State, c Card, to Aff) {
-	s.MessageOne(to, fmt.Sprintf("Card: %s\n", c.Name))
+	s.Enter(NewCardMode([]Card{c}))
+	s.Redraw(s.Game)
+}
+
+func actionsThisTurn(s *State, player Aff) int {
+	_, active := s.TurnEvents[NorthSeaOil]
+	switch {
+	case player == USA && active:
+		return 8
+	case s.SREvents[ExtraAR] == player:
+		return 8
+	default:
+		return s.ActionsPerTurn()
+	}
+}
+
+func outOfCards(s *State, player Aff) bool {
+	switch {
+	case s.ChinaCardPlayer == player && s.ChinaCardFaceUp:
+		return false
+	case len(s.Hands[player].Cards) > 0:
+		return false
+	default:
+		return true
+	}
+}
+
+func Turn(s *State) {
+	s.Transcribe(fmt.Sprintf("== Turn %d", s.Turn))
+	if s.Turn > 1 {
+		Deal(s)
+	}
+	s.Transcribe("= Headline Phase")
+	s.AR = 0
+	Headline(s)
+	s.AR = 1
+	var usaCap, sovCap int
+	usaDone, sovDone := false, false
+	for {
+		usaCap = actionsThisTurn(s, USA)
+		sovCap = actionsThisTurn(s, SOV)
+		sovDone = s.AR > sovCap || outOfCards(s, SOV)
+		usaDone = s.AR > usaCap || outOfCards(s, USA)
+		if sovDone && usaDone {
+			return
+		}
+		if !sovDone {
+			s.Transcribe(fmt.Sprintf("= %s AR %d.", SOV, s.AR))
+			s.Phasing = SOV
+			s.Redraw(s.Game)
+			Action(s)
+		}
+		if !usaDone {
+			s.Transcribe(fmt.Sprintf("= %s AR %d.", USA, s.AR))
+			s.Phasing = USA
+			s.Redraw(s.Game)
+			Action(s)
+		}
+		s.AR++
+	}
+}
+
+func awardMilOpsVPs(s *State) {
+	// Examples:
+	// defcon 5, usa 3, sov 2 => usa scores 1
+	// defcon 2, usa 0, sov 2 => sov scores 2
+	// defcon 3, usa 5, sov 4 => nobody scores
+	// defcon 3, usa 5, sov 0 => usa scores 3
+	usaShy := Max(s.Defcon-s.MilOps[USA], 0)
+	sovShy := Max(s.Defcon-s.MilOps[SOV], 0)
+	switch {
+	case usaShy == 0 && sovShy == 0:
+		return
+	case usaShy > sovShy:
+		s.Transcribe(fmt.Sprintf("%s loses VP for not meeting required military operations.", USA))
+		s.GainVP(SOV, usaShy-sovShy)
+	case sovShy > usaShy:
+		s.Transcribe(fmt.Sprintf("%s loses VP for not meeting required military operations.", SOV))
+		s.GainVP(USA, sovShy-usaShy)
+	}
+}
+
+// func discardHeldCard performs the space-race ability to discard 1 held card
+// if either player has earned this ability.
+func discardHeldCard(s *State, player Aff) {
+	player, ok := s.SREvents[DiscardHeld]
+	if !ok {
+		return
+	}
+	if len(s.Hands[player].Cards) == 0 {
+		return
+	}
+	if SelectChoice(s, player, "Discard one held card?", "yes", "no") != "yes" {
+		return
+	}
+	card := SelectCard(s, player, CardBlacklist(TheChinaCard))
+	s.Hands[player].Remove(card)
+	s.Transcribe(fmt.Sprintf("%s discards held card %s.", player, card))
+	s.Discard.Push(card)
+}
+
+func EndTurn(s *State) {
+	// End turn: milops, defcon, china card, AR reset
+	awardMilOpsVPs(s)
+	s.MilOps[USA] = 0
+	s.MilOps[SOV] = 0
+	s.ImproveDefcon(1)
+	if !s.ChinaCardFaceUp {
+		s.Transcribe(fmt.Sprintf("The china card is now face up for %s.", s.ChinaCardPlayer))
+		s.ChinaCardFaceUp = true
+	}
+	s.AR = 1
+	s.TurnEvents = make(map[CardId]Aff)
+	s.ChernobylRegion = Region{}
+	s.Redraw(s.Game)
+}
+
+func Action(s *State) {
+	card := SelectCard(s, s.Phasing)
+	PlayCard(s, s.Phasing, card)
+	defconWas := s.Defcon
+	switch {
+	// BearTrap/Quagmire precede Missile Envy
+	case s.Effect(BearTrap, s.Phasing.Opp()):
+		TryBearTrap(s)
+	case s.Effect(Quagmire, s.Phasing.Opp()):
+		TryQuagmire(s)
+	// Player forced to play missile envy for ops
+	case s.Effect(MissileEnvy, s.Phasing.Opp()):
+		card := Cards[MissileEnvy]
+		s.Hands[s.Phasing].Remove(card)
+		PlayOps(s, s.Phasing, card)
+		s.Cancel(MissileEnvy)
+	default:
+		card := SelectCard(s, s.Phasing)
+		pk := PlayCard(s, s.Phasing, card)
+		// Check We Will Bury You:
+		if s.Effect(WeWillBuryYou) && s.Phasing == USA {
+			if !(card.Id == UNIntervention && pk == EVENT) {
+				s.Transcribe("The USSR gains VP for We Will Bury You")
+				s.GainVP(SOV, 3)
+			}
+			s.Cancel(WeWillBuryYou)
+		}
+	}
+	s.Commit()
+	if defconWas != 2 && s.Defcon == 2 && s.Effect(NORAD) && s.Countries[Canada].Controlled() == USA {
+		DoNorad(s)
+	}
+	s.Commit()
+}
+
+func PlayCard(s *State, player Aff, card Card) (pk PlayKind) {
+	// Safe to remove a card that isn't actually in the hand
+	s.Hands[player].Remove(card)
+	pk = SelectPlay(s, player, card)
+	switch pk {
+	case SPACE:
+		PlaySpace(s, player, card)
+	case OPS:
+		PlayOps(s, player, card)
+	case EVENT:
+		PlayEvent(s, player, card)
+	}
+	if card.Id == TheChinaCard {
+		s.ChinaCardPlayed()
+	}
+	s.Commit()
+	if s.Effect(FlowerPower) && player == USA && card.IsWar() && pk != SPACE && !card.Prevented(s.Game) {
+		s.Transcribe("The USSR gains VP due to flower power.")
+		s.GainVP(SOV, 2)
+	}
+	return
+}
+
+func PlaySpace(s *State, player Aff, card Card) {
+	box, _ := nextSRBox(s, player)
+	roll := SelectRoll(s, player)
+	s.Transcribe(fmt.Sprintf("%s plays %s for the space race.", player, card))
+	if roll <= box.MaxRoll {
+		s.Transcribe(fmt.Sprintf("%s rolls %d. Space race attempt success!", player, roll))
+		box.Enter(s, player)
+	} else {
+		s.Transcribe(fmt.Sprintf("%s rolls %d. Space race attempt fails!", player, roll))
+	}
+	s.SpaceAttempts[player] += 1
+	// China card can be spaced, but Action will take care of moving it to the
+	// opponent.
+	if card.Id != TheChinaCard {
+		s.Transcribe(fmt.Sprintf("%s to discard.", card))
+		s.Discard.Push(card)
+	}
+}
+
+func PlayOps(s *State, player Aff, card Card) {
+	s.Transcribe(fmt.Sprintf("%s plays %s for operations.", player, card))
+	opp := player.Opp()
+	if card.Aff == opp {
+		first := SelectFirst(s, player)
+		s.Commit()
+		if player == first {
+			s.Transcribe(fmt.Sprintf("%s will conduct operations first.", player))
+			ConductOps(s, player, card)
+			s.Commit()
+			s.Redraw(s.Game)
+			PlayEvent(s, opp, card)
+		} else {
+			s.Transcribe(fmt.Sprintf("%s will implement the event first.", opp))
+			PlayEvent(s, opp, card)
+			s.Commit()
+			s.Redraw(s.Game)
+			ConductOps(s, player, card)
+		}
+	} else {
+		ConductOps(s, player, card)
+		if card.Id != TheChinaCard {
+			s.Transcribe(fmt.Sprintf("%s to discard.", card))
+			s.Discard.Push(card)
+		}
+	}
+}
+
+func ConductOps(s *State, player Aff, card Card, kinds ...OpsKind) {
+	conductOps(s, player, card, false, kinds)
+}
+
+func ConductOpsFree(s *State, player Aff, card Card, kinds ...OpsKind) {
+	conductOps(s, player, card, true, kinds)
+}
+
+func conductOps(s *State, player Aff, card Card, free bool, kinds []OpsKind) {
+	switch SelectOps(s, player, card, kinds...) {
+	case COUP:
+		OpCoup(s, player, card, free)
+	case REALIGN:
+		OpRealign(s, player, card, free)
+	case INFLUENCE:
+		OpInfluence(s, player, card)
+	}
+}
+
+func OpRealign(s *State, player Aff, card Card, free bool) {
+	selectInfluence(s, player, fmt.Sprintf("Realigns with %s (%d)", card.Name, ComputeCardOps(s, player, card, nil)),
+		func(s *State, c *Country) {
+			Realign(s, player, c)
+		},
+		OpsLimit(s, player, card), false,
+		NormalCost,
+		CanRealign(s, player, free))
+}
+
+func OpCoup(s *State, player Aff, card Card, free bool, checks ...countryCheck) (success bool) {
+	var msg string
+	if free {
+		msg = fmt.Sprintf("Free coup with %s (%d)", card.Name, ComputeCardOps(s, player, card, nil))
+	} else {
+		msg = fmt.Sprintf("Coup with %s (%d)", card.Name, ComputeCardOps(s, player, card, nil))
+	}
+	s.Transcribe(fmt.Sprintf("%s will coup.", player))
+	selectInfluence(s, player, msg,
+		func(s *State, c *Country) {
+			success = Coup(s, player, card, c, free)
+		},
+		LimitN(1), true,
+		NormalCost,
+		append(checks, CanCoup(s, player, free))...)
+	return
+}
+
+func OpInfluence(s *State, player Aff, card Card) {
+	chernobylCheck := func(c *Country) error {
+		if s.Effect(Chernobyl) && player == SOV && c.In(s.ChernobylRegion) {
+			return fmt.Errorf("May not add influence in %s due to Chernobyl!", s.ChernobylRegion.Name)
+		}
+		return nil
+	}
+	selectInfluence(s, player, fmt.Sprintf("Influence with %s (%d)", card.Name, ComputeCardOps(s, player, card, nil)),
+		PlusInf(player, 1),
+		OpsLimit(s, player, card), false,
+		OpInfluenceCost(player),
+		CanReach(s, player),
+		chernobylCheck)
+}
+
+func PlayEvent(s *State, player Aff, card Card) {
+	prevented := card.Prevented(s.Game)
+	if !prevented {
+		// A soviet or US event is *always* played by that player, no matter
+		// who causes the event to be played.
+		var implementer Aff
+		switch card.Aff {
+		case USA, SOV:
+			implementer = card.Aff
+		default:
+			implementer = player
+		}
+		s.Commit()
+		s.Transcribe(fmt.Sprintf("%s implements %s.", implementer, card))
+		card.Impl(s, implementer)
+	} else {
+		s.Transcribe(fmt.Sprintf("%s cannot be played as an event.", card))
+	}
+	switch {
+	case card.Id == MissileEnvy:
+		s.Hands[player.Opp()].Push(Cards[MissileEnvy])
+		s.Transcribe(fmt.Sprintf("%s to %s hand.", card, player.Opp()))
+	case !prevented && card.Star:
+		s.Removed.Push(card)
+		s.Transcribe(fmt.Sprintf("%s removed.", card))
+	default:
+		s.Discard.Push(card)
+		s.Transcribe(fmt.Sprintf("%s to discard.", card))
+	}
+}
+
+func SelectPlay(s *State, player Aff, card Card) (pk PlayKind) {
+	if card.Scoring() {
+		pk = EVENT
+		return
+	}
+	canEvent, canSpace := true, true
+	switch {
+	case card.Id == TheChinaCard:
+		canEvent = false
+	case card.Aff == player.Opp():
+		// It isn't clear from the rules that playing your opponent's card as
+		// an event is forbidden, but it is always a strictly worse move than
+		// playing it for ops, and the rules don't prevent you from flipping
+		// the table either ...
+		canEvent = false
+	case card.Prevented(s.Game):
+		canEvent = false
+	}
+	if !CanAdvance(s, player, ComputeCardOps(s, player, card, nil)) {
+		canSpace = false
+	}
+	choices := []string{OPS.Ref()}
+	if canEvent {
+		choices = append(choices, EVENT.Ref())
+	}
+	if canSpace {
+		choices = append(choices, SPACE.Ref())
+	}
+	getInput(s, player, &pk, fmt.Sprintf("Playing %s", card.Name), choices...)
+	return
+}
+
+// Caller can pass in an optional whitelist of acceptable kinds.
+func SelectOps(s *State, player Aff, card Card, kinds ...OpsKind) (o OpsKind) {
+	var message string
+	if card.Id == FreeOps {
+		message = fmt.Sprintf("Playing a %d ops card (%d)", card.Ops, ComputeCardOps(s, player, card, nil))
+	} else {
+		message = fmt.Sprintf("Playing %s for ops (%d)", card.Name, ComputeCardOps(s, player, card, nil))
+	}
+	var choices []string
+	if len(kinds) == 0 {
+		choices = []string{COUP.Ref(), REALIGN.Ref(), INFLUENCE.Ref()}
+	} else {
+		for _, k := range kinds {
+			choices = append(choices, k.Ref())
+		}
+	}
+	getInput(s, player, &o, message, choices...)
+	return
 }
 
 func SelectShuffle(s *State, d *Deck) (cardOrder []Card) {
 	// Duplicates what getInput does. It doesn't make sense to reuse getInput
 	// because this will never ask for user input.
-	if s.Replay.ReadInto(&cardOrder) {
-		Debug("Read shuffle order from replay")
+	remote := !s.Master
+	log.Printf("Reading shuffle\n")
+	if s.ReadInto(&cardOrder, remote) {
 		return
 	}
-	if !s.Master {
-		Debug("Reading shuffle order from master")
-		s.LinkIn.ReadInto(&cardOrder)
-	} else {
-		Debug("Sending shuffle order to client")
-		cardOrder = d.Shuffle()
-		s.LinkOut.Log(&cardOrder)
-	}
-	s.Aof.Log(&cardOrder)
+	cardOrder = d.Shuffle()
+	s.Log(&cardOrder)
 	return
 }
 
 // Return whether the card is an acceptable choice.
 type cardFilter func(Card) bool
 
-func ExceedsOps(minOps int) cardFilter {
+func ExceedsOps(minOps int, s *State, player Aff) cardFilter {
 	return func(c Card) bool {
-		return c.Ops > minOps
+		return ComputeCardOps(s, player, c, nil) > minOps
 	}
 }
 
@@ -167,41 +558,26 @@ func SelectChoice(s *State, player Aff, message string, choices ...string) (choi
 // Get user input. Replay log is tried first. If that's exhausted, we ask the
 // local user or read from the peer. Non-replayed inputs are written to the AOF.
 // Non-replayed local inputs are written to the peer.
+// See State.ReadInto, .Log
 func getInput(s *State, player Aff, thing interface{}, message string, choices ...string) {
-	if s.Replay.ReadInto(thing) {
-		Debug("Reading from replay '%s'", message)
+	remote := player != s.LocalPlayer
+	log.Printf("Reading from %s '%s'\n", player, message)
+	if s.ReadInto(thing, remote) {
 		return
 	}
-	if s.LocalPlayer != player {
-		// Autocommit to preclude deadlock
-		s.Commit()
-		Debug("Reading from peer '%s'", message)
-		s.LinkIn.ReadInto(thing)
-	} else {
-		Debug("Requesting from player '%s'", message)
-		localInput(s, thing, message, choices...)
-		s.LinkOut.Log(thing)
-	}
-	s.Aof.Log(thing)
+	localInput(s, thing, message, choices...)
+	s.Log(thing)
 }
 
 // Like getInput, but for computer-decided things.
 func getRandom(s *State, player Aff, thing interface{}, impl func()) {
-	if s.Replay.ReadInto(thing) {
-		Debug("Reading random from replay")
+	remote := player != s.LocalPlayer
+	log.Printf("Reading random from %s\n", player)
+	if s.ReadInto(thing, remote) {
 		return
 	}
-	if s.LocalPlayer != player {
-		s.Commit()
-		Debug("Reading random from peer")
-		s.LinkIn.ReadInto(thing)
-	} else {
-		Debug("Sending random to peer")
-		impl()
-		s.LinkOut.Log(thing)
-	}
-	s.Aof.Log(thing)
-	return
+	impl()
+	s.Log(thing)
 }
 
 func SelectRandomCard(s *State, player Aff) (card Card) {
@@ -212,326 +588,10 @@ func SelectRandomCard(s *State, player Aff) (card Card) {
 	return
 }
 
-func actionsThisTurn(s *State, player Aff) int {
-	_, active := s.TurnEvents[NorthSeaOil]
-	switch {
-	case player == USA && active:
-		return 8
-	case s.SREvents[ExtraAR] == player:
-		return 8
-	default:
-		return s.ActionsPerTurn()
-	}
-}
-
-func outOfCards(s *State, player Aff) bool {
-	switch {
-	case s.ChinaCardPlayer == player && s.ChinaCardFaceUp:
-		return false
-	case len(s.Hands[player].Cards) > 0:
-		return false
-	default:
-		return true
-	}
-}
-
-func Turn(s *State) {
-	MessageBoth(s, fmt.Sprintf("== Turn %d", s.Turn))
-	if s.Turn > 1 {
-		Deal(s)
-	}
-	MessageBoth(s, "= Headline Phase")
-	Headline(s)
-	usaCap := actionsThisTurn(s, USA)
-	sovCap := actionsThisTurn(s, SOV)
-	usaDone, sovDone := false, false
-	for {
-		sovDone = s.AR > sovCap || outOfCards(s, SOV)
-		usaDone = s.AR > usaCap || outOfCards(s, USA)
-		if sovDone && usaDone {
-			return
-		}
-		if !sovDone {
-			MessageBoth(s, fmt.Sprintf("= %s AR %d.", SOV, s.AR))
-			s.Phasing = SOV
-			Action(s)
-		}
-		if !usaDone {
-			MessageBoth(s, fmt.Sprintf("= %s AR %d.", USA, s.AR))
-			s.Phasing = USA
-			Action(s)
-		}
-		s.AR++
-	}
-}
-
-func awardMilOpsVPs(s *State) {
-	// Examples:
-	// defcon 5, usa 3, sov 2 => usa scores 1
-	// defcon 2, usa 0, sov 2 => sov scores 2
-	// defcon 3, usa 5, sov 4 => nobody scores
-	// defcon 3, usa 5, sov 0 => usa scores 3
-	usaShy := Max(s.Defcon-s.MilOps[USA], 0)
-	sovShy := Max(s.Defcon-s.MilOps[SOV], 0)
-	switch {
-	case usaShy == 0 && sovShy == 0:
-		return
-	case usaShy > sovShy:
-		MessageBoth(s, fmt.Sprintf("%s loses %d VP for not meeting required military operations.", USA, usaShy-sovShy))
-		s.GainVP(SOV, usaShy-sovShy)
-	case sovShy > usaShy:
-		MessageBoth(s, fmt.Sprintf("%s loses %d VP for not meeting required military operations.", SOV, sovShy-usaShy))
-		s.GainVP(USA, sovShy-usaShy)
-	}
-}
-
-// func discardHeldCard performs the space-race ability to discard 1 held card
-// if either player has earned this ability.
-func discardHeldCard(s *State, player Aff) {
-	player, ok := s.SREvents[DiscardHeld]
-	if !ok {
-		return
-	}
-	if len(s.Hands[player].Cards) == 0 {
-		return
-	}
-	if SelectChoice(s, player, "Discard one held card?", "yes", "no") != "yes" {
-		return
-	}
-	card := SelectCard(s, player, CardBlacklist(TheChinaCard))
-	s.Hands[player].Remove(card)
-	s.Discard.Push(card)
-}
-
-func EndTurn(s *State) {
-	// End turn: milops, defcon, china card, AR reset
-	awardMilOpsVPs(s)
-	s.MilOps[USA] = 0
-	s.MilOps[SOV] = 0
-	s.ImproveDefcon(1)
-	if !s.ChinaCardFaceUp {
-		MessageBoth(s, fmt.Sprintf("The china card is now face up for %s.", s.ChinaCardPlayer))
-		s.ChinaCardFaceUp = true
-	}
-	s.AR = 1
-	s.TurnEvents = make(map[CardId]Aff)
-	s.ChernobylRegion = Region{}
-}
-
-func Action(s *State) {
-	card := SelectCard(s, s.Phasing)
-	PlayCard(s, s.Phasing, card)
-	s.Commit()
-}
-
-func PlayCard(s *State, player Aff, card Card) {
-	// Safe to remove a card that isn't actually in the hand
-	s.Hands[player].Remove(card)
-	switch SelectPlay(s, player, card) {
-	case SPACE:
-		PlaySpace(s, player, card)
-	case OPS:
-		PlayOps(s, player, card)
-	case EVENT:
-		PlayEvent(s, player, card)
-	}
-	if card.Id == TheChinaCard {
-		MessageBoth(s, fmt.Sprintf("%s receives the China Card, face down.", player.Opp()))
-		s.ChinaCardPlayed()
-	}
-	s.Commit()
-}
-
-func PlaySpace(s *State, player Aff, card Card) {
-	box, _ := nextSRBox(s, player)
-	roll := SelectRoll(s, player)
-	MessageBoth(s, fmt.Sprintf("%s plays %s for the space race.", player, card))
-	if roll <= box.MaxRoll {
-		box.Enter(s, player)
-		MessageBoth(s, fmt.Sprintf("%s rolls %d. Space race attempt success!", player, roll))
-	} else {
-		MessageBoth(s, fmt.Sprintf("%s rolls %d. Space race attempt fails!", player, roll))
-	}
-	s.SpaceAttempts[player] += 1
-	// China card can be spaced, but Action will take care of moving it to the
-	// opponent.
-	if card.Id != TheChinaCard {
-		s.Discard.Push(card)
-	}
-}
-
 func SelectRoll(s *State, player Aff) (roll int) {
 	getRandom(s, player, &roll, func() {
 		roll = Roll()
 	})
-	return
-}
-
-func PlayOps(s *State, player Aff, card Card) {
-	MessageBoth(s, fmt.Sprintf("%s plays %s for operations", player, card))
-	opp := player.Opp()
-	if card.Aff == opp {
-		first := SelectFirst(s, player)
-		s.Commit()
-		if first == player {
-			MessageBoth(s, fmt.Sprintf("%s will conduct operations first", player))
-			ConductOps(s, player, card)
-			// XXX commit
-			s.Commit()
-			PlayEvent(s, opp, card)
-		} else {
-			MessageBoth(s, fmt.Sprintf("%s will implement the event first", opp))
-			PlayEvent(s, opp, card)
-			// XXX commit
-			s.Commit()
-			ConductOps(s, player, card)
-		}
-	} else {
-		ConductOps(s, player, card)
-		if card.Id != TheChinaCard {
-			s.Discard.Push(card)
-		}
-	}
-}
-
-func ConductOps(s *State, player Aff, card Card, kinds ...OpsKind) {
-	switch SelectOps(s, player, card, kinds...) {
-	case COUP:
-		OpCoup(s, player, card.Ops)
-	case REALIGN:
-		OpRealign(s, player, card.Ops)
-	case INFLUENCE:
-		OpInfluence(s, player, card.Ops)
-	}
-}
-
-func OpRealign(s *State, player Aff, ops int) {
-	// XXX; needs opsMod
-	for i := 0; i < ops; i++ {
-		target := SelectCountry(s, player, "Realign where?")
-		for !canRealign(s, player, target, false) {
-			target = SelectCountry(s, player, "Oh no you goofed. Realign where?")
-		}
-		rollUSA := SelectRoll(s, USA)
-		rollSOV := SelectRoll(s, SOV)
-		realign(s, target, rollUSA, rollSOV)
-		s.Commit()
-	}
-}
-
-func OpCoup(s *State, player Aff, ops int) {
-	target := SelectCountry(s, player, "Coup where?")
-	for !canCoup(s, player, target, false) {
-		target = SelectCountry(s, player, "Oh no you goofed. Coup where?")
-	}
-	roll := SelectRoll(s, player)
-	ops += opsMod(s, player, []*Country{target})
-	coup(s, player, ops, roll, target, false)
-}
-
-func DoFreeCoup(s *State, player Aff, card Card, allowedTargets []CountryId) bool {
-	targets := []CountryId{}
-	for _, t := range allowedTargets {
-		if canCoup(s, player, s.Countries[t], true) {
-			targets = append(targets, t)
-		}
-	}
-	if len(targets) == 0 {
-		// Awkward
-		return false
-	}
-	target := SelectCountry(s, player, "Free coup where?", targets...)
-	roll := SelectRoll(s, player)
-	ops := card.Ops + opsMod(s, player, []*Country{target})
-	return coup(s, player, ops, roll, target, true)
-}
-
-func OpInfluence(s *State, player Aff, ops int) {
-	cs := SelectInfluenceForce(s, player, func() ([]*Country, error) {
-		return SelectInfluenceOps(s, player, ops)
-	})
-	PlaceInfluence(s, player, cs)
-}
-
-func PlayEvent(s *State, player Aff, card Card) {
-	prevented := card.Prevented(s)
-	if !prevented {
-		// A soviet or US event is *always* played by that player, no matter
-		// who causes the event to be played.
-		switch card.Aff {
-		case USA, SOV:
-			MessageBoth(s, fmt.Sprintf("%s implements %s", card.Aff, card))
-			card.Impl(s, card.Aff)
-		default:
-			MessageBoth(s, fmt.Sprintf("%s implements %s", player, card))
-			card.Impl(s, player)
-		}
-		s.Commit()
-	}
-	switch {
-	case card.Id == MissileEnvy:
-		s.Hands[player.Opp()].Push(Cards[MissileEnvy])
-		MessageBoth(s, fmt.Sprintf("%s to %s hand", card, player.Opp()))
-	case !prevented && card.Star:
-		s.Removed.Push(card)
-		MessageBoth(s, fmt.Sprintf("%s removed", card))
-	default:
-		s.Discard.Push(card)
-		MessageBoth(s, fmt.Sprintf("%s to discard", card))
-	}
-}
-
-func SelectPlay(s *State, player Aff, card Card) (pk PlayKind) {
-	canEvent, canSpace := true, true
-	// Scoring cards cannot be played for ops
-	canOps := card.Ops > 0
-	switch {
-	case card.Id == TheChinaCard:
-		canEvent = false
-	case card.Aff == player.Opp():
-		// It isn't clear from the rules that playing your opponent's card as
-		// an event is forbidden, but it is always a strictly worse move than
-		// playing it for ops, and the rules don't prevent you from flipping
-		// the table either ...
-		canEvent = false
-	case card.Prevented(s):
-		canEvent = false
-	}
-	ops := card.Ops + opsMod(s, player, nil)
-	if !CanAdvance(s, player, ops) {
-		canSpace = false
-	}
-	choices := []string{}
-	if canOps {
-		choices = append(choices, OPS.Ref())
-	}
-	if canEvent {
-		choices = append(choices, EVENT.Ref())
-	}
-	if canSpace {
-		choices = append(choices, SPACE.Ref())
-	}
-	getInput(s, player, &pk, fmt.Sprintf("Playing %s", card.Name), choices...)
-	return
-}
-
-// Caller can pass in an optional whitelist of acceptable kinds.
-func SelectOps(s *State, player Aff, card Card, kinds ...OpsKind) (o OpsKind) {
-	var message string
-	if card.Id == FreeOps {
-		message = fmt.Sprintf("Playing a %d ops card", card.Ops)
-	} else {
-		message = fmt.Sprintf("Playing %s for ops", card.Name)
-	}
-	var choices []string
-	if len(kinds) == 0 {
-		choices = []string{COUP.Ref(), REALIGN.Ref(), INFLUENCE.Ref()}
-	} else {
-		for _, k := range kinds {
-			choices = append(choices, k.Ref())
-		}
-	}
-	getInput(s, player, &o, message, choices...)
 	return
 }
 
@@ -618,114 +678,31 @@ func HasInfluence(aff Aff) countryCheck {
 	}
 }
 
-func CanRemove(s State, aff Aff) countryCheck {
-	removed := make(map[CountryId]int)
-	return func(c *Country) error {
-		removed[c.Id] += 1
-		if c.Inf[aff]-removed[c.Id] < 0 {
-			return fmt.Errorf("Not enough %s influence in %s", aff, c.Name)
+func CanReach(s *State, player Aff) countryCheck {
+	influenced := make(map[CountryId]bool)
+	for cid, c := range s.Countries {
+		if c.Inf[player] > 0 {
+			influenced[cid] = true
 		}
-		return nil
 	}
-}
-
-// SelectNInfluence asks the player to choose a number of countries to receive
-// or lose influence, and optional checks to perform on the chosen countries.
-func SelectNInfluence(s *State, player Aff, message string, n int, checks ...countryCheck) ([]*Country, error) {
-	return selectNInfluence(s, player, message, n, false, checks...)
-}
-
-func SelectExactlyNInfluence(s *State, player Aff, message string, n int, checks ...countryCheck) ([]*Country, error) {
-	return selectNInfluence(s, player, message, n, true, checks...)
-}
-
-func selectNInfluence(s *State, player Aff, message string, n int, exactly bool, checks ...countryCheck) (cs []*Country, err error) {
-	cs = SelectInfluence(s, player, message)
-	switch {
-	case exactly && len(cs) != n:
-		err = fmt.Errorf("Select exactly %d", n)
-		return
-	case !exactly && len(cs) > n:
-		err = fmt.Errorf("Too much. Select %d", n)
-		return
-	}
-	for _, placement := range cs {
-		for _, check := range checks {
-			if err = check(placement); err != nil {
-				return
+	return func(c *Country) error {
+		if influenced[c.Id] {
+			return nil
+		}
+		if c.AdjSuper == player {
+			return nil
+		}
+		for _, ad := range c.AdjCountries {
+			if influenced[ad.Id] {
+				return nil
 			}
 		}
+		return fmt.Errorf("Cannot reach %s", c.Name)
 	}
-	return
-}
-
-func SelectInfluenceOps(s *State, player Aff, ops int) (cs []*Country, err error) {
-	// Compute ops
-	ops += opsMod(s, player, cs)
-	message := fmt.Sprintf("Place %d influence", ops)
-	cs = SelectInfluence(s, player, message)
-	for _, c := range cs {
-		if !canReach(c, player) {
-			return nil, fmt.Errorf("Cannot reach %s", c.Name)
-		}
-	}
-	// Compute cost. Copy each country so that we can update its influence
-	// as we go. E.g. two ops are spent breaking control, then the next
-	// influence place costs one op.
-	cost := 0
-	workingCountries := make(map[CountryId]Country)
-	for _, c := range cs {
-		workingCountries[c.Id] = *c
-	}
-	for _, c := range cs {
-		cost += influenceCost(player, workingCountries[c.Id])
-		tmp := workingCountries[c.Id]
-		tmp.Inf[player] += 1
-		workingCountries[c.Id] = tmp
-	}
-	switch {
-	case cost > ops:
-		err = fmt.Errorf("Overspent ops by %d", (cost - ops))
-	case cost < ops:
-		err = fmt.Errorf("Underspent ops by %d", (ops - cost))
-	}
-	return
-}
-
-func canReach(c *Country, player Aff) bool {
-	if c.Inf[player] > 0 {
-		return true
-	}
-	if c.AdjSuper == player {
-		return true
-	}
-	for _, ad := range c.AdjCountries {
-		if ad.Inf[player] > 0 {
-			return true
-		}
-	}
-	return false
-}
-
-// Repeat selectFn until the user's input is acceptible.
-// This should be reconsidered once we support log-replay and log-writing.
-func SelectInfluenceForce(s *State, player Aff, selectFn func() ([]*Country, error)) []*Country {
-	var cs []*Country
-	var err error
-	cs, err = selectFn()
-	for err != nil {
-		s.UI.Message(err.Error())
-		cs, err = selectFn()
-	}
-	return cs
-}
-
-func SelectInfluence(s *State, player Aff, message string) (cs []*Country) {
-	getInput(s, player, &cs, message)
-	return
 }
 
 func SelectCountry(s *State, player Aff, message string, countries ...CountryId) (c *Country) {
+	// XXX this doesn't permit use of country short codes
 	choices := make([]string, len(countries))
 	for i, cn := range countries {
 		choices[i] = s.Countries[cn].Ref()
@@ -745,15 +722,91 @@ func SelectRegion(s *State, player Aff, message string) (r Region) {
 	return
 }
 
-func PlaceInfluence(s *State, player Aff, cs []*Country) {
-	for _, c := range cs {
-		c.Inf[player] += 1
+// XXX misc
+func CancelCubanMissileCrisis(s *State, player Aff) bool {
+	if player == SOV {
+		if "yes" != SelectChoice(s, player, "Remove 2 influence from Cuba to cancel cuban missile crisis?", "yes", "no") {
+			return false
+		}
+		// We ask the player before checking if they even can remove influence
+		// to give them a chance to undo their choice to coup ...
+		if s.Countries[Cuba].Inf[player] < 2 {
+			s.UI.Message("You do not have enough influence in Cuba.")
+			return false
+		}
+		s.Countries[Cuba].Inf[player] -= 2
+		s.Transcribe("USSR cancels Cuban Missile Crisis by removing 2 USSR influence in Cuba")
+		s.Cancel(CubanMissileCrisis)
+		return true
+	} else {
+		if "yes" != SelectChoice(s, player, "Remove 2 influence from Turkey or West Germany to cancel cuban missile crisis?", "yes", "no") {
+			return false
+		}
+		wgermanyEnough := s.Countries[Turkey].Inf[player] >= 2
+		turkeyEnough := s.Countries[Turkey].Inf[player] >= 2
+		var choice *Country
+		switch {
+		case wgermanyEnough && turkeyEnough:
+			choice = SelectCountry(s, player, "Turkey or West Germany?", WGermany, Turkey)
+		case wgermanyEnough:
+			choice = s.Countries[WGermany]
+		case turkeyEnough:
+			choice = s.Countries[Turkey]
+		default:
+			s.UI.Message("You do not have enough influence in Cuba.")
+			return false
+		}
+		choice.Inf[player] -= 2
+		s.Transcribe(fmt.Sprintf("USA cancels Cuban Missile Crisis by removing 2 US influence in %s", choice))
+		s.Cancel(CubanMissileCrisis)
+		return true
 	}
 }
 
-func RemoveInfluence(s *State, player Aff, cs []*Country) {
-	for _, c := range cs {
-		c.Inf[player] = Max(0, c.Inf[player]-1)
+func DoNorad(s *State) {
+	s.Transcribe("The USA will add 1 influence to a US-influenced country per NORAD.")
+	SelectOneInfluence(s, USA, "1 influence to country containing US influence",
+		PlusInf(USA, 1),
+		HasInfluence(USA))
+}
+
+func TryQuagmire(s *State) {
+	tryQuagmireBearTrap(s, Quagmire)
+}
+
+func TryBearTrap(s *State) {
+	tryQuagmireBearTrap(s, BearTrap)
+}
+
+func tryQuagmireBearTrap(s *State, event CardId) {
+	s.Transcribe(fmt.Sprintf("%s is in %s.", s.Phasing, Cards[event]))
+	enoughOps := ExceedsOps(1, s, s.Phasing)
+	// Can't discard? Play only scoring cards.
+	if !hasInHand(s, s.Phasing, enoughOps) {
+		onlyScoring := func(c Card) bool {
+			return c.Scoring()
+		}
+		if !hasInHand(s, s.Phasing, onlyScoring) {
+			s.Transcribe(fmt.Sprintf("%s cannot escape the %s and has no scoring cards.", s.Phasing, Cards[event]))
+			return
+		}
+		s.Transcribe(fmt.Sprintf("%s cannot escape the %s and can only play scoring cards.", s.Phasing, Cards[event]))
+		card := SelectCard(s, s.Phasing, onlyScoring)
+		PlayCard(s, s.Phasing, card)
+		return
+	}
+	// select card and roll
+	card := SelectCard(s, s.Phasing, CardBlacklist(TheChinaCard), enoughOps)
+	s.Hands[s.Phasing].Remove(card)
+	s.Transcribe(fmt.Sprintf("%s discards %s.", s.Phasing, card))
+	s.Discard.Push(card)
+	roll := SelectRoll(s, s.Phasing)
+	switch roll {
+	case 1, 2, 3, 4:
+		s.Transcribe(fmt.Sprintf("%s is free of the %s.", s.Phasing, Cards[event]))
+		s.Cancel(event)
+	default:
+		s.Transcribe(fmt.Sprintf("%s is still trapped in the %s.", s.Phasing, Cards[event]))
 	}
 }
 
@@ -768,6 +821,51 @@ func PseudoCard(ops int) Card {
 	}
 }
 
-func score(s *State, player Aff, region Region) {
-	// XXX writeme (#17)
+func AutoWin(s *State, player Aff, why string) {
+	s.Transcribe(fmt.Sprintf("%s wins the game due to %s.", player, why))
+	Finish(s, player)
+}
+
+func Finish(s *State, victor Aff) {
+	// XXX
+	for {
+		Solicit(s.UI, fmt.Sprintf("Okay %s won", victor), nil)
+	}
+}
+
+func Score(s *State, player Aff, region Region) {
+	sr := ScoreRegion(s.Game, region)
+	if VPAward(sr.Levels[USA], region) == WIN {
+		AutoWin(s, USA, "control of Europe")
+		return
+	}
+	if VPAward(sr.Levels[SOV], region) == WIN {
+		AutoWin(s, SOV, "control of Europe")
+		return
+	}
+	mods := [2][]Mod{{}, {}}
+	tally := func(aff Aff) {
+		level := sr.Levels[aff]
+		if level != Nothing {
+			mods[aff] = append(mods[aff], Mod{VPAward(level, region), level.Name()})
+		}
+		mods[aff] = append(mods[aff], Mod{len(sr.Battlegrounds[aff]), "battlegrounds"})
+		mods[aff] = append(mods[aff], Mod{len(sr.AdjSuper[aff]), "next-to-super"})
+	}
+	tally(USA)
+	tally(SOV)
+	usaScore := TotalMod(mods[USA])
+	sovScore := TotalMod(mods[SOV])
+	s.Transcribe(fmt.Sprintf("US scores %d: %s.", usaScore, ModSummary(mods[USA])))
+	if sr.ShuttleDiplomacyNullified != nil {
+		s.Transcribe(fmt.Sprintf("USSR scores %d: %s (-1 battleground due to Shuttle Diplomacy).", sovScore, ModSummary(mods[SOV])))
+	} else {
+		s.Transcribe(fmt.Sprintf("USSR scores %d: %s.", sovScore, ModSummary(mods[SOV])))
+	}
+	switch {
+	case usaScore > sovScore:
+		s.GainVP(USA, usaScore-sovScore)
+	case sovScore > usaScore:
+		s.GainVP(SOV, sovScore-usaScore)
+	}
 }
