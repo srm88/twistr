@@ -47,10 +47,10 @@ func loadAof(aofPath string) ([]byte, error) {
 	} else {
 		b := new(bytes.Buffer)
 		if _, err := io.Copy(b, in); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("Error copying aof bytes to buffer: %s", err.Error())
 		}
 		if err := in.Close(); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("Error closing aof: %s", err.Error())
 		}
 		return b.Bytes(), nil
 	}

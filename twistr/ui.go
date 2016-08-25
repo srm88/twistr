@@ -32,7 +32,7 @@ func NewLogMode(messages []string) *LogMode {
 		}
 		m.lines = append(m.lines, wrapped...)
 	}
-	m.start = len(m.lines) - m.rows
+	m.start = Max(0, len(m.lines)-m.rows)
 	return m
 }
 

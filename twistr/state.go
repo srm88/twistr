@@ -51,7 +51,7 @@ func (s *State) Log(thing interface{}) (err error) {
 	if _, err = s.History.Write(b); err != nil {
 		log.Println(err)
 	}
-	if _, err = s.LinkOut.Write(b); err != nil {
+	if _, err = s.LinkOut.Write(append(b, '\n')); err != nil {
 		log.Println(err)
 	}
 	return
