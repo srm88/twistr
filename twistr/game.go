@@ -217,8 +217,6 @@ func EndTurn(s *State) {
 }
 
 func Action(s *State) {
-	card := SelectCard(s, s.Phasing)
-	PlayCard(s, s.Phasing, card)
 	defconWas := s.Defcon
 	switch {
 	// BearTrap/Quagmire precede Missile Envy
