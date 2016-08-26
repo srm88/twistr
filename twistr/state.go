@@ -88,6 +88,7 @@ func (s *State) ReadInto(thing interface{}, fromRemote bool) bool {
 
 func (s *State) Undo() {
 	s.History.Pop()
+	s.LinkOut.Pop()
 	// Totally reset all state, and replay history.
 	s.Game = NewGame()
 	Start(s)

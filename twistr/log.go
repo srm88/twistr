@@ -2,35 +2,51 @@ package twistr
 
 import (
 	"bufio"
-	"bytes"
 	"io"
 	"log"
 	"strings"
 )
 
 type CmdOut struct {
-	*bytes.Buffer
-	w io.Writer
+	inputs []string
+	w      io.Writer
 }
 
 func NewCmdOut(w io.Writer) *CmdOut {
 	return &CmdOut{
-		Buffer: new(bytes.Buffer),
+		inputs: []string{},
 		w:      w,
 	}
 }
 
-func (co *CmdOut) Commit() string {
-	// Flush buffer to writer
-	if co.Len() == 0 {
+func (c *CmdOut) Pop() {
+	if len(c.inputs) == 0 {
+		return
+	}
+	c.inputs = c.inputs[:len(c.inputs)-1]
+}
+
+func (c *CmdOut) Write(input []byte) (n int, err error) {
+	lines := inputLines(string(input))
+	if len(lines) == 0 {
+		return
+	}
+	c.inputs = append(c.inputs, lines...)
+	n = len(input)
+	return
+}
+
+func (c *CmdOut) Commit() string {
+	contents := strings.Join(c.inputs, "\n")
+	if len(contents) == 0 {
 		return ""
 	}
-	contents := co.String()
 	log.Printf("Committing to remote: %s\n", contents)
-	_, err := co.WriteTo(co.w)
+	_, err := c.w.Write([]byte(contents + "\n"))
 	if err != nil {
 		log.Println(err)
 	}
+	c.inputs = []string{}
 	return contents
 }
 
@@ -190,13 +206,12 @@ func (r *History) Pop() {
 func (r *History) Write(input []byte) (n int, err error) {
 	// Never do when replaying. This means s.Log is safe to call on replayed
 	// input.
-	if r.InReplay() || r.Replaying {
+	if r.InReplay() {
+		log.Printf("History not writing %s, in replay (InReplay %v, Replaying %v\n", input, r.InReplay(), r.Replaying)
 		return
 	}
-	lines := strings.Split(string(input), "\n")
-	if lines[len(lines)-1] == "" {
-		lines = lines[:len(lines)-1]
-	}
+	lines := inputLines(string(input))
+	log.Printf("History writing %s\n", lines)
 	if len(lines) == 0 {
 		return
 	}
@@ -204,4 +219,12 @@ func (r *History) Write(input []byte) (n int, err error) {
 	r.index = len(r.inputs)
 	n = len(input)
 	return
+}
+
+func inputLines(input string) []string {
+	lines := strings.Split(input, "\n")
+	if lines[len(lines)-1] == "" {
+		lines = lines[:len(lines)-1]
+	}
+	return lines
 }
