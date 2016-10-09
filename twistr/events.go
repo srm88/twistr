@@ -330,7 +330,7 @@ func PlayContainment(s *State, player Aff) {
 func PlayCIACreated(s *State, player Aff) {
 	/* The USSR reveals their hand of cards for this turn. The US may use the
 	   Operations value of this card to conduct Operations.  */
-	ShowHand(s, SOV, USA)
+	s.EnablePlayer(ViewOpponentHand, USA)
 	s.Transcribe(fmt.Sprintf("%s conducts operations with %s.", player, Cards[CIACreated]))
 	ConductOps(s, player, PseudoCard(1))
 }
@@ -652,6 +652,7 @@ func PlaySALTNegotiations(s *State, player Aff) {
 		selected := SelectDiscarded(s, player, notScoring)
 		s.Transcribe(fmt.Sprintf("%s adds %s into their hand from the discard pile.", player, selected))
 		s.Discard.Remove(selected)
+		s.CancelAbility(ViewDiscard, player)
 		s.Hands[player].Push(selected)
 	}
 }
@@ -919,7 +920,7 @@ func PlayOPEC(s *State, player Aff) {
 func PlayLoneGunman(s *State, player Aff) {
 	/* The US reveals their hand of cards. The USSR may use the Operations value
 	   of this card to conduct Operations. */
-	ShowHand(s, USA, SOV)
+	s.EnablePlayer(ViewOpponentHand, SOV)
 	s.Transcribe(fmt.Sprintf("%s conducts operations with %s.", player, Cards[LoneGunman]))
 	ConductOps(s, player, PseudoCard(Cards[LoneGunman].Ops))
 }
@@ -1087,7 +1088,6 @@ func PlayAskNotWhatYourCountry(s *State, player Aff) {
 	s.Transcribe(fmt.Sprintf("US draws %d cards.", toDraw))
 	drawn := s.Deck.Draw(toDraw)
 	s.Hands[USA].Push(drawn...)
-	ShowHand(s, USA, USA)
 }
 
 func PlayAllianceForProgress(s *State, player Aff) {
@@ -1265,6 +1265,7 @@ func PlayStarWars(s *State, player Aff) {
 			MiddleEastScoring, CentralAmericaScoring, SouthAmericaScoring,
 			SoutheastAsiaScoring, AfricaScoring))
 	s.Discard.Remove(card)
+	s.CancelAbility(ViewDiscard, player)
 	s.Transcribe(fmt.Sprintf("%s picks %s from the discard pile.", player, card))
 	PlayEvent(s, player, card)
 }
@@ -1430,8 +1431,8 @@ func PlayAnEvilEmpire(s *State, player Aff) {
 func PlayAldrichAmesRemix(s *State, player Aff) {
 	/* The US reveals their hand of cards, face-up, for the remainder of the
 	   turn and the USSR discards a card from the US hand. */
-	ShowHand(s, USA, SOV)
-	card := selectCardFrom(s, SOV, s.Hands[USA].Cards, false)
+	s.EnablePlayer(ViewOpponentHand, SOV)
+	card := selectCardFrom(s, SOV, "Choose a card to discard from the US player's hand.", s.Hands[USA].Cards, false)
 	s.Hands[USA].Remove(card)
 	s.Transcribe(fmt.Sprintf("%s discarded from US hand for Aldrich Ames Remix.", card))
 	s.Discard.Push(card)

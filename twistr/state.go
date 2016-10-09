@@ -226,11 +226,24 @@ func (s *State) AddMilOps(player Aff, n int) {
 	s.Transcribe(fmt.Sprintf("%s adds %d to its Military Operations track.", player, n))
 }
 
+// XXX remove
 func (s *State) MessageOne(player Aff, message string) error {
 	if player != s.LocalPlayer {
 		return nil
 	}
 	return s.UI.Message(message)
+}
+
+func (s *State) EnablePlayer(which Ability, player Aff) {
+	if player != s.LocalPlayer {
+		return
+	}
+	s.TurnAbilities[player][which] = true
+	s.UI.Message(which.Message())
+}
+
+func (s *State) CancelAbility(which Ability, player Aff) {
+	s.TurnAbilities[player][which] = false
 }
 
 type Game struct {
@@ -245,6 +258,7 @@ type Game struct {
 	Countries       map[CountryId]*Country
 	Events          map[CardId]Aff
 	TurnEvents      map[CardId]Aff
+	TurnAbilities   [2]map[Ability]bool
 	SpaceAttempts   [2]int
 	SREvents        map[SpaceId]Aff
 	Removed         *Deck
@@ -270,6 +284,7 @@ func NewGame() *Game {
 		Countries:       Countries,
 		Events:          make(map[CardId]Aff),
 		TurnEvents:      make(map[CardId]Aff),
+		TurnAbilities:   [2]map[Ability]bool{make(map[Ability]bool), make(map[Ability]bool)},
 		SpaceAttempts:   [2]int{0, 0},
 		SREvents:        make(map[SpaceId]Aff),
 		Removed:         NewDeck(),
@@ -311,6 +326,15 @@ func (s *Game) Effect(which CardId, player ...Aff) bool {
 	}
 	aff, ok = s.TurnEvents[which]
 	return ok && (len(player) == 0 || player[0] == aff)
+}
+
+func (s *Game) Ability(which Ability, player Aff) bool {
+	return s.TurnAbilities[player][which]
+}
+
+func (s *Game) CancelTurnAbilities() {
+	s.TurnAbilities[USA] = make(map[Ability]bool)
+	s.TurnAbilities[SOV] = make(map[Ability]bool)
 }
 
 // CancelTurnEvents cancels all turn-based events currently in effect.

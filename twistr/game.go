@@ -35,7 +35,6 @@ func Deal(s *State) {
 		drawIfNeeded(USA)
 		drawIfNeeded(SOV)
 	}
-	ShowHand(s, s.LocalPlayer, s.LocalPlayer)
 }
 
 func ShuffleInDiscard(s *State) {
@@ -94,11 +93,6 @@ func ShowHand(s *State, whose, to Aff, showChina ...bool) {
 		cs = append(cs, Cards[TheChinaCard])
 	}
 	s.Enter(NewCardMode(cs))
-	s.Redraw(s.Game)
-}
-
-func ShowDiscard(s *State, to Aff) {
-	s.Enter(NewCardMode(s.Discard.Cards))
 	s.Redraw(s.Game)
 }
 
@@ -216,7 +210,8 @@ func EndTurn(s *State) {
 		s.ChinaCardFaceUp = true
 	}
 	s.AR = 1
-	s.TurnEvents = make(map[CardId]Aff)
+	s.CancelTurnEvents()
+	s.CancelTurnAbilities()
 	s.ChernobylRegion = Region{}
 	s.Redraw(s.Game)
 }
@@ -505,7 +500,7 @@ func passesFilters(c Card, filters []cardFilter) bool {
 
 func SelectCard(s *State, player Aff, filters ...cardFilter) Card {
 	canPlayChina := s.ChinaCardPlayer == player && s.ChinaCardFaceUp
-	return selectCardFrom(s, player, s.Hands[player].Cards, canPlayChina, filters...)
+	return selectCardFrom(s, player, "Choose a card from your hand.", s.Hands[player].Cards, canPlayChina, filters...)
 }
 
 func hasInHand(s *State, player Aff, filters ...cardFilter) bool {
@@ -518,21 +513,27 @@ func hasInHand(s *State, player Aff, filters ...cardFilter) bool {
 }
 
 func SelectDiscarded(s *State, player Aff, filters ...cardFilter) Card {
-	return selectCardFrom(s, player, s.Discard.Cards, false, filters...)
+	s.EnablePlayer(ViewDiscard, player)
+	return selectCardFrom(s, player, "Choose a card from the discard pile.", s.Discard.Cards, false, filters...)
 }
 
-func selectCardFrom(s *State, player Aff, from []Card, includeChina bool, filters ...cardFilter) (card Card) {
-	choices := []string{}
+func selectCardFrom(s *State, player Aff, msg string, from []Card, includeChina bool, filters ...cardFilter) (card Card) {
+	valid := make(map[CardId]bool)
 	for _, c := range from {
-		if !passesFilters(c, filters) {
-			continue
+		if passesFilters(c, filters) {
+			valid[c.Id] = true
 		}
-		choices = append(choices, c.Ref())
 	}
 	if includeChina && passesFilters(Cards[TheChinaCard], filters) {
-		choices = append(choices, Cards[TheChinaCard].Ref())
+		valid[TheChinaCard] = true
 	}
-	getInput(s, player, &card, "Choose a card", choices...)
+	prefix := ""
+retry:
+	getInput(s, player, &card, prefix+msg)
+	if !valid[card.Id] {
+		prefix = "Invalid choice. "
+		goto retry
+	}
 	return
 }
 

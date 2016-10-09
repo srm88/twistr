@@ -5,6 +5,7 @@ import (
 	"strings"
 )
 
+// XXX remove
 // Magic singleton to terminate country list selection.
 const (
 	EndSelectCountryStr = "end"
@@ -61,6 +62,25 @@ func (e Era) String() string {
 		return "Mid War"
 	case Late:
 		return "Late War"
+	default:
+		return "?"
+	}
+}
+
+type Ability int
+
+const (
+	Zilch Ability = iota
+	ViewDiscard
+	ViewOpponentHand
+)
+
+func (a Ability) Message() string {
+	switch a {
+	case ViewDiscard:
+		return "Use 'discard' to view the discard pile."
+	case ViewOpponentHand:
+		return "Use 'opponent' to view your opponent's hand."
 	default:
 		return "?"
 	}

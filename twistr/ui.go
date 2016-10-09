@@ -127,6 +127,19 @@ func modal(s *State, command string) bool {
 	case "deck":
 		s.Enter(NewCardMode(s.Deck.Cards))
 		s.Redraw(s.Game)
+	case "opponent":
+		if !s.Ability(ViewOpponentHand, s.LocalPlayer) {
+			s.UI.Message("Cannot view opponent's hand.")
+			return true
+		}
+		ShowHand(s, s.LocalPlayer.Opp(), s.LocalPlayer, true)
+	case "discard":
+		if !s.Ability(ViewDiscard, s.LocalPlayer) {
+			s.UI.Message("Cannot view discard pile.")
+			return true
+		}
+		s.Enter(NewCardMode(s.Discard.Cards))
+		s.Redraw(s.Game)
 	case "card":
 		if len(args) != 1 {
 			break
