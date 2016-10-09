@@ -72,6 +72,9 @@ func (s *State) ReadInto(thing interface{}, fromRemote bool) bool {
 		}
 		// Autocommit to preclude deadlock
 		s.Commit()
+		// Reset to board view to prevent showing secrets to opponent
+		s.Enter(nil)
+		s.Redraw(s.Game)
 		ok, line = s.LinkIn.Next()
 		if !ok {
 			return false
