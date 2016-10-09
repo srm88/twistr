@@ -127,6 +127,7 @@ func opsMods(s *State, player Aff, card Card, countries []*Country) (mods []Mod)
 	case containment && tmpTotal < 4:
 		mods = append(mods, Mod{1, "Containment"})
 	}
+	log.Printf("Computed mods for %s playing %s: %s\n", player, card, ModSummary(mods))
 	return
 }
 

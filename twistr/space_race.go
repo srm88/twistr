@@ -53,7 +53,7 @@ var SRTrack []SRBox = []SRBox{
 func CanAdvance(s *State, player Aff, ops int) bool {
 	pos := s.SpaceRace[player]
 	maxAttempts := 1
-	if s.SREvents[TwoSpace] == player {
+	if s.SREffect(TwoSpace, player) {
 		maxAttempts = 2
 	}
 	switch {

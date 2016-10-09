@@ -111,13 +111,11 @@ func (d *Deck) Reorder(ordering []Card) {
 	// Assign in-place until we reach the current bound of the deck
 	for i, c = range ordering {
 		if i == curLen {
-			break
+			// If the ordering introduced more cards, push them on the end
+			d.Cards = append(d.Cards, ordering[i:]...)
+			return
 		}
 		d.Cards[i] = c
-	}
-	// If the ordering introduced more cards, push them on the end
-	if i < len(ordering) {
-		d.Cards = append(d.Cards, ordering[i:]...)
 	}
 }
 

@@ -24,12 +24,16 @@ func (s *State) Commit() {
 		log.Println("Not committing, in replay")
 		return
 	}
+	log.Printf("Committing...\n")
 	s.LinkOut.Commit()
 	buffered := s.History.Commit()
 	if len(buffered) > 0 {
+		log.Printf("Writing buffered to aof\n")
 		if _, err := s.Aof.Write(append([]byte(buffered), '\n')); err != nil {
 			log.Fatalf("Failed to flush to aof: %s\n", err.Error())
 		}
+	} else {
+		log.Printf("nothing buffered to aof\n")
 	}
 	s.Redraw(s.Game)
 }
@@ -40,6 +44,7 @@ func (s *State) CanUndo() bool {
 
 func (s *State) Log(thing interface{}) (err error) {
 	if s.History.InReplay() || s.History.Replaying {
+		log.Printf("Not logging, replay %v replaying %v\n", s.History.InReplay(), s.History.Replaying)
 		return nil
 	}
 	var b []byte
@@ -292,6 +297,11 @@ func (s *Game) ActionsPerTurn() int {
 		return 6
 	}
 	return 7
+}
+
+func (s *Game) SREffect(which SpaceId, player Aff) bool {
+	aff, ok := s.SREvents[which]
+	return ok && player == aff
 }
 
 func (s *Game) Effect(which CardId, player ...Aff) bool {

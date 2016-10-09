@@ -23,18 +23,19 @@ func Deal(s *State) {
 	drawIfNeeded := func(player Aff) {
 		if needCard(player) {
 			if len(s.Deck.Cards) == 0 {
+				log.Printf("Out of cards at %s\n", player)
 				ShuffleInDiscard(s)
 			}
 			card := s.Deck.Draw(1)[0]
 			s.Hands[player].Push(card)
+			log.Printf("%s draws %s, deck length %d\n", player, card, len(s.Deck.Cards))
 		}
 	}
 	for needCard(USA) || needCard(SOV) {
 		drawIfNeeded(USA)
 		drawIfNeeded(SOV)
 	}
-	ShowHand(s, USA, USA)
-	ShowHand(s, SOV, SOV)
+	ShowHand(s, s.LocalPlayer, s.LocalPlayer)
 }
 
 func ShuffleInDiscard(s *State) {
@@ -76,8 +77,11 @@ func ThermoNuclearWar(s *State, caused Aff) {
 
 func ShuffleIn(s *State, cards []Card) {
 	s.Deck.Push(cards...)
+	log.Printf("Deck pre shuffle %v\n", s.Deck.Names())
 	order := SelectShuffle(s, s.Deck)
 	s.Deck.Reorder(order)
+	log.Printf("Deck post shuffle %v\n", s.Deck.Names())
+	log.Printf("Committing shuffle\n")
 	s.Commit()
 }
 
@@ -108,7 +112,7 @@ func actionsThisTurn(s *State, player Aff) int {
 	switch {
 	case player == USA && active:
 		return 8
-	case s.SREvents[ExtraAR] == player:
+	case s.SREffect(ExtraAR, player):
 		return 8
 	default:
 		return s.ActionsPerTurn()
@@ -140,6 +144,7 @@ func Turn(s *State) {
 	for {
 		usaCap = actionsThisTurn(s, USA)
 		sovCap = actionsThisTurn(s, SOV)
+		s.Transcribe(fmt.Sprintf("us %d actions, ar %d", usaCap, s.AR))
 		sovDone = s.AR > sovCap || outOfCards(s, SOV)
 		usaDone = s.AR > usaCap || outOfCards(s, USA)
 		if sovDone && usaDone {
@@ -468,9 +473,12 @@ func SelectShuffle(s *State, d *Deck) (cardOrder []Card) {
 	// Duplicates what getInput does. It doesn't make sense to reuse getInput
 	// because this will never ask for user input.
 	remote := !s.Master
-	log.Printf("Reading shuffle\n")
 	if s.ReadInto(&cardOrder, remote) {
 		return
+	}
+	// XXX: input bug: shouldn't have to do this here
+	if s.History.Replaying {
+		s.History.Replaying = false
 	}
 	cardOrder = d.Shuffle()
 	s.Log(&cardOrder)
@@ -573,6 +581,10 @@ func getRandom(s *State, player Aff, thing interface{}, impl func()) {
 	log.Printf("Reading random from %s\n", player)
 	if s.ReadInto(thing, remote) {
 		return
+	}
+	// XXX: input bug: shouldn't have to do this here
+	if s.History.Replaying {
+		s.History.Replaying = false
 	}
 	impl()
 	s.Log(thing)
