@@ -837,9 +837,6 @@ func AutoWin(s *State, player Aff, why string) {
 
 func Finish(s *State, victor Aff) {
 	// XXX
-	for {
-		Solicit(s.UI, fmt.Sprintf("Okay %s won", victor), nil)
-	}
 }
 
 func Score(s *State, player Aff, region Region) {

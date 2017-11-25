@@ -1183,7 +1183,7 @@ func PlayOurManInTehran(s *State, player Aff) {
 		return
 	}
 	cards := s.Deck.Draw(5)
-	// Solicit US player to discard each card
+	// Ask US player to discard each card
 	toDiscard := SelectSomeCards(s, USA,
 		"Discard which",
 		cards)
