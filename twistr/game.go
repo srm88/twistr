@@ -4,15 +4,6 @@ import "fmt"
 import "log"
 import "strings"
 
-// Game-running functions.
-// Each function should represent a state in the game.
-
-// Deck / Hand states.
-// Special cards:
-// StarWars: search discard
-// SALTNegotiations: search discard
-// AskNotWhatYourCountry: discard up to hand, draw replacements
-// OurManInTehran: draw top 5, return or discard, reshuffle
 func Deal(s *State) {
 	handSize := s.ActionsPerTurn() + 2
 	needCard := func(player Aff) bool {
@@ -52,7 +43,6 @@ func Start(s *State) {
 	// US chooses 7 influence in W europe
 	SelectInfluenceExactly(s, USA, "7 influence in West Europe",
 		PlusInf(USA, 1), 7, InRegion(WestEurope))
-
 	s.Commit()
 	for s.Turn = 1; s.Turn <= 10; s.Turn++ {
 		switch s.Turn {
@@ -145,13 +135,11 @@ func Turn(s *State) {
 		if !sovDone {
 			s.Transcribe(fmt.Sprintf("= %s AR %d.", SOV, s.AR))
 			s.Phasing = SOV
-			s.Redraw(s.Game)
 			Action(s)
 		}
 		if !usaDone {
 			s.Transcribe(fmt.Sprintf("= %s AR %d.", USA, s.AR))
 			s.Phasing = USA
-			s.Redraw(s.Game)
 			Action(s)
 		}
 		s.AR++
@@ -299,13 +287,11 @@ func PlayOps(s *State, player Aff, card Card) {
 			s.Transcribe(fmt.Sprintf("%s will conduct operations first.", player))
 			ConductOps(s, player, card)
 			s.Commit()
-			s.Redraw(s.Game)
 			PlayEvent(s, opp, card)
 		} else {
 			s.Transcribe(fmt.Sprintf("%s will implement the event first.", opp))
 			PlayEvent(s, opp, card)
 			s.Commit()
-			s.Redraw(s.Game)
 			ConductOps(s, player, card)
 		}
 	} else {
@@ -377,6 +363,7 @@ func OpInfluence(s *State, player Aff, card Card) {
 		OpInfluenceCost(player),
 		CanReach(s, player),
 		chernobylCheck)
+	s.Commit()
 }
 
 func PlayEvent(s *State, player Aff, card Card) {
@@ -465,9 +452,7 @@ func SelectOps(s *State, player Aff, card Card, kinds ...OpsKind) (o OpsKind) {
 func SelectShuffle(s *State, d *Deck) (cardOrder []Card) {
 	// Duplicates what getInput does. It doesn't make sense to reuse getInput
 	// because this will never ask for user input.
-	// XXX s.Active(???)
-	remote := !s.Master
-	if s.ReadInto(&cardOrder, remote) {
+	if s.ReadInto(&cardOrder, !s.Master) {
 		return
 	}
 	// XXX: input bug: shouldn't have to do this here
@@ -567,9 +552,8 @@ func SelectChoice(s *State, player Aff, message string, choices ...string) (choi
 // See State.ReadInto, .Log
 func getInput(s *State, player Aff, thing interface{}, message string, choices ...string) {
 	s.Active(player)
-	remote := player != s.LocalPlayer
 	log.Printf("Reading from %s '%s'\n", player, message)
-	if s.ReadInto(thing, remote) {
+	if s.ReadInto(thing, player != s.LocalPlayer) {
 		return
 	}
 	localInput(s, thing, message, choices...)
@@ -579,9 +563,8 @@ func getInput(s *State, player Aff, thing interface{}, message string, choices .
 // Like getInput, but for computer-decided things.
 func getRandom(s *State, player Aff, thing interface{}, impl func()) {
 	s.Active(player)
-	remote := player != s.LocalPlayer
 	log.Printf("Reading random from %s\n", player)
-	if s.ReadInto(thing, remote) {
+	if s.ReadInto(thing, player != s.LocalPlayer) {
 		return
 	}
 	// XXX: input bug: shouldn't have to do this here

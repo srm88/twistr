@@ -226,9 +226,6 @@ func CanRealign(s *State, player Aff, free bool) countryCheck {
 }
 
 func defconProtected(s *State, t *Country) bool {
-	// asia 3, defcon 5, not protected
-	// europe 4, defcon 3, protected
-	// middle east 2, defcon 2, protected
 	return t.Region.Volatility >= s.Defcon
 }
 
