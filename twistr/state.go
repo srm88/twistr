@@ -21,7 +21,7 @@ func (s *State) Active(who Aff) {
 	wasWaiting := s.Waiting
 	s.Waiting = who != s.LocalPlayer
 	if wasWaiting != s.Waiting {
-		log.Println("Switching play to %s\n", who)
+		log.Printf("Switching play to %s\n", who)
 	}
 }
 
