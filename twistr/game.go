@@ -465,7 +465,8 @@ func SelectOps(s *State, player Aff, card Card, kinds ...OpsKind) (o OpsKind) {
 func SelectShuffle(s *State, d *Deck) (cardOrder []Card) {
 	// Duplicates what getInput does. It doesn't make sense to reuse getInput
 	// because this will never ask for user input.
-	remote := !s.Server
+	// XXX s.Active(???)
+	remote := !s.Master
 	if s.ReadInto(&cardOrder, remote) {
 		return
 	}
@@ -565,6 +566,7 @@ func SelectChoice(s *State, player Aff, message string, choices ...string) (choi
 // Non-replayed local inputs are written to the peer.
 // See State.ReadInto, .Log
 func getInput(s *State, player Aff, thing interface{}, message string, choices ...string) {
+	s.Active(player)
 	remote := player != s.LocalPlayer
 	log.Printf("Reading from %s '%s'\n", player, message)
 	if s.ReadInto(thing, remote) {
@@ -576,6 +578,7 @@ func getInput(s *State, player Aff, thing interface{}, message string, choices .
 
 // Like getInput, but for computer-decided things.
 func getRandom(s *State, player Aff, thing interface{}, impl func()) {
+	s.Active(player)
 	remote := player != s.LocalPlayer
 	log.Printf("Reading random from %s\n", player)
 	if s.ReadInto(thing, remote) {
@@ -711,7 +714,6 @@ func CanReach(s *State, player Aff) countryCheck {
 }
 
 func SelectCountry(s *State, player Aff, message string, countries ...CountryId) (c *Country) {
-	// XXX this doesn't permit use of country short codes
 	choices := make([]string, len(countries))
 	for i, cn := range countries {
 		choices[i] = s.Countries[cn].Ref()

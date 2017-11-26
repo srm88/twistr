@@ -365,7 +365,6 @@ func SelectOneInfluence(s *State, player Aff, message string, change countryChan
 }
 
 func selectInfluence(s *State, player Aff, message string, change countryChange, nFun func([]*Country) int, exactly bool, costFun func(*Country) int, checks ...countryCheck) []*Country {
-	remote := player != s.LocalPlayer
 	used := 0
 	chosen := []*Country{}
 	var c *Country
@@ -375,6 +374,8 @@ loop:
 		s.UI.Message(err.Error())
 		err = nil
 	}
+	s.Active(player)
+	remote := player != s.LocalPlayer
 	log.Printf("Reading from %s '%s'\n", player, message)
 	if !s.ReadInto(&c, remote) {
 		localInput(s, &c, message)

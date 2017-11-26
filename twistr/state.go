@@ -14,6 +14,15 @@ type State struct {
 	LinkIn      *CmdIn
 	LinkOut     *CmdOut
 	Aof         io.Writer
+	Waiting     bool
+}
+
+func (s *State) Active(who Aff) {
+	wasWaiting := s.Waiting
+	s.Waiting = who != s.LocalPlayer
+	if wasWaiting != s.Waiting {
+		log.Println("Switching play to %s\n", who)
+	}
 }
 
 // Checkpoint game. User cannot undo past the point this is called.
@@ -33,7 +42,6 @@ func (s *State) Commit() {
 	} else {
 		log.Println("nothing buffered to aof")
 	}
-	s.Redraw(s.Game)
 }
 
 func (s *State) CanUndo() bool {
@@ -71,6 +79,8 @@ func (s *State) WaitRemote() string {
 	return line
 }
 
+// XXX can we just not call this if it's not from the remote?
+// can we better handle getting input from history or either player?
 func (s *State) ReadInto(thing interface{}, fromRemote bool) bool {
 	var ok bool
 	var line string
