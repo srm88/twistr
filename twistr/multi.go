@@ -9,7 +9,6 @@ import "net"
 import "os"
 import "os/user"
 import "path/filepath"
-import "strings"
 
 var (
 	DataDir string
@@ -69,15 +68,13 @@ func Client(url string) (conn net.Conn, err error) {
 
 func isServer(ui UI) bool {
 	var reply string
-	for {
-		reply = Solicit(ui, "Are you the host or the guest?", []string{"host", "guest"})
-		switch strings.ToLower(reply) {
-		case "host":
-			return true
-		case "guest":
-			return false
-		}
-	}
+	input(ui, &reply, "Are you the host or the guest?", "host", "guest")
+	return reply == "host"
+}
+
+func choosePlayer(ui UI) (player Aff) {
+	input(ui, &player, "Who are you playing as?", "usa", "ussr")
+	return
 }
 
 func NameGame() string {
@@ -232,8 +229,9 @@ func (m *Match) receiveAof() (string, error) {
 
 func (m *Match) Run() (err error) {
 	m.ServerMode = isServer(m.UI)
+	// Need to tell the opponent who they are!
+	m.Who = choosePlayer(m.UI)
 	if m.ServerMode {
-		m.Who = SOV
 		if err = m.sendAof(); err != nil {
 			return
 		}
@@ -241,7 +239,6 @@ func (m *Match) Run() (err error) {
 			return
 		}
 	} else {
-		m.Who = USA
 		aof, err := m.receiveAof()
 		if err != nil {
 			return err

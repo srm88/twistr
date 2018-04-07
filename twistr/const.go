@@ -39,7 +39,7 @@ func (a Aff) Ref() string {
 // lookupAff expects the incoming string to be lowercase.
 func lookupAff(player string) (Aff, error) {
 	switch player {
-	case "us":
+	case "usa":
 		return USA, nil
 	case "ussr":
 		return SOV, nil
