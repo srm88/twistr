@@ -9,9 +9,11 @@ import "net"
 import "os"
 import "os/user"
 import "path/filepath"
+import "regexp"
 
 var (
 	DataDir string
+	ValidName = regexp.MustCompile(`^[a-z0-9-$_.]+$`)
 )
 
 func init() {
@@ -77,8 +79,13 @@ func choosePlayer(ui UI) (player Aff) {
 	return
 }
 
-func NameGame() string {
-	return "server"
+func chooseName(ui UI) string {
+	var reply string
+	input(ui, &reply, "Choose a name for this game")
+	for !ValidName.MatchString(reply) {
+		input(ui, &reply, "Choose a name for this game (a-z0-9-_.$ chars allowed)")
+	}
+	return reply
 }
 
 func connectHost() string {
@@ -123,7 +130,6 @@ func NewMatch(ui UI) *Match {
 		UI:       ui,
 		Port:     1550,
 		SyncPort: 1551,
-		Name:     NameGame(),
 		Game:     NewGame(),
 		closers:  []io.Closer{}}
 }
@@ -229,9 +235,10 @@ func (m *Match) receiveAof() (string, error) {
 
 func (m *Match) Run() (err error) {
 	m.ServerMode = isServer(m.UI)
-	// Need to tell the opponent who they are!
-	m.Who = choosePlayer(m.UI)
 	if m.ServerMode {
+		m.Name = chooseName(m.UI)
+		// Need to tell the opponent who they are!
+		m.Who = choosePlayer(m.UI)
 		if err = m.sendAof(); err != nil {
 			return
 		}
