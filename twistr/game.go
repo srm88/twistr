@@ -465,7 +465,7 @@ func SelectOps(s *State, player Aff, card Card, kinds ...OpsKind) (o OpsKind) {
 func SelectShuffle(s *State, d *Deck) (cardOrder []Card) {
 	// Duplicates what getInput does. It doesn't make sense to reuse getInput
 	// because this will never ask for user input.
-	remote := !s.Master
+	remote := !s.Server
 	if s.ReadInto(&cardOrder, remote) {
 		return
 	}

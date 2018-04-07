@@ -54,7 +54,7 @@ func loadAof(aofPath string) ([]byte, error) {
 	}
 }
 
-func setupMaster(ui twistr.UI, game *twistr.Game, aofPath string) error {
+func setupServer(ui twistr.UI, game *twistr.Game, aofPath string) error {
 	// In
 	var history *twistr.History
 	b, err := loadAof(aofPath)
@@ -77,7 +77,7 @@ func setupMaster(ui twistr.UI, game *twistr.Game, aofPath string) error {
 }
 
 // Return writer with which to accept sync'd aof
-func setupSlave(ui twistr.UI, game *twistr.Game, replay string) {
+func setupClient(ui twistr.UI, game *twistr.Game, replay string) {
 	var history *twistr.History
 	if len(replay) > 0 {
 		history = twistr.NewHistoryBacklog(ui, replay)
@@ -141,7 +141,7 @@ func syncAof(aofPath string) {
 	if err != nil {
 		panic(fmt.Sprintf("Failed to accept client conn to sync ... %s\n", err.Error()))
 	}
-	log.Println("Master syncing aof")
+	log.Println("Server syncing aof")
 	if _, err := io.Copy(secretConn, in); err != nil {
 		panic(fmt.Sprintf("Failed while sending sync ... %s\n", err.Error()))
 	}
@@ -155,7 +155,7 @@ func receiveAof() string {
 	clientReplay := new(bytes.Buffer)
 	secretConn, err := secretConnect()
 	if err != nil {
-		panic(fmt.Sprintf("Failed to dial master to sync ... %s\n", err.Error()))
+		panic(fmt.Sprintf("Failed to dial server to sync ... %s\n", err.Error()))
 	}
 	log.Println("Client receiving aof sync")
 	if _, err := io.Copy(clientReplay, secretConn); err != nil {
@@ -180,12 +180,12 @@ func main() {
 	var err error
 	if serverMode {
 		syncAof(path)
-		if err = setupMaster(ui, game, path); err != nil {
+		if err = setupServer(ui, game, path); err != nil {
 			panic(fmt.Sprintf("Failed to start game: %s\n", err.Error()))
 		}
 	} else {
 		syncedAof := receiveAof()
-		setupSlave(ui, game, syncedAof)
+		setupClient(ui, game, syncedAof)
 	}
 
 	sigs := make(chan os.Signal, 1)

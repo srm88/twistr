@@ -8,7 +8,7 @@ type State struct {
 	UI
 	*Game
 	Mode        Mode
-	Master      bool
+	Server      bool
 	LocalPlayer Aff
 	History     *History
 	LinkIn      *CmdIn
@@ -131,13 +131,13 @@ func (s *State) Enter(o Mode) {
 	s.Mode = o
 }
 
-func NewState(history *History, game *Game, isMaster bool, localPlayer Aff, aof io.Writer) *State {
+func NewState(history *History, game *Game, isServer bool, localPlayer Aff, aof io.Writer) *State {
 	return &State{
 		UI:          history,
 		Mode:        nil,
 		Game:        game,
 		History:     history,
-		Master:      isMaster,
+		Server:      isServer,
 		LocalPlayer: localPlayer,
 		Aof:         aof,
 	}

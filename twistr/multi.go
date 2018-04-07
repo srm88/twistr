@@ -7,15 +7,15 @@ import "net"
 // connections.
 
 // Startup:
-// master syncs existing aof to slave
+// server syncs existing aof to client
 
-// Slave:
+// client:
 // read from (synced) AOF if data remains
 // remote player? read from conn
 // else get input, buffer
 // flush/commit to conn
 
-// Master:
+// server:
 // write AOF to conn on startup (sync)
 // remote player? read from conn
 // else get input, buffer
