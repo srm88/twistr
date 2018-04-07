@@ -1,13 +1,11 @@
 package twistr
 
-import (
-	"bytes"
-	"fmt"
-	"go/doc"
-	"math/rand"
-	"strings"
-	"time"
-)
+import "bytes"
+import "fmt"
+import "go/doc"
+import "math/rand"
+import "strings"
+import "time"
 
 var (
 	rng *rand.Rand = rand.New(rand.NewSource(time.Now().UnixNano()))

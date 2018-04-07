@@ -1,11 +1,9 @@
 package twistr
 
-import (
-	"errors"
-	"fmt"
-	"strconv"
-	"strings"
-)
+import "errors"
+import "fmt"
+import "strconv"
+import "strings"
 
 /*
  * Early War

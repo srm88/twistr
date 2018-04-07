@@ -1,11 +1,9 @@
 package twistr
 
-import (
-	"bufio"
-	"io"
-	"log"
-	"strings"
-)
+import "bufio"
+import "io"
+import "log"
+import "strings"
 
 type CmdOut struct {
 	inputs []string

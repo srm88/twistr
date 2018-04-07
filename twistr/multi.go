@@ -1,9 +1,7 @@
 package twistr
 
-import (
-	"fmt"
-	"net"
-)
+import "fmt"
+import "net"
 
 // This package will evolve into functions around managing multiple games and
 // connections.

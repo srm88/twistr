@@ -1,10 +1,8 @@
 package twistr
 
-import (
-	"fmt"
-	"log"
-	"strings"
-)
+import "fmt"
+import "log"
+import "strings"
 
 // Game-running functions.
 // Each function should represent a state in the game.

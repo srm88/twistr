@@ -1,13 +1,11 @@
 package twistr
 
-import (
-	"fmt"
-	gc "github.com/rthornton128/goncurses"
-	"log"
-	"os"
-	"strconv"
-	"strings"
-)
+import "fmt"
+import gc "github.com/rthornton128/goncurses"
+import "log"
+import "os"
+import "strconv"
+import "strings"
 
 const (
 	world = `          CAN 4 ----.                     NOR 4 -- SWE 4 -- FIN 4 --.

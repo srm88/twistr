@@ -1,11 +1,9 @@
 package twistr
 
-import (
-	"bufio"
-	"fmt"
-	"os"
-	"strings"
-)
+import "bufio"
+import "fmt"
+import "os"
+import "strings"
 
 type TerminalUI struct {
 	in *bufio.Reader

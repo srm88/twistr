@@ -1,10 +1,8 @@
 package twistr
 
-import (
-	"bytes"
-	"fmt"
-	"strings"
-)
+import "bytes"
+import "fmt"
+import "strings"
 
 type Mode interface {
 	Display(UI) Mode

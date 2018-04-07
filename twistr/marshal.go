@@ -1,14 +1,12 @@
 package twistr
 
-import (
-	"bufio"
-	"bytes"
-	"errors"
-	"fmt"
-	"reflect"
-	"strconv"
-	"strings"
-)
+import "bufio"
+import "bytes"
+import "errors"
+import "fmt"
+import "reflect"
+import "strconv"
+import "strings"
 
 func Marshal(c interface{}) ([]byte, error) {
 	// Indirect can always be used; if the value is not a pointer, it just

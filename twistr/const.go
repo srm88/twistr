@@ -1,9 +1,7 @@
 package twistr
 
-import (
-	"errors"
-	"strings"
-)
+import "errors"
+import "strings"
 
 // XXX remove
 // Magic singleton to terminate country list selection.

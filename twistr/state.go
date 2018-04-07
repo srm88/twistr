@@ -1,10 +1,8 @@
 package twistr
 
-import (
-	"fmt"
-	"io"
-	"log"
-)
+import "fmt"
+import "io"
+import "log"
 
 type State struct {
 	UI
