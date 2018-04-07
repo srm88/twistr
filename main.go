@@ -1,18 +1,16 @@
 package main
 
-import (
-	"bytes"
-	"flag"
-	"fmt"
-	"github.com/srm88/twistr/twistr"
-	"io"
-	"io/ioutil"
-	"log"
-	"net"
-	"os"
-	"os/signal"
-	"strings"
-)
+import "bytes"
+import "flag"
+import "fmt"
+import "github.com/srm88/twistr/twistr"
+import "io"
+import "io/ioutil"
+import "log"
+import "net"
+import "os"
+import "os/signal"
+import "strings"
 
 const (
 	AofDir = "/tmp/twistr"
