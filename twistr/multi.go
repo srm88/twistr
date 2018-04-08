@@ -1,3 +1,5 @@
+// This package will evolve into functions around managing multiple games and
+// connections.
 package twistr
 
 import "bytes"
@@ -10,26 +12,6 @@ import "os"
 import "os/user"
 import "path/filepath"
 import "regexp"
-
-var (
-	DataDir string
-	ValidName = regexp.MustCompile(`^[a-z0-9-$_.]+$`)
-)
-
-func init() {
-	u, err := user.Current()
-	if err != nil {
-		panic(err.Error())
-	}
-	DataDir = filepath.Join(u.HomeDir, ".twistr")
-	if err := os.MkdirAll(DataDir, os.ModePerm); err != nil {
-		panic(err)
-	}
-
-}
-
-// This package will evolve into functions around managing multiple games and
-// connections.
 
 // Startup:
 // server syncs existing aof to client
@@ -45,6 +27,22 @@ func init() {
 // remote player? read from conn
 // else get input, buffer
 // flush/commit to AOF+conn
+
+var (
+	DataDir string
+	ValidName = regexp.MustCompile(`^[a-z0-9-$_.]+$`)
+)
+
+func init() {
+	u, err := user.Current()
+	if err != nil {
+		panic(err.Error())
+	}
+	DataDir = filepath.Join(u.HomeDir, ".twistr")
+	if err := os.MkdirAll(DataDir, os.ModePerm); err != nil {
+		panic(err)
+	}
+}
 
 func Server(port int) (conn net.Conn, err error) {
 	var ln net.Listener
