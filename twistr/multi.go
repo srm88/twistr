@@ -2,6 +2,7 @@
 // connections.
 package twistr
 
+import "bufio"
 import "bytes"
 import "fmt"
 import "io"
@@ -159,10 +160,10 @@ func (m *Match) setupServer() error {
 	return nil
 }
 
-func (m *Match) setupClient(aof string) {
+func (m *Match) setupClient(aof []string) {
 	var history *History
 	if len(aof) > 0 {
-		history = NewHistoryBacklog(m.UI, strings.Split(aof, "\n"))
+		history = NewHistoryBacklog(m.UI, aof)
 	} else {
 		history = NewHistory(m.UI)
 	}
@@ -205,30 +206,51 @@ func (m Match) sendAof() (err error) {
 	}
 	defer syncConn.Close()
 	log.Println("Server syncing aof")
+	if _, err = syncConn.Write([]byte("$ BEGIN AOF\n")); err != nil {
+		log.Printf("Failed to send aof header: %s\n", err.Error())
+		return
+	}
 	if _, err = io.Copy(syncConn, in); err != nil {
 		log.Printf("Failed while sending sync ... %s\n", err.Error())
+		return
+	}
+	if _, err = syncConn.Write([]byte("$ END AOF\n")); err != nil {
+		log.Printf("Failed to send aof footer: %s\n", err.Error())
 		return
 	}
 	log.Printf("Server sent aof")
 	return
 }
 
-func (m *Match) receiveAof() (string, error) {
-	b := new(bytes.Buffer)
+func (m *Match) receiveAof() ([]string, error) {
 	log.Println("Client connecting to sync aof")
 	syncConn, err := m.syncConnect()
 	if err != nil {
 		log.Printf("Failed to dial server to sync ... %s\n", err.Error())
-		return "", err
+		return nil, err
 	}
 	defer syncConn.Close()
 	log.Println("Client receiving aof sync")
-	if _, err := io.Copy(b, syncConn); err != nil {
+	scanner := bufio.NewScanner(syncConn)
+	var aof []string
+	var line string
+ReadAof:
+	for scanner.Scan() {
+		line = scanner.Text()
+		switch {
+		case line == "$ BEGIN AOF":
+		case line == "$ END AOF":
+			break ReadAof
+		default:
+			aof = append(aof, line)
+		}
+	}
+	if err := scanner.Err(); err != nil {
 		log.Printf("Failed while reading sync ... %s\n", err.Error())
-		return "", err
+		return nil, err
 	}
 	log.Printf("Client received aof")
-	return b.String(), nil
+	return aof, nil
 }
 
 func (m *Match) Run() (err error) {
