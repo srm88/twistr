@@ -12,6 +12,7 @@ import "os"
 import "os/user"
 import "path/filepath"
 import "regexp"
+import "strings"
 
 // Startup:
 // server syncs existing aof to client
@@ -144,7 +145,7 @@ func (m *Match) setupServer() error {
 	}
 	var history *History
 	if len(b) > 0 {
-		history = NewHistoryBacklog(m.UI, string(b))
+		history = NewHistoryBacklog(m.UI, strings.Split(string(b), "\n"))
 	} else {
 		history = NewHistory(m.UI)
 	}
@@ -161,7 +162,7 @@ func (m *Match) setupServer() error {
 func (m *Match) setupClient(aof string) {
 	var history *History
 	if len(aof) > 0 {
-		history = NewHistoryBacklog(m.UI, aof)
+		history = NewHistoryBacklog(m.UI, strings.Split(aof, "\n"))
 	} else {
 		history = NewHistory(m.UI)
 	}
@@ -187,7 +188,6 @@ func (m *Match) syncConnect() (net.Conn, error) {
 }
 
 func (m Match) sendAof() (err error) {
-	// fails if aof doesn't exist
 	var in io.Reader
 	in, err = os.Open(m.AofPath())
 	if err != nil {
@@ -195,7 +195,7 @@ func (m Match) sendAof() (err error) {
 			log.Printf("Failed to open aof to sync ... %s\n", err.Error())
 			return
 		}
-		in = new(bytes.Buffer) // what is this
+		in = new(bytes.Buffer)
 	}
 	log.Println("Server connecting to sync aof")
 	syncConn, err := m.syncConnect()

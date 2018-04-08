@@ -79,17 +79,16 @@ type History struct {
 	Replaying bool
 }
 
-func NewHistoryBacklog(ui UI, backlog string) *History {
-	inputs := strings.Split(backlog, "\n")
-	end := len(inputs)
+func NewHistoryBacklog(ui UI, backlog []string) *History {
+	end := len(backlog)
 	for ; end > 1; end-- {
-		if inputs[end-1] != "" {
+		if backlog[end-1] != "" {
 			break
 		}
 	}
 	return &History{
 		wrapped:   ui,
-		inputs:    inputs[:end],
+		inputs:    backlog[:end],
 		index:     0,
 		watermark: end,
 		Replaying: true,
