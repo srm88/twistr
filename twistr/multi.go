@@ -12,7 +12,6 @@ import "net"
 import "os"
 import "os/user"
 import "path/filepath"
-import "regexp"
 import "strings"
 
 // Startup:
@@ -32,7 +31,6 @@ import "strings"
 
 var (
 	DataDir   string
-	ValidName = regexp.MustCompile(`^[a-z0-9-$_.]+$`)
 )
 
 func init() {
@@ -66,20 +64,6 @@ func Client(url string) (conn net.Conn, err error) {
 		log.Printf("Error connecting to server: %s", err.Error())
 	}
 	return
-}
-
-func choosePlayer(ui UI) (player Aff) {
-	Input(ui, &player, "Who are you playing as?", "usa", "ussr")
-	return
-}
-
-func chooseName(ui UI) string {
-	var reply string
-	Input(ui, &reply, "Choose a name for this game")
-	for !ValidName.MatchString(reply) {
-		Input(ui, &reply, "Choose a name for this game (a-z0-9-_.$ chars allowed)")
-	}
-	return reply
 }
 
 func loadAof(aofPath string) ([]byte, error) {
@@ -144,20 +128,16 @@ type HostMatch struct {
 	*Match
 }
 
-func NewHostMatch(ui UI) *HostMatch {
+func NewHostMatch(ui UI, name string, who Aff) *HostMatch {
+	m := NewMatch(ui)
+	m.Name = name
+	m.Who = who
 	return &HostMatch{
-		Match: NewMatch(ui),
+		Match: m,
 	}
 }
 
 func (h *HostMatch) Run() (err error) {
-	return h.GameSelect()
-}
-
-func (h *HostMatch) GameSelect() error {
-	h.Name = chooseName(h.UI)
-	// Need to tell the opponent who they are!
-	h.Who = choosePlayer(h.UI)
 	return h.Connect()
 }
 
@@ -171,10 +151,10 @@ func (h *HostMatch) Connect() (err error) {
 		log.Printf("Failed to connect to guest: %s\n", err.Error())
 		return
 	}
-	return h.SendAof()
+	return h.Sync()
 }
 
-func (h *HostMatch) SendAof() (err error) {
+func (h *HostMatch) Sync() (err error) {
 	var in io.Reader
 	in, err = os.Open(h.AofPath())
 	if err != nil {
@@ -262,10 +242,10 @@ func (g *GuestMatch) Connect() (err error) {
 		log.Printf("Failed to connect to host: %s\n", err.Error())
 		return
 	}
-	return g.ReceiveAof()
+	return g.Sync()
 }
 
-func (g *GuestMatch) ReceiveAof() error {
+func (g *GuestMatch) Sync() error {
 	// XXX: this is not re-entrant
 	log.Println("Client connecting to sync aof")
 	syncConn, err := Client(fmt.Sprintf("%s:%d", g.ConnectHost(), g.SyncPort))
