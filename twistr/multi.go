@@ -1,5 +1,4 @@
-// This package will evolve into functions around managing multiple games and
-// connections.
+// This package has functions around managing multiple games and connections.
 package twistr
 
 import "bufio"
@@ -13,21 +12,6 @@ import "os"
 import "os/user"
 import "path/filepath"
 import "strings"
-
-// Startup:
-// server syncs existing aof to client
-
-// client:
-// read from (synced) AOF if data remains
-// remote player? read from conn
-// else get input, buffer
-// flush/commit to conn
-
-// server:
-// write AOF to conn on startup (sync)
-// remote player? read from conn
-// else get input, buffer
-// flush/commit to AOF+conn
 
 var (
 	DataDir string
@@ -44,7 +28,7 @@ func init() {
 	}
 }
 
-func Server(port int) (conn net.Conn, err error) {
+func acceptGuest(port int) (conn net.Conn, err error) {
 	var ln net.Listener
 	ln, err = net.Listen("tcp", fmt.Sprintf(":%d", port))
 	if err != nil {
@@ -58,10 +42,10 @@ func Server(port int) (conn net.Conn, err error) {
 	return
 }
 
-func Client(url string) (conn net.Conn, err error) {
+func connectToHost(url string) (conn net.Conn, err error) {
 	conn, err = net.Dial("tcp", url)
 	if err != nil {
-		log.Printf("Error connecting to server: %s", err.Error())
+		log.Printf("Error connecting to host: %s", err.Error())
 	}
 	return
 }
@@ -111,7 +95,7 @@ func (m *Match) AofPath() string {
 }
 
 func (m *Match) Start() error {
-	log.Printf("Starting")
+	log.Println("Starting")
 	Start(m.State)
 	return nil
 }
@@ -140,11 +124,11 @@ func (h *HostMatch) Run() (err error) {
 }
 
 func (h *HostMatch) Connect() (err error) {
-	log.Println("Connecting")
-	h.Conn, err = Server(h.Port)
+	log.Println("Host connecting")
+	h.Conn, err = acceptGuest(h.Port)
 	if err == nil {
 		h.closers = append(h.closers, h.Conn)
-		log.Println("Connected")
+		log.Println("Host connected")
 	} else {
 		log.Printf("Failed to connect to guest: %s\n", err.Error())
 		return
@@ -166,9 +150,9 @@ func (h *HostMatch) Sync() (err error) {
 			return
 		}
 	} else {
-		log.Println("Server syncing aof")
+		log.Println("Host syncing aof")
 		if _, err = io.Copy(h.Conn, in); err != nil {
-			log.Printf("Failed while sending sync ... %s\n", err.Error())
+			log.Printf("Failed to sync aof to guest ... %s\n", err.Error())
 			return
 		}
 	}
@@ -176,7 +160,7 @@ func (h *HostMatch) Sync() (err error) {
 		log.Printf("Failed to send aof footer: %s\n", err.Error())
 		return
 	}
-	log.Printf("Server synced aof")
+	log.Printf("Host synced aof")
 	return h.Setup()
 }
 
@@ -226,11 +210,11 @@ func (g *GuestMatch) Run() (err error) {
 }
 
 func (g *GuestMatch) Connect() (err error) {
-	log.Println("Connecting")
-	g.Conn, err = Client(fmt.Sprintf("%s:%d", g.ConnectHost(), g.Port))
+	log.Println("Guest connecting")
+	g.Conn, err = connectToHost(fmt.Sprintf("%s:%d", g.ConnectHost(), g.Port))
 	if err == nil {
 		g.closers = append(g.closers, g.Conn)
-		log.Println("Connected")
+		log.Println("Guest connected")
 	} else {
 		log.Printf("Failed to connect to host: %s\n", err.Error())
 		return
@@ -240,7 +224,7 @@ func (g *GuestMatch) Connect() (err error) {
 
 func (g *GuestMatch) Sync() error {
 	// XXX: this is not re-entrant
-	log.Println("Client receiving aof sync")
+	log.Println("Guest receiving aof sync")
 	g.HostFeed = bufio.NewScanner(g.Conn)
 	var line string
 ReadAof:
@@ -258,7 +242,7 @@ ReadAof:
 		log.Printf("Failed while reading sync ... %s\n", err.Error())
 		return err
 	}
-	log.Println("Client received aof")
+	log.Println("Guest received aof")
 	return g.Setup()
 }
 
