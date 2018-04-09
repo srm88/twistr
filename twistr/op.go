@@ -368,7 +368,7 @@ func selectInfluence(s *State, player Aff, message string, change countryChange,
 	var err error
 loop:
 	if err != nil {
-		s.UI.Message(err.Error())
+		s.Message(player, err.Error())
 		err = nil
 	}
 	s.Active(player)

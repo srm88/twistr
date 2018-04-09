@@ -110,7 +110,7 @@ func modal(s *State, command string) bool {
 	cmd, args := parseCommand(command)
 	switch cmd {
 	case "help":
-		s.UI.Message("Commands: 'undo' 'hand' 'log' 'spacerace' 'board' 'card <card>'")
+		s.Message(s.LocalPlayer, "Commands: 'undo' 'hand' 'log' 'spacerace' 'board' 'card <card>'")
 	case "hand":
 		ShowHand(s, s.LocalPlayer, s.LocalPlayer, true)
 	case "log":
@@ -127,13 +127,13 @@ func modal(s *State, command string) bool {
 		s.Redraw(s.Game)
 	case "opponent":
 		if !s.Ability(ViewOpponentHand, s.LocalPlayer) {
-			s.UI.Message("Cannot view opponent's hand.")
+			s.Message(s.LocalPlayer, "Cannot view opponent's hand.")
 			return true
 		}
 		ShowHand(s, s.LocalPlayer.Opp(), s.LocalPlayer, true)
 	case "discard":
 		if !s.Ability(ViewDiscard, s.LocalPlayer) {
-			s.UI.Message("Cannot view discard pile.")
+			s.Message(s.LocalPlayer, "Cannot view discard pile.")
 			return true
 		}
 		s.Enter(NewCardMode(s.Discard.Cards))
@@ -144,7 +144,7 @@ func modal(s *State, command string) bool {
 		}
 		card, err := lookupCard(args[0])
 		if err != nil {
-			s.UI.Message(err.Error())
+			s.Message(s.LocalPlayer, err.Error())
 		}
 		s.Enter(NewCardMode([]Card{card}))
 		s.Redraw(s.Game)
@@ -152,7 +152,7 @@ func modal(s *State, command string) bool {
 		s.History.Dump()
 	case "undo":
 		if !s.CanUndo() {
-			s.UI.Message("Cannot undo the last action.")
+			s.Message(s.LocalPlayer, "Cannot undo the last action.")
 			return true
 		}
 		s.Undo()

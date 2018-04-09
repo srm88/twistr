@@ -129,7 +129,7 @@ func (s *State) Redraw(g *Game) {
 	}
 }
 
-func (s *State) Message(msg string) {
+func (s *State) Message(who Aff, msg string) {
 	s.UI.Message(msg)
 }
 
@@ -247,7 +247,7 @@ func (s *State) EnablePlayer(which Ability, player Aff) {
 		return
 	}
 	s.TurnAbilities[player][which] = true
-	s.UI.Message(which.Message())
+	s.Message(player, which.Message())
 }
 
 func (s *State) CancelAbility(which Ability, player Aff) {

@@ -725,7 +725,7 @@ func CancelCubanMissileCrisis(s *State, player Aff) bool {
 		// We ask the player before checking if they even can remove influence
 		// to give them a chance to undo their choice to coup ...
 		if s.Countries[Cuba].Inf[player] < 2 {
-			s.UI.Message("You do not have enough influence in Cuba.")
+			s.Message(player, "You do not have enough influence in Cuba.")
 			return false
 		}
 		s.Countries[Cuba].Inf[player] -= 2
@@ -747,7 +747,7 @@ func CancelCubanMissileCrisis(s *State, player Aff) bool {
 		case turkeyEnough:
 			choice = s.Countries[Turkey]
 		default:
-			s.UI.Message("You do not have enough influence in Cuba.")
+			s.Message(player, "You do not have enough influence in Cuba.")
 			return false
 		}
 		choice.Inf[player] -= 2
