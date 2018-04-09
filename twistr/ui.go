@@ -197,7 +197,7 @@ retry:
 	}
 }
 
-func input(ui UI, inp interface{}, message string, choices ...string) {
+func Input(ui UI, inp interface{}, message string, choices ...string) {
 	var err error
 	validChoice := func(in string) bool {
 		if len(choices) == 0 {
