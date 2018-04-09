@@ -30,7 +30,7 @@ import "strings"
 // flush/commit to AOF+conn
 
 var (
-	DataDir   string
+	DataDir string
 )
 
 func init() {
@@ -86,26 +86,24 @@ func loadAof(aofPath string) ([]byte, error) {
 }
 
 type Match struct {
-	UI         UI
-	Port       int
-	SyncPort   int
-	Name       string
-	Game       *Game
-	State      *State
-	closers    []io.Closer
-	Who        Aff
-	Conn	net.Conn
+	UI      UI
+	Port    int
+	Name    string
+	Game    *Game
+	State   *State
+	closers []io.Closer
+	Who     Aff
+	Conn    net.Conn
 	// Connected? Synced?
 	// Peer address / ports?
 }
 
 func NewMatch(ui UI) *Match {
 	return &Match{
-		UI:       ui,
-		Port:     1550,
-		SyncPort: 1551,
-		Game:     NewGame(),
-		closers:  []io.Closer{}}
+		UI:      ui,
+		Port:    1550,
+		Game:    NewGame(),
+		closers: []io.Closer{}}
 }
 
 func (m *Match) AofPath() string {
@@ -155,36 +153,30 @@ func (h *HostMatch) Connect() (err error) {
 }
 
 func (h *HostMatch) Sync() (err error) {
+	if _, err = h.Conn.Write([]byte("$ BEGIN AOF\n")); err != nil {
+		log.Printf("Failed to send aof header: %s\n", err.Error())
+		return
+	}
 	var in io.Reader
+	// Don't we need to close this file?
 	in, err = os.Open(h.AofPath())
 	if err != nil {
 		if !os.IsNotExist(err) {
 			log.Printf("Failed to open aof to sync ... %s\n", err.Error())
 			return
 		}
-		in = new(bytes.Buffer)
+	} else {
+		log.Println("Server syncing aof")
+		if _, err = io.Copy(h.Conn, in); err != nil {
+			log.Printf("Failed while sending sync ... %s\n", err.Error())
+			return
+		}
 	}
-	log.Println("Server connecting to sync aof")
-	syncConn, err := Server(h.SyncPort)
-	if err != nil {
-		log.Printf("Failed to accept client conn to sync ... %s\n", err.Error())
-		return
-	}
-	defer syncConn.Close()
-	log.Println("Server syncing aof")
-	if _, err = syncConn.Write([]byte("$ BEGIN AOF\n")); err != nil {
-		log.Printf("Failed to send aof header: %s\n", err.Error())
-		return
-	}
-	if _, err = io.Copy(syncConn, in); err != nil {
-		log.Printf("Failed while sending sync ... %s\n", err.Error())
-		return
-	}
-	if _, err = syncConn.Write([]byte("$ END AOF\n")); err != nil {
+	if _, err = h.Conn.Write([]byte("$ END AOF\n")); err != nil {
 		log.Printf("Failed to send aof footer: %s\n", err.Error())
 		return
 	}
-	log.Printf("Server sent aof")
+	log.Printf("Server synced aof")
 	return h.Setup()
 }
 
@@ -207,20 +199,21 @@ func (h *HostMatch) Setup() error {
 	}
 	h.closers = append(h.closers, out)
 	h.State = NewState(history, h.Game, true, h.Who, out)
-	h.State.LinkIn = NewCmdIn(h.Conn)
+	h.State.LinkIn = NewCmdIn(bufio.NewScanner(h.Conn))
 	h.State.LinkOut = NewCmdOut(h.Conn)
 	return h.Match.Start()
 }
 
 type GuestMatch struct {
 	*Match
-	Aof	[]string
+	HostFeed *bufio.Scanner
+	Aof      []string
 }
 
 func NewGuestMatch(ui UI) *GuestMatch {
 	return &GuestMatch{
 		Match: NewMatch(ui),
-		Aof: []string{},
+		Aof:   []string{},
 	}
 }
 
@@ -247,19 +240,12 @@ func (g *GuestMatch) Connect() (err error) {
 
 func (g *GuestMatch) Sync() error {
 	// XXX: this is not re-entrant
-	log.Println("Client connecting to sync aof")
-	syncConn, err := Client(fmt.Sprintf("%s:%d", g.ConnectHost(), g.SyncPort))
-	if err != nil {
-		log.Printf("Failed to dial server to sync ... %s\n", err.Error())
-		return err
-	}
-	defer syncConn.Close()
 	log.Println("Client receiving aof sync")
-	scanner := bufio.NewScanner(syncConn)
+	g.HostFeed = bufio.NewScanner(g.Conn)
 	var line string
 ReadAof:
-	for scanner.Scan() {
-		line = scanner.Text()
+	for g.HostFeed.Scan() {
+		line = g.HostFeed.Text()
 		switch {
 		case line == "$ BEGIN AOF":
 		case line == "$ END AOF":
@@ -268,11 +254,11 @@ ReadAof:
 			g.Aof = append(g.Aof, line)
 		}
 	}
-	if err := scanner.Err(); err != nil {
+	if err := g.HostFeed.Err(); err != nil {
 		log.Printf("Failed while reading sync ... %s\n", err.Error())
 		return err
 	}
-	log.Printf("Client received aof")
+	log.Println("Client received aof")
 	return g.Setup()
 }
 
@@ -284,7 +270,7 @@ func (g *GuestMatch) Setup() error {
 		history = NewHistory(g.UI)
 	}
 	g.State = NewState(history, g.Game, false, g.Who, ioutil.Discard)
-	g.State.LinkIn = NewCmdIn(g.Conn)
+	g.State.LinkIn = NewCmdIn(g.HostFeed)
 	g.State.LinkOut = NewCmdOut(g.Conn)
 	return g.Match.Start()
 }

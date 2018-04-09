@@ -53,9 +53,9 @@ type CmdIn struct {
 	done bool
 }
 
-func NewCmdIn(in io.Reader) *CmdIn {
+func NewCmdIn(scanner *bufio.Scanner) *CmdIn {
 	return &CmdIn{
-		Scanner: bufio.NewScanner(in),
+		Scanner: scanner,
 		done:    false,
 	}
 }
