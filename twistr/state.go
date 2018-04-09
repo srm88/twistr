@@ -227,14 +227,6 @@ func (s *State) AddMilOps(player Aff, n int) {
 	s.Transcribe(fmt.Sprintf("%s adds %d to its Military Operations track.", player, n))
 }
 
-// XXX remove
-func (s *State) MessageOne(player Aff, message string) error {
-	if player != s.LocalPlayer {
-		return nil
-	}
-	return s.UI.Message(message)
-}
-
 func (s *State) EnablePlayer(which Ability, player Aff) {
 	if player != s.LocalPlayer {
 		return
