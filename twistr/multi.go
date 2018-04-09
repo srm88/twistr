@@ -31,7 +31,7 @@ import "strings"
 // flush/commit to AOF+conn
 
 var (
-	DataDir string
+	DataDir   string
 	ValidName = regexp.MustCompile(`^[a-z0-9-$_.]+$`)
 )
 
@@ -68,28 +68,18 @@ func Client(url string) (conn net.Conn, err error) {
 	return
 }
 
-func isServer(ui UI) bool {
-	var reply string
-	input(ui, &reply, "Are you the host or the guest?", "host", "guest")
-	return reply == "host"
-}
-
 func choosePlayer(ui UI) (player Aff) {
-	input(ui, &player, "Who are you playing as?", "usa", "ussr")
+	Input(ui, &player, "Who are you playing as?", "usa", "ussr")
 	return
 }
 
 func chooseName(ui UI) string {
 	var reply string
-	input(ui, &reply, "Choose a name for this game")
+	Input(ui, &reply, "Choose a name for this game")
 	for !ValidName.MatchString(reply) {
-		input(ui, &reply, "Choose a name for this game (a-z0-9-_.$ chars allowed)")
+		Input(ui, &reply, "Choose a name for this game (a-z0-9-_.$ chars allowed)")
 	}
 	return reply
-}
-
-func connectHost() string {
-	return "localhost"
 }
 
 func loadAof(aofPath string) ([]byte, error) {
@@ -115,12 +105,12 @@ type Match struct {
 	UI         UI
 	Port       int
 	SyncPort   int
-	ServerMode bool
 	Name       string
 	Game       *Game
 	State      *State
 	closers    []io.Closer
 	Who        Aff
+	Conn	net.Conn
 	// Connected? Synced?
 	// Peer address / ports?
 }
@@ -138,59 +128,55 @@ func (m *Match) AofPath() string {
 	return fmt.Sprintf("%s.aof", filepath.Join(DataDir, m.Name))
 }
 
-func (m *Match) setupServer() error {
-	// In
-	b, err := loadAof(m.AofPath())
-	if err != nil {
-		return err
-	}
-	var history *History
-	if len(b) > 0 {
-		history = NewHistoryBacklog(m.UI, strings.Split(string(b), "\n"))
-	} else {
-		history = NewHistory(m.UI)
-	}
-	// Out
-	out, err := os.OpenFile(m.AofPath(), os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0666)
-	if err != nil {
-		return err
-	}
-	m.State = NewState(history, m.Game, true, m.Who, out)
-	m.closers = append(m.closers, out)
+func (m *Match) Start() error {
+	log.Printf("Starting")
+	Start(m.State)
 	return nil
 }
 
-func (m *Match) setupClient(aof []string) {
-	var history *History
-	if len(aof) > 0 {
-		history = NewHistoryBacklog(m.UI, aof)
+func (m *Match) Close() {
+	for _, c := range m.closers {
+		c.Close()
+	}
+}
+
+type HostMatch struct {
+	*Match
+}
+
+func NewHostMatch(ui UI) *HostMatch {
+	return &HostMatch{
+		Match: NewMatch(ui),
+	}
+}
+
+func (h *HostMatch) Run() (err error) {
+	return h.GameSelect()
+}
+
+func (h *HostMatch) GameSelect() error {
+	h.Name = chooseName(h.UI)
+	// Need to tell the opponent who they are!
+	h.Who = choosePlayer(h.UI)
+	return h.Connect()
+}
+
+func (h *HostMatch) Connect() (err error) {
+	log.Println("Connecting")
+	h.Conn, err = Server(h.Port)
+	if err == nil {
+		h.closers = append(h.closers, h.Conn)
+		log.Println("Connected")
 	} else {
-		history = NewHistory(m.UI)
+		log.Printf("Failed to connect to guest: %s\n", err.Error())
+		return
 	}
-	m.State = NewState(history, m.Game, false, m.Who, ioutil.Discard)
+	return h.SendAof()
 }
 
-func (m *Match) connect() (net.Conn, error) {
-	switch {
-	case m.ServerMode:
-		return Server(m.Port)
-	default:
-		return Client(fmt.Sprintf("%s:%d", connectHost(), m.Port))
-	}
-}
-
-func (m *Match) syncConnect() (net.Conn, error) {
-	switch {
-	case m.ServerMode:
-		return Server(m.SyncPort)
-	default:
-		return Client(fmt.Sprintf("%s:%d", connectHost(), m.SyncPort))
-	}
-}
-
-func (m Match) sendAof() (err error) {
+func (h *HostMatch) SendAof() (err error) {
 	var in io.Reader
-	in, err = os.Open(m.AofPath())
+	in, err = os.Open(h.AofPath())
 	if err != nil {
 		if !os.IsNotExist(err) {
 			log.Printf("Failed to open aof to sync ... %s\n", err.Error())
@@ -199,7 +185,7 @@ func (m Match) sendAof() (err error) {
 		in = new(bytes.Buffer)
 	}
 	log.Println("Server connecting to sync aof")
-	syncConn, err := m.syncConnect()
+	syncConn, err := Server(h.SyncPort)
 	if err != nil {
 		log.Printf("Failed to accept client conn to sync ... %s\n", err.Error())
 		return
@@ -219,20 +205,77 @@ func (m Match) sendAof() (err error) {
 		return
 	}
 	log.Printf("Server sent aof")
-	return
+	return h.Setup()
 }
 
-func (m *Match) receiveAof() ([]string, error) {
+func (h *HostMatch) Setup() error {
+	// In
+	b, err := loadAof(h.AofPath())
+	if err != nil {
+		return err
+	}
+	var history *History
+	if len(b) > 0 {
+		history = NewHistoryBacklog(h.UI, strings.Split(string(b), "\n"))
+	} else {
+		history = NewHistory(h.UI)
+	}
+	// Out
+	out, err := os.OpenFile(h.AofPath(), os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0666)
+	if err != nil {
+		return err
+	}
+	h.closers = append(h.closers, out)
+	h.State = NewState(history, h.Game, true, h.Who, out)
+	h.State.LinkIn = NewCmdIn(h.Conn)
+	h.State.LinkOut = NewCmdOut(h.Conn)
+	return h.Match.Start()
+}
+
+type GuestMatch struct {
+	*Match
+	Aof	[]string
+}
+
+func NewGuestMatch(ui UI) *GuestMatch {
+	return &GuestMatch{
+		Match: NewMatch(ui),
+		Aof: []string{},
+	}
+}
+
+func (g *GuestMatch) ConnectHost() string {
+	return "localhost"
+}
+
+func (g *GuestMatch) Run() (err error) {
+	return g.Connect()
+}
+
+func (g *GuestMatch) Connect() (err error) {
+	log.Println("Connecting")
+	g.Conn, err = Client(fmt.Sprintf("%s:%d", g.ConnectHost(), g.Port))
+	if err == nil {
+		g.closers = append(g.closers, g.Conn)
+		log.Println("Connected")
+	} else {
+		log.Printf("Failed to connect to host: %s\n", err.Error())
+		return
+	}
+	return g.ReceiveAof()
+}
+
+func (g *GuestMatch) ReceiveAof() error {
+	// XXX: this is not re-entrant
 	log.Println("Client connecting to sync aof")
-	syncConn, err := m.syncConnect()
+	syncConn, err := Client(fmt.Sprintf("%s:%d", g.ConnectHost(), g.SyncPort))
 	if err != nil {
 		log.Printf("Failed to dial server to sync ... %s\n", err.Error())
-		return nil, err
+		return err
 	}
 	defer syncConn.Close()
 	log.Println("Client receiving aof sync")
 	scanner := bufio.NewScanner(syncConn)
-	var aof []string
 	var line string
 ReadAof:
 	for scanner.Scan() {
@@ -242,52 +285,26 @@ ReadAof:
 		case line == "$ END AOF":
 			break ReadAof
 		default:
-			aof = append(aof, line)
+			g.Aof = append(g.Aof, line)
 		}
 	}
 	if err := scanner.Err(); err != nil {
 		log.Printf("Failed while reading sync ... %s\n", err.Error())
-		return nil, err
+		return err
 	}
 	log.Printf("Client received aof")
-	return aof, nil
+	return g.Setup()
 }
 
-func (m *Match) Run() (err error) {
-	m.ServerMode = isServer(m.UI)
-	if m.ServerMode {
-		m.Name = chooseName(m.UI)
-		// Need to tell the opponent who they are!
-		m.Who = choosePlayer(m.UI)
-		if err = m.sendAof(); err != nil {
-			return
-		}
-		if err = m.setupServer(); err != nil {
-			return
-		}
+func (g *GuestMatch) Setup() error {
+	var history *History
+	if len(g.Aof) > 0 {
+		history = NewHistoryBacklog(g.UI, g.Aof)
 	} else {
-		aof, err := m.receiveAof()
-		if err != nil {
-			return err
-		}
-		m.setupClient(aof)
+		history = NewHistory(g.UI)
 	}
-	var conn net.Conn
-	log.Printf("Connecting")
-	if conn, err = m.connect(); err != nil {
-		return
-	}
-	log.Printf("Connected")
-	m.closers = append(m.closers, conn)
-	m.State.LinkIn = NewCmdIn(conn)
-	m.State.LinkOut = NewCmdOut(conn)
-	log.Printf("Starting")
-	Start(m.State)
-	return nil
-}
-
-func (m *Match) Close() {
-	for _, c := range m.closers {
-		c.Close()
-	}
+	g.State = NewState(history, g.Game, false, g.Who, ioutil.Discard)
+	g.State.LinkIn = NewCmdIn(g.Conn)
+	g.State.LinkOut = NewCmdOut(g.Conn)
+	return g.Match.Start()
 }

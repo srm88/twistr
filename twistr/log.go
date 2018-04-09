@@ -50,14 +50,12 @@ func (c *CmdOut) Commit() string {
 
 type CmdIn struct {
 	*bufio.Scanner
-	in   io.Reader
 	done bool
 }
 
-func NewCmdIn(r io.Reader) *CmdIn {
+func NewCmdIn(in io.Reader) *CmdIn {
 	return &CmdIn{
-		Scanner: bufio.NewScanner(r),
-		in:      r,
+		Scanner: bufio.NewScanner(in),
 		done:    false,
 	}
 }
