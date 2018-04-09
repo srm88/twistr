@@ -22,16 +22,16 @@ func (s *State) Commit() {
 		log.Println("Not committing, in replay")
 		return
 	}
-	log.Printf("Committing...\n")
+	log.Println("Committing...")
 	s.LinkOut.Commit()
 	buffered := s.History.Commit()
 	if len(buffered) > 0 {
-		log.Printf("Writing buffered to aof\n")
+		log.Println("Writing buffered to aof")
 		if _, err := s.Aof.Write(append([]byte(buffered), '\n')); err != nil {
 			log.Fatalf("Failed to flush to aof: %s\n", err.Error())
 		}
 	} else {
-		log.Printf("nothing buffered to aof\n")
+		log.Println("nothing buffered to aof")
 	}
 	s.Redraw(s.Game)
 }
@@ -60,6 +60,17 @@ func (s *State) Log(thing interface{}) (err error) {
 	return
 }
 
+func (s *State) WaitRemote() string {
+	// Reset to board view to prevent showing secrets to opponent
+	//s.Enter(nil)
+	//s.Redraw(s.Game)
+	line, ok := <-s.LinkIn.Inputs
+	if !ok {
+		log.Fatalf("LinkIn is done!")
+	}
+	return line
+}
+
 func (s *State) ReadInto(thing interface{}, fromRemote bool) bool {
 	var ok bool
 	var line string
@@ -70,13 +81,8 @@ func (s *State) ReadInto(thing interface{}, fromRemote bool) bool {
 		}
 		// Autocommit to preclude deadlock
 		s.Commit()
-		// Reset to board view to prevent showing secrets to opponent
-		s.Enter(nil)
-		s.Redraw(s.Game)
-		ok, line = s.LinkIn.Next()
-		if !ok {
-			return false
-		}
+		line = s.WaitRemote()
+		// XXX: do we need to flush aof at this point?
 		log.Printf("Read %s in from remote. Writing to history\n", line)
 		if _, err := s.History.Write([]byte(line)); err != nil {
 			log.Println(err)
@@ -167,7 +173,6 @@ func (s *State) DegradeDefcon(n int) {
 	} else {
 		s.Transcribe(fmt.Sprintf("Defcon degrades by %d, now at %d.", n, s.Defcon))
 	}
-
 }
 
 func (s *State) TurnEvent(event CardId, player Aff) {

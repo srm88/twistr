@@ -50,27 +50,37 @@ func (c *CmdOut) Commit() string {
 
 type CmdIn struct {
 	*bufio.Scanner
-	done bool
+	Inputs     chan string
+	KillSwitch chan bool
 }
 
 func NewCmdIn(scanner *bufio.Scanner) *CmdIn {
-	return &CmdIn{
+	ci := &CmdIn{
 		Scanner: scanner,
-		done:    false,
+		Inputs:  make(chan string, 1000),
 	}
+	go ci.consume()
+	return ci
 }
 
-func (ci *CmdIn) Next() (bool, string) {
-	if ci.done || !ci.Scan() {
-		ci.done = true
-		return false, ""
+func (ci *CmdIn) consume() {
+	defer close(ci.Inputs)
+	for ci.Scan() {
+		select {
+		case <-ci.KillSwitch:
+			log.Println("LinkIn received the done signal")
+			return
+		default:
+			ci.Inputs <- ci.Text()
+		}
 	}
-	line := ci.Text()
-	return true, line
+	if err := ci.Err(); err != nil {
+		log.Printf("Error after exhausting the CmdIn: %s\n", err.Error())
+	}
 }
 
 type History struct {
-	wrapped   UI
+	UI        UI
 	inputs    []string
 	index     int
 	watermark int
@@ -85,7 +95,7 @@ func NewHistoryBacklog(ui UI, backlog []string) *History {
 		}
 	}
 	return &History{
-		wrapped:   ui,
+		UI:        ui,
 		inputs:    backlog[:end],
 		index:     0,
 		watermark: end,
@@ -95,7 +105,7 @@ func NewHistoryBacklog(ui UI, backlog []string) *History {
 
 func NewHistory(ui UI) *History {
 	return &History{
-		wrapped:   ui,
+		UI:        ui,
 		inputs:    []string{},
 		index:     0,
 		watermark: 0,
@@ -116,7 +126,7 @@ func (r *History) Input() (reply string, err error) {
 			r.Replaying = false
 		}
 		// Passthru
-		reply, err = r.wrapped.Input()
+		reply, err = r.UI.Input()
 		return
 	}
 	panic("Can't solicit in replay mode")
@@ -133,7 +143,7 @@ func (r *History) Next() (bool, string) {
 
 func (r *History) Message(message string) error {
 	if !r.InReplay() {
-		return r.wrapped.Message(message)
+		return r.UI.Message(message)
 	}
 	return nil
 }
@@ -141,31 +151,31 @@ func (r *History) Message(message string) error {
 func (r *History) ShowMessages(ms []string) {
 	// Future, fix this to get messages from this object
 	if !r.InReplay() {
-		r.wrapped.ShowMessages(ms)
+		r.UI.ShowMessages(ms)
 	}
 }
 
 func (r *History) ShowCards(cs []Card) {
 	if !r.InReplay() {
-		r.wrapped.ShowCards(cs)
+		r.UI.ShowCards(cs)
 	}
 }
 
 func (r *History) ShowSpaceRace(sr [2]int) {
 	if !r.InReplay() {
-		r.wrapped.ShowSpaceRace(sr)
+		r.UI.ShowSpaceRace(sr)
 	}
 }
 
 func (r *History) Redraw(g *Game) {
 	// XXX this is preventing redraw of anything when starting game up
 	if !r.InReplay() {
-		r.wrapped.Redraw(g)
+		r.UI.Redraw(g)
 	}
 }
 
 func (r *History) Close() error {
-	return r.wrapped.Close()
+	return r.UI.Close()
 }
 
 // Custom

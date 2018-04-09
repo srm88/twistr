@@ -3,7 +3,6 @@ package twistr
 import "fmt"
 import gc "github.com/rthornton128/goncurses"
 import "log"
-import "os"
 import "strconv"
 import "strings"
 
@@ -229,8 +228,7 @@ type NCursesUI struct {
 func MakeNCursesUI() *NCursesUI {
 	scr, err := gc.Init()
 	if err != nil {
-		log.Println(err)
-		os.Exit(1)
+		log.Fatal(err)
 	}
 	if !gc.HasColors() {
 		log.Fatal("No colors")
