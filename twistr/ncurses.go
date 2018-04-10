@@ -221,8 +221,106 @@ func initColors() {
 	gc.InitPair(C_SpaceDetails, gc.C_WHITE, 0)
 }
 
+func isPrint(k gc.Key) bool {
+	return k >= 0x20 && k <= 0x7e
+}
+
+type TextBox struct {
+	Contents []byte
+	Cursor   int
+}
+
+func (tb *TextBox) AddCh(b byte) {
+	if tb.Cursor < len(tb.Contents) {
+		tb.Contents = append(tb.Contents, 0)
+		copy(tb.Contents[tb.Cursor+1:], tb.Contents[tb.Cursor:])
+		tb.Contents[tb.Cursor] = b
+	} else {
+		tb.Contents = append(tb.Contents, b)
+	}
+	tb.Cursor += 1
+}
+
+func (tb *TextBox) Del() {
+	if len(tb.Contents) == 0 || tb.Cursor == len(tb.Contents) {
+		return
+	}
+	tb.Contents = append(tb.Contents[:tb.Cursor], tb.Contents[tb.Cursor+1:]...)
+}
+
+func (tb *TextBox) DelToHome() {
+	if len(tb.Contents) == 0 || tb.Cursor == 0 {
+		return
+	}
+	tb.Contents = tb.Contents[tb.Cursor:]
+	tb.Cursor = 0
+}
+
+func (tb *TextBox) DelToEnd() {
+	if len(tb.Contents) == 0 || tb.Cursor == len(tb.Contents) {
+		return
+	}
+	tb.Contents = tb.Contents[:tb.Cursor]
+}
+
+func (tb *TextBox) Backspace() {
+	if len(tb.Contents) == 0 || tb.Cursor == 0 {
+		return
+	}
+	tb.Cursor -= 1
+	switch {
+	case tb.Cursor == 0:
+		tb.Contents = tb.Contents[1:]
+	case tb.Cursor == len(tb.Contents)-1:
+		tb.Contents = tb.Contents[:tb.Cursor]
+	default:
+		tb.Contents = append(tb.Contents[:tb.Cursor], tb.Contents[tb.Cursor+1:]...)
+	}
+}
+
+func (tb *TextBox) BackspaceWord() {
+	if len(tb.Contents) == 0 || tb.Cursor == 0 {
+		return
+	}
+	boundary := tb.Cursor
+	initialSpace := true
+	for boundary > 0 {
+		if boundary < len(tb.Contents) {
+			if initialSpace && tb.Contents[boundary] != ' ' {
+				initialSpace = false
+			} else if !initialSpace && tb.Contents[boundary] == ' ' {
+				boundary++
+				break
+			}
+		}
+		boundary--
+	}
+	tb.Contents = append(tb.Contents[:boundary], tb.Contents[tb.Cursor:]...)
+	tb.Cursor = boundary
+}
+
+func (tb *TextBox) Left() {
+	if tb.Cursor > 0 {
+		tb.Cursor -= 1
+	}
+}
+
+func (tb *TextBox) Right() {
+	if tb.Cursor < len(tb.Contents) {
+		tb.Cursor += 1
+	}
+}
+
+func (tb *TextBox) String() string {
+	s := string(tb.Contents)
+	tb.Contents = tb.Contents[:0]
+	tb.Cursor = 0
+	return s
+}
+
 type NCursesUI struct {
 	*gc.Window
+	*TextBox
 }
 
 func MakeNCursesUI() *NCursesUI {
@@ -237,19 +335,72 @@ func MakeNCursesUI() *NCursesUI {
 		log.Fatal(err)
 	}
 	gc.Echo(false)
+	scr.Keypad(true)  // Get arrow keys as single chars
+	gc.NewLines(true) // Get return key
+	gc.Cursor(0)      // hide real cursor
+	// cbreak?
 	initColors()
-	return &NCursesUI{scr}
+	return &NCursesUI{
+		Window: scr,
+		TextBox: &TextBox{
+			Contents: make([]byte, 0, 100),
+			Cursor:   0,
+		},
+	}
+}
+
+func (nc *NCursesUI) renderTextBox() {
+	nc.Move(37, 0)
+	nc.ClearToEOL()
+	for i, b := range nc.Contents {
+		ch := gc.Char(b)
+		if i == nc.Cursor {
+			ch |= gc.A_REVERSE
+		}
+		nc.AddChar(ch)
+	}
+	if nc.Cursor == len(nc.Contents) {
+		nc.AddChar(' ' | gc.A_REVERSE)
+	}
+	nc.Refresh()
 }
 
 func (nc *NCursesUI) Input() (string, error) {
 	nc.Move(37, 0)
-	gc.Echo(true)
 	nc.Refresh()
-	text, err := nc.GetString(100)
-	if err != nil {
-		return "", err
+	var done bool
+	for !done {
+		c := nc.GetChar()
+		if isPrint(c) {
+			nc.AddCh(byte(c))
+		} else {
+			switch c {
+			case gc.KEY_LEFT:
+				nc.Left()
+			case gc.KEY_RIGHT:
+				nc.Right()
+			case 127, gc.KEY_BACKSPACE:
+				nc.Backspace()
+			case gc.KEY_ENTER, gc.KEY_RETURN:
+				done = true
+			case gc.KEY_HOME, 1: // Ctrl+A
+				nc.Cursor = 0
+			case gc.KEY_END, 5: // Ctrl+E
+				nc.Cursor = len(nc.Contents)
+			case 21: // Ctrl+U
+				nc.DelToHome()
+			case 11: // Ctrl+K
+				nc.DelToEnd()
+			case 4: // Ctrl+D
+				nc.Del()
+			case 23: // Ctrl+W
+				nc.BackspaceWord()
+				// Escape is 27 -- need to read escape, set nodelay, try to read another char, if so it was a multi-char sequence
+			}
+		}
+		nc.renderTextBox()
 	}
-	gc.Echo(false)
+	text := nc.String()
 	nc.Move(37, 0)
 	nc.ClearToEOL()
 	return strings.ToLower(strings.TrimSpace(text)), nil
