@@ -318,9 +318,21 @@ func (tb *TextBox) String() string {
 	return s
 }
 
+type Semaphore chan struct{}
+
+func (s Semaphore) Acquire() {
+	s <- struct{}{}
+}
+
+func (s Semaphore) Release() {
+	<-s
+}
+
 type NCursesUI struct {
 	*gc.Window
 	*TextBox
+	lock     Semaphore
+	textLock Semaphore
 }
 
 func MakeNCursesUI() *NCursesUI {
@@ -346,6 +358,8 @@ func MakeNCursesUI() *NCursesUI {
 			Contents: make([]byte, 0, 100),
 			Cursor:   0,
 		},
+		lock:     make(Semaphore, 1),
+		textLock: make(Semaphore, 1),
 	}
 }
 
@@ -365,41 +379,65 @@ func (nc *NCursesUI) renderTextBox() {
 	nc.Refresh()
 }
 
-func (nc *NCursesUI) Input() (string, error) {
+const (
+	CtrlA     = 1
+	CtrlE     = 5
+	CtrlU     = 21
+	CtrlK     = 11
+	CtrlD     = 4
+	CtrlW     = 23
+	Backspace = 127
+)
+
+func (nc *NCursesUI) handleInput() (more bool) {
+	more = true
+	nc.lock.Acquire()
+	defer nc.lock.Release()
 	nc.Move(37, 0)
 	nc.Refresh()
-	var done bool
-	for !done {
-		c := nc.GetChar()
-		if isPrint(c) {
-			nc.AddCh(byte(c))
-		} else {
-			switch c {
-			case gc.KEY_LEFT:
-				nc.Left()
-			case gc.KEY_RIGHT:
-				nc.Right()
-			case 127, gc.KEY_BACKSPACE:
-				nc.Backspace()
-			case gc.KEY_ENTER, gc.KEY_RETURN:
-				done = true
-			case gc.KEY_HOME, 1: // Ctrl+A
-				nc.Cursor = 0
-			case gc.KEY_END, 5: // Ctrl+E
-				nc.Cursor = len(nc.Contents)
-			case 21: // Ctrl+U
-				nc.DelToHome()
-			case 11: // Ctrl+K
-				nc.DelToEnd()
-			case 4: // Ctrl+D
-				nc.Del()
-			case 23: // Ctrl+W
-				nc.BackspaceWord()
-				// Escape is 27 -- need to read escape, set nodelay, try to read another char, if so it was a multi-char sequence
-			}
+	c := nc.GetChar()
+	if isPrint(c) {
+		nc.AddCh(byte(c))
+	} else {
+		switch c {
+		case gc.KEY_LEFT:
+			nc.Left()
+		case gc.KEY_RIGHT:
+			nc.Right()
+		case 127, gc.KEY_BACKSPACE:
+			nc.Backspace()
+		case gc.KEY_ENTER, gc.KEY_RETURN:
+			more = false
+		case gc.KEY_HOME, CtrlA:
+			nc.Cursor = 0
+		case gc.KEY_END, CtrlE:
+			nc.Cursor = len(nc.Contents)
+		case CtrlU:
+			nc.DelToHome()
+		case CtrlK:
+			nc.DelToEnd()
+		case CtrlD:
+			nc.Del()
+		case CtrlW:
+			nc.BackspaceWord()
+			// Escape is 27 -- need to read escape, set nodelay, try to read another char, if so it was a multi-char sequence
 		}
-		nc.renderTextBox()
 	}
+	nc.renderTextBox()
+	return
+}
+
+func (nc *NCursesUI) Input() (string, error) {
+	// Separate lock around asking for input, so we don't get two different
+	// threads asking for input crawling on top of each other.
+	nc.textLock.Acquire()
+	defer nc.textLock.Release()
+	for nc.handleInput() {
+	}
+	// The input loop above handles its own ncurses-level locking but we need it
+	// here to clear the textbox
+	nc.lock.Acquire()
+	defer nc.lock.Release()
 	text := nc.String()
 	nc.Move(37, 0)
 	nc.ClearToEOL()
@@ -407,6 +445,8 @@ func (nc *NCursesUI) Input() (string, error) {
 }
 
 func (nc *NCursesUI) Message(message string) error {
+	nc.lock.Acquire()
+	defer nc.lock.Release()
 	nc.Move(36, 0)
 	nc.ClearToEOL()
 	nc.MovePrint(36, 0, strings.TrimRight(message, "\n"))
@@ -420,6 +460,8 @@ func (nc *NCursesUI) Close() error {
 }
 
 func (nc *NCursesUI) Redraw(g *Game) {
+	nc.lock.Acquire()
+	defer nc.lock.Release()
 	nc.clear()
 	var name, stab, infUsa, infSov int16
 	nc.MovePrint(0, 0, world)
@@ -493,6 +535,7 @@ func (nc *NCursesUI) Redraw(g *Game) {
 }
 
 func (nc *NCursesUI) clear() {
+	// Caller must have the lock!
 	for i := 0; i < maxHeight; i++ {
 		nc.Move(i, 0)
 		nc.ClearToEOL()
@@ -502,6 +545,8 @@ func (nc *NCursesUI) clear() {
 }
 
 func (nc *NCursesUI) ShowMessages(messages []string) {
+	nc.lock.Acquire()
+	defer nc.lock.Release()
 	nc.clear()
 	start := 0
 	if len(messages) > maxHeight {
@@ -530,6 +575,8 @@ const (
 )
 
 func (nc *NCursesUI) ShowSpaceRace(positions [2]int) {
+	nc.lock.Acquire()
+	defer nc.lock.Release()
 	nc.clear()
 	x := 5
 	y := 2
@@ -542,6 +589,8 @@ func (nc *NCursesUI) ShowSpaceRace(positions [2]int) {
 }
 
 func (nc *NCursesUI) drawSpaceBox(box SRBox, usaHere, sovHere bool, start Pos) {
+	nc.lock.Acquire()
+	defer nc.lock.Release()
 	nc.ColorOn(C_SpaceDefault)
 	for i, line := range strings.Split(spaceBox, "\n") {
 		nc.MovePrint(start.Y+i, start.X, line)
@@ -617,6 +666,8 @@ func cardHeight(card Card) int {
 }
 
 func (nc *NCursesUI) ShowCards(cards []Card) {
+	nc.lock.Acquire()
+	defer nc.lock.Release()
 	nc.clear()
 	x := 5
 	y := 2
@@ -633,13 +684,13 @@ func (nc *NCursesUI) ShowCards(cards []Card) {
 		}
 
 		offsetY += row.Height() + 1
-
 	}
 	nc.Refresh()
 	nc.Move(37, 0)
 }
 
 func (nc *NCursesUI) drawCard(card Card, start Pos) {
+	// Caller needs to have the lock
 	// Ops
 	var affColor int16
 	switch card.Aff {

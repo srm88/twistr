@@ -64,7 +64,21 @@ func (s *State) WaitRemote() string {
 	// Reset to board view to prevent showing secrets to opponent
 	//s.Enter(nil)
 	//s.Redraw(s.Game)
+	stop := make(chan struct{}, 1)
+	go func() {
+		for {
+			select {
+			case <-stop:
+				log.Printf("Opponent is ready now")
+				return
+			default:
+				log.Printf("Opponent not ready, entering modal")
+				modal(s, Solicit(s.UI, "Waiting for opponent", nil))
+			}
+		}
+	}()
 	line, ok := <-s.LinkIn.Inputs
+	stop <- struct{}{}
 	if !ok {
 		log.Fatalf("LinkIn is done!")
 	}
@@ -81,6 +95,7 @@ func (s *State) ReadInto(thing interface{}, fromRemote bool) bool {
 		}
 		// Autocommit to preclude deadlock
 		s.Commit()
+		log.Println("Waiting for remote")
 		line = s.WaitRemote()
 		// XXX: do we need to flush aof at this point?
 		log.Printf("Read %s in from remote. Writing to history\n", line)
