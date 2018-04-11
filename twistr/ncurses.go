@@ -347,6 +347,7 @@ func MakeNCursesUI() *NCursesUI {
 		log.Fatal(err)
 	}
 	gc.Echo(false)
+	scr.Timeout(0)    // Non-blocking mode
 	scr.Keypad(true)  // Get arrow keys as single chars
 	gc.NewLines(true) // Get return key
 	gc.Cursor(0)      // hide real cursor
@@ -396,6 +397,9 @@ func (nc *NCursesUI) handleInput() (more bool) {
 	nc.Move(37, 0)
 	nc.Refresh()
 	c := nc.GetChar()
+	if c == 0 {
+		return
+	}
 	if isPrint(c) {
 		nc.AddCh(byte(c))
 	} else {
