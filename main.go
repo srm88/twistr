@@ -48,10 +48,12 @@ func main() {
 	var match Match
 
 	if isServer(ui) {
+		log.SetPrefix("host  ")
 		// Need to tell the opponent who they are!
 		// Where should this happen? Should address when we formalize loading previous games
 		match = twistr.NewHostMatch(ui, chooseName(ui), choosePlayer(ui))
 	} else {
+		log.SetPrefix("guest ")
 		match = twistr.NewGuestMatch(ui)
 	}
 
